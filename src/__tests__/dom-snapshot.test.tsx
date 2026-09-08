@@ -41,6 +41,7 @@ import {
   Heatmap,
   Histogram,
   Input,
+  JSONViewer,
   Kbd,
   Label,
   LineChart,
@@ -234,6 +235,9 @@ const cases: Record<string, React.ReactElement> = {
   "Separator/horizontal": <Separator />,
   "Separator/vertical": <Separator orientation="vertical" />,
   "Label/basic": <Label htmlFor="x">Workspace name</Label>,
+  "JSONViewer/nested-object": (
+    <JSONViewer label="Span attributes" data={{ service: "checkout-api", http: { status: 500 } }} />
+  ),
   "Kbd/shortcut": (
     <span>
       <Kbd>⌘</Kbd>

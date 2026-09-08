@@ -137,6 +137,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "Label",
   "Kbd",
   "EmptyState",
+  "JSONViewer",
   "Collapsible",
   "Command",
   "CommandDialog",

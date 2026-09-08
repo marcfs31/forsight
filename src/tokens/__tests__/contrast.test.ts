@@ -51,6 +51,9 @@ function pairsFor(p: ForsPalette): Array<[string, string, string]> {
     ["accent (as text) on surface", p.accent, p.surface],
     ["accent (as text) on accent-subtle", p.accent, p.accentSubtle],
     ["accent (as text) on surface-2", p.accent, p.surface2],
+    // JSONViewer's node-toggle hover state (hover:text-accent) sits on bg,
+    // not surface — check that pairing too.
+    ["accent (as text) on bg", p.accent, p.bg],
 
     ["spark-fg on spark", p.sparkFg, p.spark],
     ["spark-fg on spark-hover", p.sparkFg, p.sparkHover],

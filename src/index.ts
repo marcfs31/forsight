@@ -120,6 +120,7 @@ export { Separator, type SeparatorProps } from "./components/Separator";
 export { Label, type LabelProps } from "./components/Label";
 export { Kbd, type KbdProps } from "./components/Kbd";
 export { EmptyState, type EmptyStateProps } from "./components/EmptyState";
+export { JSONViewer, type JSONViewerProps } from "./components/JSONViewer";
 export { Collapsible, CollapsibleTrigger, CollapsibleContent } from "./components/Collapsible";
 export {
   Command,
