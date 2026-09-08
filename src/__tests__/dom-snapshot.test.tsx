@@ -7,6 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   Alert,
+  AlertList,
   Avatar,
   AvatarGroup,
   Badge,
@@ -372,6 +373,21 @@ const cases: Record<string, React.ReactElement> = {
     />
   ),
   "Delta/increase-is-bad": <Delta value={30.2} goodDirection="down" />,
+  "AlertList/active-and-resolved": (
+    <AlertList
+      label="Active alerts"
+      items={[
+        { id: "1", severity: "critical", title: "Elevated 5xx rate", time: "2 min ago" },
+        {
+          id: "2",
+          severity: "info",
+          title: "Disk usage above 80%",
+          time: "20 min ago",
+          resolved: true,
+        },
+      ]}
+    />
+  ),
   "StatusDot/degraded": <StatusDot status="degraded" pulse />,
   "UptimeBar/with-incident": (
     <UptimeBar

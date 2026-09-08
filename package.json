@@ -93,9 +93,9 @@
   },
   "size-limit": [
     {
-      "name": "JS bundle (import * from index.js, incl. Radix + cmdk + react-day-picker deps, brotli). Raised from 85 KB when the data-viz + observability families landed — they add ~3 KB of hand-rolled SVG geometry and no new dependency.",
+      "name": "JS bundle (import * from index.js, incl. Radix + cmdk + react-day-picker deps, brotli). Raised from 92 KB for the component-library-expansion batch (AlertDialog, Drawer, ToggleGroup, Combobox, Kbd, EmptyState, Histogram, BoxPlot, ComboChart, CalendarHeatmap, AlertList, and more to follow) — two new Radix deps (alert-dialog, toggle-group) plus the rest composed from existing primitives and chart geometry.",
       "path": "dist/index.js",
-      "limit": "92 KB"
+      "limit": "100 KB"
     },
     {
       "name": "Compiled CSS (brotli)",
