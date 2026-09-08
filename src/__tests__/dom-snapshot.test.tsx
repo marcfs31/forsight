@@ -31,6 +31,7 @@ import {
   CollapsibleTrigger,
   Delta,
   DonutChart,
+  EmptyState,
   Gauge,
   Heading,
   Heatmap,
@@ -169,6 +170,9 @@ const cases: Record<string, React.ReactElement> = {
         <Button size="sm">Go</Button>
       </CardFooter>
     </Card>
+  ),
+  "EmptyState/with-description": (
+    <EmptyState title="No deployments yet" description="Push to see them here." />
   ),
   "Tabs/default": (
     <Tabs.Root defaultValue="a">

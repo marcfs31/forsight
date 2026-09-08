@@ -136,6 +136,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "Separator",
   "Label",
   "Kbd",
+  "EmptyState",
   "Collapsible",
   "Command",
   "CommandDialog",
