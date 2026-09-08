@@ -158,6 +158,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "DonutChart",
   "Heatmap",
   "Histogram",
+  "BoxPlot",
   "Gauge",
   // Observability
   "StatCard",

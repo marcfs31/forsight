@@ -18,6 +18,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
+  BoxPlot,
   Button,
   Card,
   CardContent,
@@ -313,6 +314,15 @@ const cases: Record<string, React.ReactElement> = {
       rows={[
         { label: "checkout", values: [0, 12, 40] },
         { label: "search", values: [4, null, 8] },
+      ]}
+    />
+  ),
+  "BoxPlot/two-boxes": (
+    <BoxPlot
+      label="Latency spread"
+      boxes={[
+        { label: "checkout", min: 40, q1: 80, median: 120, q3: 180, max: 420 },
+        { label: "search", min: 20, q1: 35, median: 50, q3: 70, max: 160 },
       ]}
     />
   ),
