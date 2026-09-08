@@ -173,6 +173,13 @@ export { DonutChart, type DonutChartProps, type DonutSlice } from "./components/
 export { Heatmap, type HeatmapProps, type HeatmapRow } from "./components/Heatmap";
 export { Histogram, type HistogramProps, type HistogramBucket } from "./components/Histogram";
 export { BoxPlot, type BoxPlotProps, type BoxPlotBox } from "./components/BoxPlot";
+export {
+  ComboChart,
+  type ComboChartProps,
+  type ComboChartSeries,
+  type ComboChartBarSeries,
+  type ComboChartLineSeries,
+} from "./components/ComboChart";
 export { Gauge, type GaugeProps } from "./components/Gauge";
 
 // ── Observability ───────────────────────────────────────────────────────────
@@ -223,6 +230,7 @@ export {
   seriesFill,
   seriesStroke,
   SERIES_SLOTS,
+  splitAtGaps,
   type NiceScale,
   type Point,
 } from "./lib/chart";

@@ -145,6 +145,30 @@ export function linePath(points: readonly Point[]): string {
   return points.map(([x, y], i) => `${i === 0 ? "M" : "L"}${round(x)} ${round(y)}`).join(" ");
 }
 
+/**
+ * Splits a `null`-gapped value series into the runs of consecutive
+ * non-null points to draw — a missing sample should leave a gap, not be
+ * interpolated through or treated as zero. Shared by `LineChart` and
+ * `ComboChart`'s line series.
+ */
+export function splitAtGaps(
+  values: ReadonlyArray<number | null>,
+  toPoint: (index: number, value: number) => Point
+): Point[][] {
+  const segments: Point[][] = [];
+  let current: Point[] = [];
+  values.forEach((value, index) => {
+    if (value === null) {
+      if (current.length > 0) segments.push(current);
+      current = [];
+      return;
+    }
+    current.push(toPoint(index, value));
+  });
+  if (current.length > 0) segments.push(current);
+  return segments;
+}
+
 /** The same polyline closed down to `baselineY`, for an area fill. */
 export function areaPath(points: readonly Point[], baselineY: number): string {
   if (points.length === 0) return "";

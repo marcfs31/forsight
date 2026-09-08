@@ -9,7 +9,7 @@ import {
   project,
   seriesFill,
   seriesStroke,
-  type Point,
+  splitAtGaps,
 } from "../lib/chart";
 import { useChartCursor } from "../lib/chart-hooks";
 import { ChartFrame } from "./ChartFrame";
@@ -183,7 +183,10 @@ export const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
                   ))}
 
                   {series.map((s, seriesIndex) => {
-                    const segments = splitSegments(s.values, xAt, yAt);
+                    const segments = splitAtGaps(s.values, (index, value) => [
+                      xAt(index),
+                      yAt(value),
+                    ]);
                     return (
                       <g key={s.name}>
                         {area
@@ -278,26 +281,6 @@ export const LineChart = React.forwardRef<HTMLDivElement, LineChartProps>(
   }
 );
 LineChart.displayName = "LineChart";
-
-/** Splits a series at its `null` gaps so a missing sample isn't drawn through. */
-function splitSegments(
-  values: Array<number | null>,
-  xAt: (index: number) => number,
-  yAt: (value: number) => number
-): Point[][] {
-  const segments: Point[][] = [];
-  let current: Point[] = [];
-  values.forEach((value, index) => {
-    if (value === null) {
-      if (current.length > 0) segments.push(current);
-      current = [];
-      return;
-    }
-    current.push([xAt(index), yAt(value)]);
-  });
-  if (current.length > 0) segments.push(current);
-  return segments;
-}
 
 /** Evenly spaced x-label indices that fit the plot width without colliding. */
 export function pickLabelIndices(count: number, plotWidth: number): number[] {

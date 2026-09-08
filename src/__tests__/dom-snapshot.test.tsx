@@ -27,6 +27,7 @@ import {
   CardTitle,
   ChartLegend,
   Checkbox,
+  ComboChart,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
@@ -314,6 +315,16 @@ const cases: Record<string, React.ReactElement> = {
       rows={[
         { label: "checkout", values: [0, 12, 40] },
         { label: "search", values: [4, null, 8] },
+      ]}
+    />
+  ),
+  "ComboChart/bar-and-line": (
+    <ComboChart
+      label="Requests and latency"
+      labels={["12:00", "13:00", "14:00"]}
+      series={[
+        { name: "Requests", type: "bar", values: [1200, 1800, 1400] },
+        { name: "p99 latency", type: "line", values: [180, 340, 190] },
       ]}
     />
   ),
