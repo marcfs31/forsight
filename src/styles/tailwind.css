@@ -1,5 +1,5 @@
 /**
- * Tailwind v4 integration, exported as "@marcfs31/fors-design-system/tailwind.css".
+ * Tailwind v4 integration, exported as "@marcfs31/fors-observability-design-system/tailwind.css".
  *
  * Maps the Fors tokens into Tailwind's theme namespaces so a consumer app on
  * Tailwind v4 can use the same utility vocabulary the components are built
@@ -10,11 +10,11 @@
  *
  * Usage (consumer's global stylesheet):
  *   @import "tailwindcss";
- *   @import "@marcfs31/fors-design-system/tailwind.css";
+ *   @import "@marcfs31/fors-observability-design-system/tailwind.css";
  *
  * The component styles themselves still come from "styles.css" — this file
  * only teaches the consumer's Tailwind the token names. Tailwind v3 consumers
- * use the "@marcfs31/fors-design-system/tailwind-preset" export instead. Keep the
+ * use the "@marcfs31/fors-observability-design-system/tailwind-preset" export instead. Keep the
  * mapping in sync with src/tailwind-preset.ts.
  */
 @theme inline {
@@ -52,6 +52,15 @@
   --color-warning-fg: var(--fors-warning-fg);
 
   --color-focus-ring: var(--fors-focus-ring);
+
+  --color-viz-1: var(--fors-viz-1);
+  --color-viz-2: var(--fors-viz-2);
+  --color-viz-3: var(--fors-viz-3);
+  --color-viz-4: var(--fors-viz-4);
+  --color-viz-5: var(--fors-viz-5);
+  --color-viz-6: var(--fors-viz-6);
+  --color-viz-7: var(--fors-viz-7);
+  --color-viz-8: var(--fors-viz-8);
 
   --font-heading: var(--fors-font-heading);
   --font-sans: var(--fors-font-sans);

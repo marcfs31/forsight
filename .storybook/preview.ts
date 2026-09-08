@@ -51,13 +51,24 @@ const preview: Preview = {
   parameters: {
     // Sidebar order: the Overview first, then the component categories in a
     // deliberate top-down reading order (type → inputs → overlays → feedback
-    // → data → navigation); components alphabetical within a category.
+    // → data display → charts → observability → navigation); components
+    // alphabetical within a category.
     // Story titles are "Fors/<Category>/<Component>" — see src/**/*.stories.tsx.
     options: {
       storySort: {
         order: [
           "Fors",
-          ["Overview", "Typography", "Forms", "Overlays", "Feedback", "Data Display", "Navigation"],
+          [
+            "Overview",
+            "Typography",
+            "Forms",
+            "Overlays",
+            "Feedback",
+            "Data Display",
+            "Data Viz",
+            "Observability",
+            "Navigation",
+          ],
         ],
       },
     },

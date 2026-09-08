@@ -63,10 +63,27 @@
 
   --fors-focus-ring: rgba(22, 199, 176, 0.45);
 
+  /* Categorical data-visualization series (chart marks only — never text).
+     Eight fixed slots, assigned in order and never cycled: a 9th series folds
+     into "Other" or becomes small multiples. The ordering itself is the
+     colorblind-safety mechanism (adjacent slots are the pairs a stacked bar or
+     a legend puts side by side), so slots are never reordered or re-stepped
+     without re-running the CVD/contrast validation recorded in
+     src/tokens/__tests__/contrast.test.ts. Dark steps are selected for the dark
+     surface, not derived from the light ones. */
+  --fors-viz-1: #3987e5;
+  --fors-viz-2: #d95926;
+  --fors-viz-3: #199e70;
+  --fors-viz-4: #c98500;
+  --fors-viz-5: #d55181;
+  --fors-viz-6: #008300;
+  --fors-viz-7: #9085e9;
+  --fors-viz-8: #e66767;
+
   /* Type families (theme-independent). Override --fors-font-sans /
      --fors-font-heading on :root to swap in self-hosted faces — e.g. point
      them at a next/font CSS variable. The names below match what
-     "@marcfs31/fors-design-system/fonts.css" loads from Google Fonts. */
+     "@marcfs31/fors-observability-design-system/fonts.css" loads from Google Fonts. */
   --fors-font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --fors-font-heading: "Space Grotesk", var(--fors-font-sans);
   --fors-font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
@@ -127,6 +144,21 @@
   --fors-warning-fg: #ffffff;
 
   --fors-focus-ring: rgba(11, 108, 94, 0.45);
+
+  /* Light steps of the same eight hues (see the dark block). viz-3/4/5 sit
+     below the 3:1 non-text contrast bar on the white surface, which the
+     data-viz relief rule permits only because every chart in this library
+     ships a legend and a screen-reader data table, so series identity is never
+     carried by color alone. contrast.test.ts pins exactly which slots may
+     take that relief. */
+  --fors-viz-1: #2a78d6;
+  --fors-viz-2: #eb6834;
+  --fors-viz-3: #1baf7a;
+  --fors-viz-4: #eda100;
+  --fors-viz-5: #e87ba4;
+  --fors-viz-6: #008300;
+  --fors-viz-7: #4a3aa7;
+  --fors-viz-8: #e34948;
 
   /* Dark theme's 0.4-0.5 alpha black shadows read as a harsh hard drop-shadow
      on white surfaces — light theme needs much lower alpha to read as a soft

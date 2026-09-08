@@ -1,8 +1,8 @@
 {
-  "name": "@marcfs31/fors-design-system",
+  "name": "@marcfs31/fors-observability-design-system",
   "version": "1.4.1",
   "private": false,
-  "description": "Fors Corporation design system — brand tokens and React components.",
+  "description": "Fors Corporation observability design system — brand tokens, React components, and data-visualization + observability primitives.",
   "author": "Fors Corporation <developer@marcfors.com>",
   "license": "UNLICENSED",
   "type": "module",
@@ -58,11 +58,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/marcfs31/fors-design-system.git"
+    "url": "git+https://github.com/marcfs31/fors-observability-design-system.git"
   },
-  "homepage": "https://marcfs31.github.io/fors-design-system/",
+  "homepage": "https://marcfs31.github.io/fors-observability-design-system/",
   "bugs": {
-    "url": "https://github.com/marcfs31/fors-design-system/issues"
+    "url": "https://github.com/marcfs31/fors-observability-design-system/issues"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",
@@ -93,9 +93,9 @@
   },
   "size-limit": [
     {
-      "name": "JS bundle (import * from index.js, incl. Radix + cmdk + react-day-picker deps, brotli)",
+      "name": "JS bundle (import * from index.js, incl. Radix + cmdk + react-day-picker deps, brotli). Raised from 85 KB when the data-viz + observability families landed — they add ~3 KB of hand-rolled SVG geometry and no new dependency.",
       "path": "dist/index.js",
-      "limit": "85 KB"
+      "limit": "92 KB"
     },
     {
       "name": "Compiled CSS (brotli)",

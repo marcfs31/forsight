@@ -3,7 +3,7 @@
 // Every component in this entry is interactive (hooks / Radix), so the whole
 // bundle is a client module — drop-in usable inside React Server Components
 // without a wrapper. Server-safe theme/token utilities live in the separate
-// "@marcfs31/fors-design-system/theme" entry (see src/theme-entry.ts).
+// "@marcfs31/fors-observability-design-system/theme" entry (see src/theme-entry.ts).
 
 export { Button, type ButtonProps } from "./components/Button";
 export { Badge, type BadgeProps } from "./components/Badge";
@@ -131,5 +131,73 @@ export {
   type SidebarProps,
   type SidebarNavItemProps,
 } from "./components/Sidebar";
+
+// ── Data visualization ──────────────────────────────────────────────────────
+export { ChartFrame, type ChartFrameProps, type ChartTableRow } from "./components/ChartFrame";
+export { ChartLegend, type ChartLegendProps, type ChartLegendItem } from "./components/ChartLegend";
+export {
+  ChartTooltip,
+  type ChartTooltipProps,
+  type ChartTooltipRow,
+} from "./components/ChartTooltip";
+export { LineChart, type LineChartProps, type ChartSeries } from "./components/LineChart";
+export { BarChart, type BarChartProps } from "./components/BarChart";
+export { BarList, type BarListProps, type BarListItem } from "./components/BarList";
+export { Sparkline, type SparklineProps } from "./components/Sparkline";
+export { DonutChart, type DonutChartProps, type DonutSlice } from "./components/DonutChart";
+export { Heatmap, type HeatmapProps, type HeatmapRow } from "./components/Heatmap";
+export { Gauge, type GaugeProps } from "./components/Gauge";
+
+// ── Observability ───────────────────────────────────────────────────────────
+export { StatCard, type StatCardProps } from "./components/StatCard";
+export { Delta, type DeltaProps, type DeltaDirection } from "./components/Delta";
+export {
+  StatusDot,
+  STATUS_LABELS,
+  type StatusDotProps,
+  type ServiceStatus,
+} from "./components/StatusDot";
+export { UptimeBar, type UptimeBarProps, type UptimeSegment } from "./components/UptimeBar";
+export {
+  LogStream,
+  LOG_LEVELS,
+  type LogStreamProps,
+  type LogEntry,
+  type LogLevel,
+} from "./components/LogStream";
+export {
+  Timeline,
+  type TimelineProps,
+  type TimelineItem,
+  type TimelineTone,
+} from "./components/Timeline";
+export {
+  TraceWaterfall,
+  type TraceWaterfallProps,
+  type TraceSpan,
+} from "./components/TraceWaterfall";
+export { TimeRange, type TimeRangeProps, type TimeRangeOption } from "./components/TimeRange";
+
+// Chart maths, exported so an app can build a custom plot on ChartFrame that
+// lands its marks on the same scales and formats as the built-in charts.
+export {
+  arcPath,
+  areaPath,
+  barPath,
+  clamp,
+  formatCompact,
+  formatDuration,
+  formatPercent,
+  linePath,
+  niceScale,
+  polar,
+  project,
+  seriesBg,
+  seriesFill,
+  seriesStroke,
+  SERIES_SLOTS,
+  type NiceScale,
+  type Point,
+} from "./lib/chart";
 
 export { cn } from "./lib/cn";

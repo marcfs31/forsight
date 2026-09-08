@@ -80,6 +80,20 @@ import {
   SidebarNavItem,
   AppShell,
 } from "./components/Sidebar";
+import { StatCard } from "./components/StatCard";
+import { StatusDot } from "./components/StatusDot";
+import { LineChart } from "./components/LineChart";
+import { BarChart } from "./components/BarChart";
+import { DonutChart } from "./components/DonutChart";
+import { BarList } from "./components/BarList";
+import { Heatmap } from "./components/Heatmap";
+import { Gauge } from "./components/Gauge";
+import { UptimeBar } from "./components/UptimeBar";
+import { LogStream } from "./components/LogStream";
+import { Timeline } from "./components/Timeline";
+import { TraceWaterfall } from "./components/TraceWaterfall";
+import { TimeRange } from "./components/TimeRange";
+import { formatDuration, formatPercent } from "./lib/chart";
 import { DARK_PALETTE, LIGHT_PALETTE } from "./tokens/palettes";
 
 const meta: Meta = {
@@ -718,6 +732,365 @@ export const KitchenSinkRTL: Story = {
   render: () => (
     <div dir="rtl">
       <KitchenSink />
+    </div>
+  ),
+};
+
+/* ── Observability dashboard ───────────────────────────────────────────────
+ * The data-viz and observability families composed the way a real service
+ * dashboard uses them. This is the whole-system check for those components,
+ * the way `Kitchen` is for the base library: render it at 375px and desktop,
+ * in both themes and both directions.
+ */
+
+const HOURS = Array.from({ length: 24 }, (_, i) => `${String(i).padStart(2, "0")}:00`);
+const RPS = [
+  820, 760, 690, 640, 610, 640, 780, 1120, 1580, 1720, 1690, 1740, 1810, 1770, 1690, 1620, 1580,
+  1490, 1380, 1240, 1120, 1010, 940, 870,
+];
+const P95 = [
+  180, 172, 168, 165, 162, 170, 195, 240, 320, 356, 344, 351, 388, 372, 340, 318, 305, 288, 262,
+  240, 224, 210, 198, 190,
+];
+const UPTIME = Array.from({ length: 60 }, (_, i) => ({
+  label: `Day ${i + 1}`,
+  status:
+    i === 41 ? ("outage" as const) : i === 42 ? ("degraded" as const) : ("operational" as const),
+  detail: i === 41 ? "primary database failover" : undefined,
+}));
+
+function ObservabilityDashboard() {
+  const [range, setRange] = React.useState("24h");
+
+  return (
+    <main className="min-h-screen bg-ink-bg p-4 sm:p-8 lg:p-10">
+      <div className="mx-auto flex w-full max-w-6xl flex-col gap-6">
+        <header className="flex flex-wrap items-center justify-between gap-3">
+          <div className="min-w-0">
+            <Heading as="h1" size="lg">
+              checkout-api
+            </Heading>
+            <div className="mt-1 flex items-center gap-3">
+              <StatusDot status="operational" />
+              <Text size="sm" tone="muted">
+                us-east · production
+              </Text>
+            </div>
+          </div>
+          <TimeRange
+            label="Dashboard time range"
+            value={range}
+            onValueChange={setRange}
+            options={[
+              { value: "1h", label: "1h", description: "Last 1 hour" },
+              { value: "6h", label: "6h", description: "Last 6 hours" },
+              { value: "24h", label: "24h", description: "Last 24 hours" },
+              { value: "7d", label: "7d", description: "Last 7 days" },
+            ]}
+          />
+        </header>
+
+        <Section id="dash-signals" title="Key signals">
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+            <StatCard
+              label="Requests"
+              value="1.24M"
+              delta={8.4}
+              deltaCaption="vs. previous 24h"
+              trend={RPS}
+            />
+            <StatCard
+              label="p95 latency"
+              value="248"
+              unit="ms"
+              delta={-12.4}
+              deltaGoodDirection="down"
+              deltaCaption="vs. previous 24h"
+              trend={P95}
+            />
+            <StatCard
+              label="Error rate"
+              value="0.42"
+              unit="%"
+              delta={0.1}
+              deltaGoodDirection="down"
+              deltaCaption="vs. previous 24h"
+              status="operational"
+            />
+            <StatCard label="Deploys" value="14" delta={0} deltaCaption="vs. previous 24h" />
+          </div>
+        </Section>
+
+        <Section id="dash-traffic" title="Traffic and latency">
+          <div className="grid gap-4 lg:grid-cols-3">
+            <Card className="lg:col-span-2">
+              <CardHeader>
+                <CardTitle>Throughput and latency</CardTitle>
+                <CardDescription>Two measures, two plots — never two y-axes.</CardDescription>
+              </CardHeader>
+              <CardContent className="flex flex-col gap-6">
+                <LineChart
+                  label="Requests per second"
+                  description="checkout-api, last 24 hours"
+                  labels={HOURS}
+                  series={[{ name: "checkout-api", values: RPS }]}
+                  area
+                  height={180}
+                />
+                <LineChart
+                  label="p95 latency by region"
+                  description="Milliseconds, last 24 hours"
+                  labels={HOURS}
+                  series={[
+                    { name: "us-east", values: P95 },
+                    { name: "eu-west", values: P95.map((v) => Math.round(v * 0.82)) },
+                    { name: "ap-south", values: P95.map((v) => Math.round(v * 1.31)) },
+                  ]}
+                  valueFormat={(value) => `${value}ms`}
+                  height={180}
+                />
+              </CardContent>
+            </Card>
+
+            <div className="flex flex-col gap-4">
+              <Card className="flex items-center justify-center">
+                <Gauge
+                  label="Error budget"
+                  caption="of the 30-day budget remaining"
+                  value={62}
+                  target={25}
+                  valueFormat={(value) => formatPercent(value, 0)}
+                />
+              </Card>
+              <Card>
+                <CardHeader>
+                  <CardTitle>Traffic by region</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <DonutChart
+                    label="Traffic by region"
+                    size={160}
+                    centerLabel="requests"
+                    data={[
+                      { name: "us-east", value: 482_000 },
+                      { name: "eu-west", value: 291_000 },
+                      { name: "ap-south", value: 118_000 },
+                      { name: "sa-east", value: 39_000 },
+                    ]}
+                  />
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        </Section>
+
+        <Section id="dash-breakdown" title="Breakdowns">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Responses by status class</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <BarChart
+                  label="Responses by status class"
+                  labels={["10:00", "11:00", "12:00", "13:00", "14:00", "15:00"]}
+                  series={[
+                    { name: "2xx", values: [1200, 1420, 1310, 1680, 1520, 1390] },
+                    { name: "4xx", values: [90, 120, 105, 260, 180, 140] },
+                    { name: "5xx", values: [4, 6, 3, 88, 22, 9] },
+                  ]}
+                  stacked
+                  height={200}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Slowest routes</CardTitle>
+                <CardDescription>p95, last hour</CardDescription>
+              </CardHeader>
+              <CardContent>
+                <BarList
+                  valueFormat={formatDuration}
+                  items={[
+                    { label: "POST /api/checkout", value: 1840 },
+                    { label: "GET /api/search", value: 920 },
+                    { label: "POST /api/cart", value: 410 },
+                    { label: "GET /api/products", value: 264 },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+          </div>
+        </Section>
+
+        <Section id="dash-reliability" title="Reliability">
+          <Card>
+            <CardHeader>
+              <CardTitle>Availability</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <UptimeBar
+                label="checkout-api"
+                segments={UPTIME}
+                startCaption="60 days ago"
+                endCaption="Today"
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>5xx by service and hour</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Heatmap
+                label="5xx responses by service and hour (UTC)"
+                columns={Array.from({ length: 12 }, (_, i) => String(i * 2).padStart(2, "0"))}
+                rows={[
+                  { label: "checkout", values: [0, 0, 2, 1, 0, 4, 18, 44, 96, 31, 6, 1] },
+                  { label: "search", values: [1, 0, 0, 0, 2, 3, 5, 9, 12, 7, 2, 0] },
+                  { label: "payments", values: [0, 0, 0, 0, 0, 0, 1, 3, 22, 4, 0, 0] },
+                ]}
+              />
+            </CardContent>
+          </Card>
+        </Section>
+
+        <Section id="dash-diagnostics" title="Diagnostics">
+          <div className="grid gap-4 lg:grid-cols-2">
+            <Card>
+              <CardHeader>
+                <CardTitle>Incident 4f21a</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Timeline
+                  items={[
+                    {
+                      id: "1",
+                      time: "14:02",
+                      title: "Alert fired — checkout 5xx above 2%",
+                      tone: "danger",
+                    },
+                    { id: "2", time: "14:05", title: "Acknowledged by @marc", tone: "warning" },
+                    { id: "3", time: "14:18", title: "Rolled back to 3e90c", tone: "accent" },
+                    { id: "4", time: "14:31", title: "Resolved", tone: "success" },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle>Recent logs</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <LogStream
+                  label="checkout-api production logs"
+                  maxHeight={220}
+                  entries={[
+                    {
+                      id: "1",
+                      timestamp: "14:02:03",
+                      level: "info",
+                      message: "starting rollout 4f21a",
+                      source: "deployer",
+                    },
+                    {
+                      id: "2",
+                      timestamp: "14:02:19",
+                      level: "warn",
+                      message: "readiness probe failed: connection refused",
+                      source: "checkout-7f9",
+                    },
+                    {
+                      id: "3",
+                      timestamp: "14:02:22",
+                      level: "error",
+                      message: "dial tcp 10.4.1.22:5432: i/o timeout",
+                      source: "checkout-7f9",
+                    },
+                    {
+                      id: "4",
+                      timestamp: "14:18:44",
+                      level: "info",
+                      message: "rolled back to 3e90c",
+                      source: "deployer",
+                    },
+                  ]}
+                />
+              </CardContent>
+            </Card>
+          </div>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Slowest trace in the window</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <TraceWaterfall
+                label="POST /api/checkout — trace 9f2c41"
+                spans={[
+                  {
+                    id: "1",
+                    name: "POST /api/checkout",
+                    service: "edge",
+                    start: 0,
+                    duration: 1840,
+                  },
+                  {
+                    id: "2",
+                    name: "auth.verify",
+                    service: "identity",
+                    start: 12,
+                    duration: 96,
+                    depth: 1,
+                  },
+                  {
+                    id: "3",
+                    name: "cart.load",
+                    service: "checkout",
+                    start: 120,
+                    duration: 210,
+                    depth: 1,
+                  },
+                  {
+                    id: "4",
+                    name: "pricing.quote",
+                    service: "pricing",
+                    start: 340,
+                    duration: 420,
+                    depth: 1,
+                  },
+                  {
+                    id: "5",
+                    name: "payment.charge",
+                    service: "payments",
+                    start: 780,
+                    duration: 980,
+                    depth: 1,
+                    status: "error",
+                  },
+                ]}
+              />
+            </CardContent>
+          </Card>
+        </Section>
+      </div>
+    </main>
+  );
+}
+
+export const Dashboard: Story = {
+  render: () => <ObservabilityDashboard />,
+};
+
+/** The same dashboard under `dir="rtl"`. */
+export const DashboardRTL: Story = {
+  render: () => (
+    <div dir="rtl">
+      <ObservabilityDashboard />
     </div>
   ),
 };

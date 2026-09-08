@@ -49,9 +49,10 @@ function findFiles(dir, re, out = []) {
 }
 
 // 1. Pack the package exactly as publish would (honours `files`/`exports`).
-for (const old of findFiles(fixture, /^marcfs31-fors-design-system-.*\.tgz$/)) rmSync(old);
+for (const old of findFiles(fixture, /^marcfs31-fors-observability-design-system-.*\.tgz$/))
+  rmSync(old);
 run(npm, ["pack", "--silent", "--pack-destination", fixture], root);
-const [tarball] = findFiles(fixture, /^marcfs31-fors-design-system-.*\.tgz$/);
+const [tarball] = findFiles(fixture, /^marcfs31-fors-observability-design-system-.*\.tgz$/);
 if (!tarball) throw new Error("npm pack produced no tarball");
 
 // 2. Install the fixture's own deps (Next/React/Tailwind), then the tarball
@@ -91,6 +92,10 @@ check(
   () =>
     /data-testid="fixture-button"[^>]*class="[^"]*bg-accent/.test(html) ||
     /class="[^"]*bg-accent[^"]*"[^>]*data-testid="fixture-button"/.test(html)
+);
+check("chart series tokens survived the bundler", () => css.includes("--fors-viz-1"));
+check("library StatCard (chart family) rendered inside a Server Component tree", () =>
+  html.includes('data-testid="fixture-statcard"')
 );
 check("server-safe theme entry ran in the root layout (anti-flash script inlined)", () =>
   html.includes('localStorage.getItem("fors-theme")')

@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import { FORS_PALETTES, type ForsPalette } from "../palettes";
 
 const AA_NORMAL_TEXT = 4.5;
+/** WCAG 1.4.11 — graphical objects (chart marks carry meaning, but are not text). */
+const AA_NON_TEXT = 3;
 
 function hexToRgb(hex: string): [number, number, number] {
   const clean = hex.replace("#", "");
@@ -74,6 +76,48 @@ describe("Fors token contrast (WCAG AA, 4.5:1)", () => {
           expect(ratio).toBeGreaterThanOrEqual(AA_NORMAL_TEXT);
         });
       }
+    });
+  }
+});
+
+/**
+ * Chart series colors are graphical objects, not text, so the bar is WCAG
+ * 1.4.11's 3:1 against the surface they are drawn on — never 4.5:1, and never
+ * used *as* text (chart labels wear the fg/fg-secondary/fg-muted tokens).
+ *
+ * The three light-theme slots below sit under 3:1 on the white surface. That is
+ * the data-viz "relief" allowance, and it holds only because every chart
+ * component in this library ships a legend plus a screen-reader data table, so
+ * a series is never identified by its color alone. The list is pinned here so a
+ * future palette edit can't quietly widen it — adding a slot to it is a
+ * deliberate decision, not a passing test.
+ */
+const LIGHT_VIZ_RELIEF = new Set(["#1baf7a", "#eda100", "#e87ba4"]);
+
+describe("Fors chart series contrast (WCAG 1.4.11, 3:1 non-text)", () => {
+  for (const [themeName, palette] of Object.entries(FORS_PALETTES)) {
+    describe(`${themeName} theme`, () => {
+      palette.viz.forEach((color, i) => {
+        // A chart can be drawn straight on the page (bg) or inside a Card
+        // (surface); both have to hold up.
+        for (const [surfaceName, surface] of [
+          ["bg", palette.bg],
+          ["surface", palette.surface],
+        ] as const) {
+          it(`viz-${i + 1} on ${surfaceName} clears 3:1 (or is a documented relief slot)`, () => {
+            const ratio = contrastRatio(color, surface);
+            if (themeName === "light" && LIGHT_VIZ_RELIEF.has(color)) {
+              expect(ratio).toBeGreaterThanOrEqual(2);
+            } else {
+              expect(ratio).toBeGreaterThanOrEqual(AA_NON_TEXT);
+            }
+          });
+        }
+      });
+
+      it("has eight distinct slots", () => {
+        expect(new Set(palette.viz).size).toBe(8);
+      });
     });
   }
 });

@@ -31,6 +31,8 @@ export interface ForsPalette {
   warning: string;
   warningSubtle: string;
   warningFg: string;
+  /** Categorical chart series, slots 1-8 in fixed assignment order. */
+  viz: readonly [string, string, string, string, string, string, string, string];
 }
 
 export const DARK_PALETTE: ForsPalette = {
@@ -58,6 +60,7 @@ export const DARK_PALETTE: ForsPalette = {
   warning: "#ffc93d",
   warningSubtle: "#332a10",
   warningFg: "#241d08",
+  viz: ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"],
 };
 
 export const LIGHT_PALETTE: ForsPalette = {
@@ -85,6 +88,7 @@ export const LIGHT_PALETTE: ForsPalette = {
   warning: "#8a6200",
   warningSubtle: "#fdf3d9",
   warningFg: "#ffffff",
+  viz: ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"],
 };
 
 export const FORS_PALETTES = { dark: DARK_PALETTE, light: LIGHT_PALETTE } as const;

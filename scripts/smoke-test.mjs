@@ -140,6 +140,26 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "SidebarTrigger",
   "AppShell",
   "AppShellMain",
+  // Data visualization
+  "ChartFrame",
+  "ChartLegend",
+  "ChartTooltip",
+  "LineChart",
+  "BarChart",
+  "BarList",
+  "Sparkline",
+  "DonutChart",
+  "Heatmap",
+  "Gauge",
+  // Observability
+  "StatCard",
+  "Delta",
+  "StatusDot",
+  "UptimeBar",
+  "LogStream",
+  "Timeline",
+  "TraceWaterfall",
+  "TimeRange",
 ];
 
 for (const name of EXPECTED_COMPONENT_EXPORTS) {

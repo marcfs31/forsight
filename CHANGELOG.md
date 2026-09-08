@@ -1,4 +1,10 @@
-# @marcfs31/fors-design-system
+# @marcfs31/fors-observability-design-system
+
+> Forked from [`@marcfs31/fors-design-system`](https://github.com/marcfs31/fors-design-system) at
+> v1.4.1. Entries below that release are inherited history and name the old package; every version
+> from 2.0.0 on is this package. The fork adds the data-visualization and observability component
+> families and the `--fors-viz-*` series tokens — see the pending changesets.
+
 
 ## 1.4.1
 
