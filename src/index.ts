@@ -45,6 +45,17 @@ export {
   DialogFooter,
 } from "./components/Dialog";
 export {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "./components/AlertDialog";
+export {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuGroup,

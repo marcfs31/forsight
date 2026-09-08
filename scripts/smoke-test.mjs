@@ -116,6 +116,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "Switch",
   "Select",
   "Dialog",
+  "AlertDialog",
   "DropdownMenu",
   "Tooltip",
   "Toaster",
