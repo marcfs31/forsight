@@ -204,6 +204,11 @@ export {
   type AlertSeverity,
 } from "./components/AlertList";
 export {
+  ErrorBudget,
+  type ErrorBudgetProps,
+  type ErrorBudgetStatus,
+} from "./components/ErrorBudget";
+export {
   LogStream,
   LOG_LEVELS,
   type LogStreamProps,

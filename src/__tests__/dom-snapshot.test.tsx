@@ -35,6 +35,7 @@ import {
   Delta,
   DonutChart,
   EmptyState,
+  ErrorBudget,
   Gauge,
   Heading,
   Heatmap,
@@ -373,6 +374,9 @@ const cases: Record<string, React.ReactElement> = {
     />
   ),
   "Delta/increase-is-bad": <Delta value={30.2} goodDirection="down" />,
+  "ErrorBudget/at-risk": (
+    <ErrorBudget label="30-day error budget" consumed={78} caption="Resets in 3 days" />
+  ),
   "AlertList/active-and-resolved": (
     <AlertList
       label="Active alerts"

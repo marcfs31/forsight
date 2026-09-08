@@ -168,6 +168,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "StatusDot",
   "UptimeBar",
   "AlertList",
+  "ErrorBudget",
   "LogStream",
   "Timeline",
   "TraceWaterfall",
