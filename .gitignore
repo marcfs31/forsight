@@ -4,3 +4,6 @@ storybook-static
 *.tsbuildinfo
 .DS_Store
 coverage
+
+# graft's local graph cache — regenerable, not committed (run `graft build`).
+/graft/

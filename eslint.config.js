@@ -13,6 +13,10 @@ export default tseslint.config(
       "node_modules",
       ".storybook",
       ".claude/worktrees",
+      // graft's generated CommonJS shims (statusline + hooks) — vendored
+      // agent wiring this repo doesn't author or maintain, rewritten by
+      // `graft init` / `graft upgrade`.
+      ".claude/helpers",
       "fixtures/**/.next",
     ],
   },
