@@ -171,6 +171,7 @@ export { BarList, type BarListProps, type BarListItem } from "./components/BarLi
 export { Sparkline, type SparklineProps } from "./components/Sparkline";
 export { DonutChart, type DonutChartProps, type DonutSlice } from "./components/DonutChart";
 export { Heatmap, type HeatmapProps, type HeatmapRow } from "./components/Heatmap";
+export { Histogram, type HistogramProps, type HistogramBucket } from "./components/Histogram";
 export { Gauge, type GaugeProps } from "./components/Gauge";
 
 // ── Observability ───────────────────────────────────────────────────────────

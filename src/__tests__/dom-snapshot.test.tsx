@@ -35,6 +35,7 @@ import {
   Gauge,
   Heading,
   Heatmap,
+  Histogram,
   Input,
   Kbd,
   Label,
@@ -312,6 +313,15 @@ const cases: Record<string, React.ReactElement> = {
       rows={[
         { label: "checkout", values: [0, 12, 40] },
         { label: "search", values: [4, null, 8] },
+      ]}
+    />
+  ),
+  "Histogram/buckets": (
+    <Histogram
+      label="Request duration"
+      buckets={[
+        { label: "0–50ms", count: 420 },
+        { label: "50–100ms", count: 980 },
       ]}
     />
   ),
