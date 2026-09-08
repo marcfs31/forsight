@@ -14,7 +14,13 @@ export interface AlertListItem {
   time: string;
   /** Emitting service, check or rule name. */
   source?: string;
-  /** Marks the alert as resolved — dims the row and appends a "Resolved" badge, without hiding what it was. */
+  /**
+   * Marks the alert as resolved — softens the title to secondary text and
+   * appends a "Resolved" badge, without hiding what it was. Deliberately
+   * not a lower `opacity` on the whole row: that would scale down every
+   * child's contrast together, including badges already at the AA floor,
+   * and drop them below it.
+   */
   resolved?: boolean;
 }
 
@@ -67,14 +73,16 @@ export const AlertList = React.forwardRef<HTMLUListElement, AlertListProps>(
         {items.map((item) => {
           const severity = SEVERITY_BADGE[item.severity];
           return (
-            <li
-              key={item.id}
-              className={cn("flex min-w-0 flex-col gap-1 py-3", item.resolved && "opacity-60")}
-            >
+            <li key={item.id} className="flex min-w-0 flex-col gap-1 py-3">
               <div className="flex flex-wrap items-center gap-x-2 gap-y-1">
                 <Badge variant={severity.variant}>{severity.label}</Badge>
                 {item.resolved ? <Badge variant="success">Resolved</Badge> : null}
-                <p className="min-w-0 flex-1 truncate text-sm font-medium font-sans text-fg">
+                <p
+                  className={cn(
+                    "min-w-0 flex-1 truncate text-sm font-medium font-sans",
+                    item.resolved ? "text-fg-secondary" : "text-fg"
+                  )}
+                >
                   {item.title}
                 </p>
                 <time className="shrink-0 font-mono text-xs text-fg-muted">{item.time}</time>
