@@ -66,6 +66,8 @@ import {
   Tabs,
   Text,
   Textarea,
+  ToggleGroup,
+  ToggleGroupItem,
   TimeRange,
   Timeline,
   TraceWaterfall,
@@ -121,6 +123,18 @@ const cases: Record<string, React.ReactElement> = {
     </RadioGroup>
   ),
   "Slider/single": <Slider defaultValue={[40]} max={100} aria-label="Limit" />,
+  "ToggleGroup/single-select": (
+    <ToggleGroup type="single" defaultValue="chart" aria-label="View mode">
+      <ToggleGroupItem value="table">Table</ToggleGroupItem>
+      <ToggleGroupItem value="chart">Chart</ToggleGroupItem>
+    </ToggleGroup>
+  ),
+  "ToggleGroup/multi-select": (
+    <ToggleGroup type="multiple" defaultValue={["errors"]} aria-label="Log levels shown">
+      <ToggleGroupItem value="info">Info</ToggleGroupItem>
+      <ToggleGroupItem value="errors">Errors</ToggleGroupItem>
+    </ToggleGroup>
+  ),
   "Alert/danger": (
     <Alert variant="danger" title="Build failed">
       Type error in api.ts

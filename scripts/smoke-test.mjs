@@ -114,6 +114,8 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "RadioGroup",
   "RadioGroupItem",
   "Switch",
+  "ToggleGroup",
+  "ToggleGroupItem",
   "Select",
   "Dialog",
   "AlertDialog",
