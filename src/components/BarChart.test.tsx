@@ -93,4 +93,69 @@ describe("BarChart", () => {
     );
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  it("draws a horizontal reference line for a value annotation", () => {
+    const { container } = render(
+      <BarChart
+        label="Responses"
+        labels={labels}
+        series={series}
+        annotations={[{ value: 1000, text: "Capacity: 1000", tone: "warning" }]}
+      />
+    );
+    expect(container.querySelectorAll("line.stroke-warning")).toHaveLength(1);
+    expect(screen.getByText("Capacity: 1000")).toBeInTheDocument();
+  });
+
+  it("draws a vertical marker for a label annotation matching a category", () => {
+    render(
+      <BarChart
+        label="Responses"
+        labels={labels}
+        series={series}
+        annotations={[{ label: "4xx", text: "Rate limit added", tone: "accent" }]}
+      />
+    );
+    expect(screen.getByText("Rate limit added")).toBeInTheDocument();
+  });
+
+  it("silently skips a label annotation that matches no category", () => {
+    render(
+      <BarChart
+        label="Responses"
+        labels={labels}
+        series={series}
+        annotations={[{ label: "9xx", text: "Ghost marker" }]}
+      />
+    );
+    expect(screen.queryByText("Ghost marker")).not.toBeInTheDocument();
+  });
+
+  it("folds annotation text into the visually hidden description", () => {
+    render(
+      <BarChart
+        label="Responses"
+        labels={labels}
+        series={series}
+        annotations={[{ value: 1000, text: "Capacity: 1000" }]}
+      />
+    );
+    // Both the SVG <desc> and the sr-only table <caption> carry it.
+    expect(screen.getAllByText(/Reference lines: Capacity: 1000\./)).toHaveLength(2);
+  });
+
+  it("has no accessibility violations with annotations", async () => {
+    const { container } = render(
+      <BarChart
+        label="Responses"
+        labels={labels}
+        series={series}
+        annotations={[
+          { value: 1000, text: "Capacity: 1000", tone: "warning" },
+          { label: "4xx", text: "Rate limit added", tone: "accent" },
+        ]}
+      />
+    );
+    expect(await axe(container)).toHaveNoViolations();
+  });
 });

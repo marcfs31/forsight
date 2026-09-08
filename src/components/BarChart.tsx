@@ -1,6 +1,15 @@
 import * as React from "react";
 import { cn } from "../lib/cn";
-import { barPath, clamp, formatCompact, niceScale, project, seriesFill } from "../lib/chart";
+import {
+  ANNOTATION_TONE_CLASSES,
+  barPath,
+  clamp,
+  formatCompact,
+  niceScale,
+  project,
+  seriesFill,
+  type ChartAnnotation,
+} from "../lib/chart";
 import { useChartCursor } from "../lib/chart-hooks";
 import { ChartFrame } from "./ChartFrame";
 import { ChartLegend } from "./ChartLegend";
@@ -22,6 +31,8 @@ export interface BarChartProps extends Omit<React.HTMLAttributes<HTMLDivElement>
   height?: number;
   /** Formats values in the axis, tooltip and data table. Defaults to compact notation. */
   valueFormat?: (value: number) => string;
+  /** Reference lines — an SLO threshold (`value`) or a deploy marker (`label`). */
+  annotations?: ChartAnnotation[];
 }
 
 const PAD_LEFT = 44;
@@ -43,6 +54,10 @@ const MARK_GAP = 2;
  *
  * The plot has the same cursor as `LineChart` — hover, or focus it and use
  * Arrow/Home/End (Escape clears) — and always renders its data table.
+ *
+ * `annotations` draws SLO-threshold (`value`) or deploy-marker (`label`)
+ * reference lines over the plot — their text is always folded into the
+ * visually hidden description too, never sighted-only.
  */
 export const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
   (
@@ -55,6 +70,7 @@ export const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
       stacked = false,
       height = 220,
       valueFormat = formatCompact,
+      annotations = [],
       ...props
     },
     ref
@@ -96,7 +112,13 @@ export const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
         >
           <ChartFrame
             label={label}
-            description={[description, "Use arrow keys to read individual bars."]
+            description={[
+              description,
+              annotations.length > 0
+                ? `Reference lines: ${annotations.map((a) => a.text).join(", ")}.`
+                : null,
+              "Use arrow keys to read individual bars.",
+            ]
               .filter(Boolean)
               .join(" ")}
             height={height}
@@ -195,6 +217,57 @@ export const BarChart = React.forwardRef<HTMLDivElement, BarChartProps>(
                     className="stroke-ink-border"
                     strokeWidth={1}
                   />
+
+                  {annotations.map((annotation, i) => {
+                    const tone = ANNOTATION_TONE_CLASSES[annotation.tone ?? "neutral"];
+                    if (annotation.value !== undefined) {
+                      const y = baselineY - lengthOf(annotation.value);
+                      return (
+                        <g key={i}>
+                          <line
+                            x1={PAD_LEFT}
+                            x2={PAD_LEFT + plotWidth}
+                            y1={y}
+                            y2={y}
+                            className={tone.stroke}
+                            strokeWidth={1.5}
+                            strokeDasharray="4 3"
+                          />
+                          <text
+                            x={PAD_LEFT + plotWidth}
+                            y={y - 4}
+                            textAnchor="end"
+                            className={cn(tone.text, "text-xs font-sans")}
+                          >
+                            {annotation.text}
+                          </text>
+                        </g>
+                      );
+                    }
+                    const index = annotation.label ? labels.indexOf(annotation.label) : -1;
+                    if (index === -1) return null;
+                    const x = bandStart(index) + groupWidth / 2;
+                    return (
+                      <g key={i}>
+                        <line
+                          x1={x}
+                          x2={x}
+                          y1={PAD_TOP}
+                          y2={baselineY}
+                          className={tone.stroke}
+                          strokeWidth={1.5}
+                          strokeDasharray="4 3"
+                        />
+                        <text
+                          x={x + 4}
+                          y={PAD_TOP + 10}
+                          className={cn(tone.text, "text-xs font-sans")}
+                        >
+                          {annotation.text}
+                        </text>
+                      </g>
+                    );
+                  })}
 
                   {pickLabelIndices(labels.length, plotWidth).map((index) => (
                     <text

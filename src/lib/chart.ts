@@ -75,6 +75,33 @@ export interface NiceScale {
   ticks: number[];
 }
 
+/**
+ * A reference line drawn over `LineChart`/`BarChart` — an SLO threshold, a
+ * deploy marker. Pass exactly one of `value` (a horizontal line at that
+ * value on the value axis) or `label` (a vertical line at that x-axis
+ * category, which must match one of the chart's own `labels` — an
+ * unmatched label is silently skipped). `text` is always shown next to the
+ * line and folded into the chart's visually hidden description, so the
+ * threshold/marker is never sighted-only information.
+ */
+export interface ChartAnnotation {
+  value?: number;
+  label?: string;
+  text: string;
+  /** Defaults to `"neutral"`. */
+  tone?: "neutral" | "accent" | "warning" | "danger";
+}
+
+export const ANNOTATION_TONE_CLASSES: Record<
+  NonNullable<ChartAnnotation["tone"]>,
+  { stroke: string; text: string }
+> = {
+  neutral: { stroke: "stroke-fg-muted", text: "fill-fg-muted" },
+  accent: { stroke: "stroke-accent", text: "fill-accent" },
+  warning: { stroke: "stroke-warning", text: "fill-warning" },
+  danger: { stroke: "stroke-danger", text: "fill-danger" },
+};
+
 /** Rounds `raw` up to the nearest 1/2/5 × 10ⁿ — the steps that read as "round". */
 function niceStep(raw: number): number {
   const magnitude = 10 ** Math.floor(Math.log10(raw));

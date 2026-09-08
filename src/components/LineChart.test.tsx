@@ -150,6 +150,45 @@ describe("LineChart", () => {
     const { container } = renderChart({ description: "Two regions" });
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  it("draws a horizontal reference line for a value annotation", () => {
+    const { container } = renderChart({
+      annotations: [{ value: 150, text: "SLO: 150ms", tone: "danger" }],
+    });
+    const lines = container.querySelectorAll("line.stroke-danger");
+    expect(lines).toHaveLength(1);
+    expect(screen.getByText("SLO: 150ms")).toBeInTheDocument();
+  });
+
+  it("draws a vertical marker for a label annotation matching a category", () => {
+    renderChart({
+      annotations: [{ label: "13:00", text: "Deploy v2.4.1", tone: "accent" }],
+    });
+    expect(screen.getByText("Deploy v2.4.1")).toBeInTheDocument();
+  });
+
+  it("silently skips a label annotation that matches no category", () => {
+    renderChart({
+      annotations: [{ label: "not-a-real-time", text: "Ghost marker" }],
+    });
+    expect(screen.queryByText("Ghost marker")).not.toBeInTheDocument();
+  });
+
+  it("folds annotation text into the visually hidden description", () => {
+    renderChart({ annotations: [{ value: 150, text: "SLO: 150ms" }] });
+    // Both the SVG <desc> and the sr-only table <caption> carry it.
+    expect(screen.getAllByText(/Reference lines: SLO: 150ms\./)).toHaveLength(2);
+  });
+
+  it("has no accessibility violations with annotations", async () => {
+    const { container } = renderChart({
+      annotations: [
+        { value: 150, text: "SLO: 150ms", tone: "danger" },
+        { label: "13:00", text: "Deploy v2.4.1", tone: "accent" },
+      ],
+    });
+    expect(await axe(container)).toHaveNoViolations();
+  });
 });
 
 describe("pickLabelIndices", () => {

@@ -232,6 +232,7 @@ export { TimeRange, type TimeRangeProps, type TimeRangeOption } from "./componen
 // Chart maths, exported so an app can build a custom plot on ChartFrame that
 // lands its marks on the same scales and formats as the built-in charts.
 export {
+  ANNOTATION_TONE_CLASSES,
   arcPath,
   areaPath,
   barPath,
@@ -248,6 +249,7 @@ export {
   seriesStroke,
   SERIES_SLOTS,
   splitAtGaps,
+  type ChartAnnotation,
   type NiceScale,
   type Point,
 } from "./lib/chart";

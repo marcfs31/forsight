@@ -61,12 +61,16 @@ function pairsFor(p: ForsPalette): Array<[string, string, string]> {
 
     ["danger-fg on danger", p.dangerFg, p.danger],
     ["danger (as text) on danger-subtle", p.danger, p.dangerSubtle],
+    // LineChart/BarChart annotation lines draw danger/warning tone text
+    // directly on the plot's bg, not inside a -subtle badge.
+    ["danger (as text) on bg", p.danger, p.bg],
 
     ["success-fg on success", p.successFg, p.success],
     ["success (as text) on success-subtle", p.success, p.successSubtle],
 
     ["warning-fg on warning", p.warningFg, p.warning],
     ["warning (as text) on warning-subtle", p.warning, p.warningSubtle],
+    ["warning (as text) on bg", p.warning, p.bg],
   ];
 }
 
