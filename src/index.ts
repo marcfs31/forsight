@@ -35,6 +35,7 @@ export {
   SelectContent,
   SelectItem,
 } from "./components/Select";
+export { Combobox, type ComboboxProps, type ComboboxOption } from "./components/Combobox";
 export {
   Dialog,
   DialogTrigger,

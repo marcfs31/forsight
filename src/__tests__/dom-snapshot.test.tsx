@@ -85,9 +85,10 @@ import {
  * and eyeball the snapshot diff in the PR.
  *
  * Portal-only overlays (Dialog / AlertDialog / Drawer / DropdownMenu /
- * Popover / Tooltip / Select / Toast content) are exercised open, by
- * keyboard, in their own `*.test.tsx` and in the Storybook test runner —
- * snapshotting a closed trigger here would add churn without coverage.
+ * Popover / Tooltip / Select / Combobox / Toast content) are exercised
+ * open, by keyboard, in their own `*.test.tsx` and in the Storybook test
+ * runner — snapshotting a closed trigger here would add churn without
+ * coverage.
  */
 const cases: Record<string, React.ReactElement> = {
   "Button/primary": <Button>Deploy</Button>,
