@@ -118,6 +118,7 @@ export {
 } from "./components/Pagination";
 export { Separator, type SeparatorProps } from "./components/Separator";
 export { Label, type LabelProps } from "./components/Label";
+export { Kbd, type KbdProps } from "./components/Kbd";
 export { Collapsible, CollapsibleTrigger, CollapsibleContent } from "./components/Collapsible";
 export {
   Command,

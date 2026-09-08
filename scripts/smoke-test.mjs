@@ -135,6 +135,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "Pagination",
   "Separator",
   "Label",
+  "Kbd",
   "Collapsible",
   "Command",
   "CommandDialog",

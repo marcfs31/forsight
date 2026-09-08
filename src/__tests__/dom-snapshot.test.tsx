@@ -35,6 +35,7 @@ import {
   Heading,
   Heatmap,
   Input,
+  Kbd,
   Label,
   LineChart,
   LogStream,
@@ -224,6 +225,12 @@ const cases: Record<string, React.ReactElement> = {
   "Separator/horizontal": <Separator />,
   "Separator/vertical": <Separator orientation="vertical" />,
   "Label/basic": <Label htmlFor="x">Workspace name</Label>,
+  "Kbd/shortcut": (
+    <span>
+      <Kbd>⌘</Kbd>
+      <Kbd>K</Kbd>
+    </span>
+  ),
   "Collapsible/closed": (
     <Collapsible>
       <CollapsibleTrigger>Show more</CollapsibleTrigger>
