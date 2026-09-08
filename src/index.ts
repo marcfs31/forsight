@@ -56,6 +56,16 @@ export {
   AlertDialogCancel,
 } from "./components/AlertDialog";
 export {
+  Drawer,
+  DrawerTrigger,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+} from "./components/Drawer";
+export {
   DropdownMenu,
   DropdownMenuTrigger,
   DropdownMenuGroup,

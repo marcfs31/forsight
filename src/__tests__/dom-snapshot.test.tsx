@@ -82,10 +82,10 @@ import {
  * When a change IS intentional, re-generate with `npx vitest run -u`
  * and eyeball the snapshot diff in the PR.
  *
- * Portal-only overlays (Dialog / AlertDialog / DropdownMenu / Popover /
- * Tooltip / Select / Toast content) are exercised open, by keyboard, in
- * their own `*.test.tsx` and in the Storybook test runner — snapshotting a
- * closed trigger here would add churn without coverage.
+ * Portal-only overlays (Dialog / AlertDialog / Drawer / DropdownMenu /
+ * Popover / Tooltip / Select / Toast content) are exercised open, by
+ * keyboard, in their own `*.test.tsx` and in the Storybook test runner —
+ * snapshotting a closed trigger here would add churn without coverage.
  */
 const cases: Record<string, React.ReactElement> = {
   "Button/primary": <Button>Deploy</Button>,
