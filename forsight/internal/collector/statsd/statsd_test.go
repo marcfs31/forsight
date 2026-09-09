@@ -127,64 +127,75 @@ func TestIngestLine_MalformedLinesAreIgnored(t *testing.T) {
 	}
 }
 
-func TestListen_RealUDPPacket(t *testing.T) {
+func TestBindServe_RealUDPPacket(t *testing.T) {
+	// Port 0 plus Bind's synchronous contract: the socket is bound before
+	// this line returns, and LocalAddr reports the port the kernel chose, so
+	// there is no window in which a packet can be sent to an unbound address
+	// (which on Linux earns an ICMP port-unreachable and makes the *next*
+	// write on a connected UDP socket fail with ECONNREFUSED).
 	c := New("127.0.0.1:0")
+	if err := c.Bind(); err != nil {
+		t.Fatalf("Bind: %v", err)
+	}
+	addr := c.LocalAddr()
+	if addr == nil {
+		t.Fatal("LocalAddr is nil after a successful Bind")
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
+	serveErrCh := make(chan error, 1)
+	go func() { serveErrCh <- c.Serve(ctx) }()
 
-	// New doesn't reserve the port itself, so Listen must be started before
-	// the real listening address is known — resolve it via a small retry
-	// once ListenPacket has actually bound. Simpler: bind our own throwaway
-	// listener first solely to pick a free port, close it, and pass that.
-	probe, err := net.ListenPacket("udp", "127.0.0.1:0")
-	if err != nil {
-		t.Fatalf("failed to find a free port: %v", err)
-	}
-	addr := probe.LocalAddr().String()
-	_ = probe.Close()
-
-	c = New(addr)
-	listenErrCh := make(chan error, 1)
-	go func() { listenErrCh <- c.Listen(ctx) }()
-
-	conn, err := net.Dial("udp", addr)
+	conn, err := net.Dial("udp", addr.String())
 	if err != nil {
 		t.Fatalf("net.Dial: %v", err)
 	}
 	defer func() { _ = conn.Close() }()
 
-	// Retry the send briefly — the listener goroutine above needs a moment
-	// to actually reach ListenPacket before packets sent to the address land.
-	deadline := time.Now().Add(2 * time.Second)
-	var metrics []float64
+	if _, err := conn.Write([]byte("real.metric:42|c\n")); err != nil {
+		t.Fatalf("conn.Write: %v", err)
+	}
+
+	// The write is synchronous but delivery to the reader goroutine is not,
+	// so poll for the value rather than sleeping a guessed interval.
+	deadline := time.Now().Add(5 * time.Second)
+	var value float64
 	for time.Now().Before(deadline) {
-		if _, err := conn.Write([]byte("real.metric:42|c\n")); err != nil {
-			t.Fatalf("conn.Write: %v", err)
-		}
-		time.Sleep(20 * time.Millisecond)
 		got, err := c.Collect(context.Background())
 		if err != nil {
 			t.Fatalf("Collect: %v", err)
 		}
-		for _, m := range got {
-			metrics = append(metrics, m.Value)
-		}
-		if len(metrics) > 0 {
+		if len(got) > 0 {
+			value = got[0].Value
 			break
 		}
+		time.Sleep(10 * time.Millisecond)
 	}
-	if len(metrics) == 0 {
-		t.Fatal("no metric was received over a real UDP socket within the deadline")
+	if value != 42 {
+		t.Fatalf("no metric received over a real UDP socket within the deadline (got %v)", value)
 	}
 
 	cancel()
 	select {
-	case err := <-listenErrCh:
+	case err := <-serveErrCh:
 		if err != nil {
-			t.Errorf("Listen returned an error after ctx cancellation: %v", err)
+			t.Errorf("Serve returned an error after ctx cancellation: %v", err)
 		}
 	case <-time.After(2 * time.Second):
-		t.Error("Listen did not return within 2s of ctx cancellation")
+		t.Error("Serve did not return within 2s of ctx cancellation")
+	}
+}
+
+func TestServeBeforeBind(t *testing.T) {
+	if err := New("127.0.0.1:0").Serve(context.Background()); err == nil {
+		t.Error("Serve() before Bind() = nil error, want one")
+	}
+}
+
+func TestBindRejectsAnUnusableAddress(t *testing.T) {
+	if err := New("127.0.0.1:notaport").Bind(); err == nil {
+		t.Error("Bind() on a malformed address = nil error, want one")
 	}
 }
 

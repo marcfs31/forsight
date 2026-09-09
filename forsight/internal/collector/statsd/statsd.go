@@ -20,6 +20,7 @@ package statsd
 
 import (
 	"context"
+	"errors"
 	"net"
 	"sort"
 	"strconv"
@@ -30,11 +31,14 @@ import (
 	"github.com/marcfs31/forsight/forsight/internal/model"
 )
 
+var errNotBound = errors.New("statsd: Serve called before a successful Bind")
+
 // Collector accumulates StatsD packets and flushes them as forsight metrics.
 type Collector struct {
 	addr string
 
 	mu       sync.Mutex
+	conn     net.PacketConn
 	counters map[metricKey]float64
 	gauges   map[metricKey]float64
 	timers   map[metricKey][]float64
@@ -58,13 +62,45 @@ func New(addr string) *Collector {
 
 func (c *Collector) Name() string { return "statsd" }
 
-// Listen runs the UDP server until ctx is cancelled. Call it in its own
-// goroutine (see cmd/run.go) — it blocks for the process's lifetime.
-func (c *Collector) Listen(ctx context.Context) error {
+// Bind reserves the UDP socket, synchronously. Binding is separate from
+// serving so a caller learns immediately whether the address is usable —
+// "port already in use" is a startup error worth failing on, not something
+// to discover asynchronously after having already logged that the receiver
+// is listening. It also means a caller that passed port 0 can read the real
+// port back from LocalAddr before any packet is sent.
+func (c *Collector) Bind() error {
 	conn, err := net.ListenPacket("udp", c.addr)
 	if err != nil {
 		return err
 	}
+	c.mu.Lock()
+	c.conn = conn
+	c.mu.Unlock()
+	return nil
+}
+
+// LocalAddr is the address the socket is actually bound to, or nil before
+// Bind succeeds.
+func (c *Collector) LocalAddr() net.Addr {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	if c.conn == nil {
+		return nil
+	}
+	return c.conn.LocalAddr()
+}
+
+// Serve reads packets until ctx is cancelled. Call it in its own goroutine
+// (see cmd/run.go) — it blocks for the process's lifetime. Bind must have
+// succeeded first.
+func (c *Collector) Serve(ctx context.Context) error {
+	c.mu.Lock()
+	conn := c.conn
+	c.mu.Unlock()
+	if conn == nil {
+		return errNotBound
+	}
+
 	go func() {
 		<-ctx.Done()
 		_ = conn.Close()
@@ -81,6 +117,15 @@ func (c *Collector) Listen(ctx context.Context) error {
 		}
 		c.ingest(buf[:n])
 	}
+}
+
+// Listen is Bind followed by Serve, for a caller that needs neither the
+// resolved address nor a synchronous bind error.
+func (c *Collector) Listen(ctx context.Context) error {
+	if err := c.Bind(); err != nil {
+		return err
+	}
+	return c.Serve(ctx)
 }
 
 // ingest handles one UDP datagram, which may batch several newline-separated

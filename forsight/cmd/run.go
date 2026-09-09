@@ -93,13 +93,19 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 	// registered — see the package doc.
 	if opts.statsdAddr != "" {
 		statsdCollector := statsd.New(opts.statsdAddr)
+		// Bind synchronously so an unusable address (already in use, no
+		// permission) fails startup here, instead of being logged from a
+		// goroutine after we have already claimed to be listening.
+		if err := statsdCollector.Bind(); err != nil {
+			return fmt.Errorf("--statsd-addr %s: %w", opts.statsdAddr, err)
+		}
 		collectors = append(collectors, statsdCollector)
 		go func() {
-			if err := statsdCollector.Listen(ctx); err != nil && ctx.Err() == nil {
+			if err := statsdCollector.Serve(ctx); err != nil && ctx.Err() == nil {
 				logger.Error("StatsD receiver stopped", "addr", opts.statsdAddr, "error", err)
 			}
 		}()
-		logger.Info("StatsD receiver listening", "addr", opts.statsdAddr)
+		logger.Info("StatsD receiver listening", "addr", statsdCollector.LocalAddr())
 	}
 
 	registry := collector.NewRegistry(st, opts.collectInterval, logger, collectors...)
