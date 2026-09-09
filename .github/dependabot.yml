@@ -122,5 +122,7 @@ updates:
     schedule:
       interval: "daily"
     cooldown:
+      # Only `default-days` here: Dependabot rejects `semver-major-days` for
+      # the github-actions ecosystem ("not supported for the package
+      # ecosystem 'github-actions'"), which made the whole config invalid.
       default-days: 7
-      semver-major-days: 7
