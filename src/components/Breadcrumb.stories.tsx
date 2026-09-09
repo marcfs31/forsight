@@ -9,7 +9,7 @@ import {
 } from "./Breadcrumb";
 
 const meta: Meta = {
-  title: "Fors/Navigation/Breadcrumb",
+  title: "Forsight/Navigation/Breadcrumb",
 };
 export default meta;
 type Story = StoryObj;
@@ -23,7 +23,7 @@ export const Default: Story = {
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>
-          <BreadcrumbLink href="#">fors-client-portal</BreadcrumbLink>
+          <BreadcrumbLink href="#">forsight-client-portal</BreadcrumbLink>
         </BreadcrumbItem>
         <BreadcrumbSeparator />
         <BreadcrumbItem>

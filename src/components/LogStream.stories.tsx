@@ -13,7 +13,7 @@ const entries: LogEntry[] = [
     id: "2",
     timestamp: "14:02:04.902",
     level: "debug",
-    message: "pulling image ghcr.io/fors/checkout:4f21a",
+    message: "pulling image ghcr.io/forsight/checkout:4f21a",
     source: "kubelet",
   },
   {
@@ -47,7 +47,7 @@ const entries: LogEntry[] = [
 ];
 
 const meta: Meta<typeof LogStream> = {
-  title: "Fors/Observability/LogStream",
+  title: "Forsight/Observability/LogStream",
   component: LogStream,
   decorators: [
     (Story) => (

@@ -37,7 +37,7 @@ export interface ButtonProps
 }
 
 /**
- * Fors primary interactive control. Use `primary` for the single most
+ * Forsight primary interactive control. Use `primary` for the single most
  * important action on a screen, `secondary` for supporting actions,
  * `spark` to draw extra attention (upsell, promo), `ghost` for low-emphasis
  * toolbar actions, and `danger` for destructive confirmations. Set `loading`

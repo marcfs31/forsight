@@ -5,7 +5,7 @@ import { Button } from "./Button";
 import { Text } from "./Text";
 
 const meta: Meta = {
-  title: "Fors/Data Display/Collapsible",
+  title: "Forsight/Data Display/Collapsible",
 };
 export default meta;
 type Story = StoryObj;

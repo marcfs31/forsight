@@ -5,7 +5,7 @@ import { ChartTooltip } from "./ChartTooltip";
 import { linePath, niceScale, project, seriesStroke } from "../lib/chart";
 
 const meta: Meta = {
-  title: "Fors/Data Viz/ChartFrame",
+  title: "Forsight/Data Viz/ChartFrame",
   parameters: {
     docs: {
       description: {

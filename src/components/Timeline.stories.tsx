@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Timeline } from "./Timeline";
 
 const meta: Meta<typeof Timeline> = {
-  title: "Fors/Observability/Timeline",
+  title: "Forsight/Observability/Timeline",
   component: Timeline,
   decorators: [
     (Story) => (

@@ -17,8 +17,8 @@ describe("CodeBlock", () => {
   });
 
   it("renders the code as text content", () => {
-    render(<CodeBlock code="npm install fors" />);
-    expect(screen.getByText("npm install fors")).toBeInTheDocument();
+    render(<CodeBlock code="npm install forsight" />);
+    expect(screen.getByText("npm install forsight")).toBeInTheDocument();
   });
 
   it("renders an optional label", () => {
@@ -27,13 +27,13 @@ describe("CodeBlock", () => {
   });
 
   it("shows a copy button by default that copies the code", async () => {
-    render(<CodeBlock code="npm install fors" />);
+    render(<CodeBlock code="npm install forsight" />);
     await userEvent.click(screen.getByRole("button", { name: "Copy code" }));
-    expect(writeText).toHaveBeenCalledWith("npm install fors");
+    expect(writeText).toHaveBeenCalledWith("npm install forsight");
   });
 
   it("omits the copy button when showCopy is false", () => {
-    render(<CodeBlock code="npm install fors" showCopy={false} />);
+    render(<CodeBlock code="npm install forsight" showCopy={false} />);
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
   });
 
@@ -44,7 +44,7 @@ describe("CodeBlock", () => {
   });
 
   it("has no accessibility violations", async () => {
-    const { container } = render(<CodeBlock code="npm install fors" label="Terminal" />);
+    const { container } = render(<CodeBlock code="npm install forsight" label="Terminal" />);
     expect(await axe(container)).toHaveNoViolations();
   });
 });

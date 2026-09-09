@@ -4,7 +4,7 @@ import { Button } from "./Button";
 import { Badge } from "./Badge";
 
 const meta: Meta<typeof Card> = {
-  title: "Fors/Data Display/Card",
+  title: "Forsight/Data Display/Card",
   component: Card,
 };
 export default meta;
@@ -36,7 +36,7 @@ export const WithBadge: Story = {
           <CardTitle>Client portal</CardTitle>
           <Badge variant="success">Live</Badge>
         </div>
-        <CardDescription>Deployed to fors-client-portal.vercel.app</CardDescription>
+        <CardDescription>Deployed to forsight-client-portal.vercel.app</CardDescription>
       </CardHeader>
     </Card>
   ),

@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Avatar, AvatarGroup } from "./Avatar";
 
 const meta: Meta<typeof Avatar> = {
-  title: "Fors/Data Display/Avatar",
+  title: "Forsight/Data Display/Avatar",
   component: Avatar,
 };
 export default meta;

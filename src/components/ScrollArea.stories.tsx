@@ -3,7 +3,7 @@ import { expect, fireEvent, within } from "@storybook/test";
 import { ScrollArea } from "./ScrollArea";
 
 const meta: Meta<typeof ScrollArea> = {
-  title: "Fors/Data Display/ScrollArea",
+  title: "Forsight/Data Display/ScrollArea",
   component: ScrollArea,
 };
 export default meta;

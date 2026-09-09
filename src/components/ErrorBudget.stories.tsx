@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { ErrorBudget } from "./ErrorBudget";
 
 const meta: Meta<typeof ErrorBudget> = {
-  title: "Fors/Observability/ErrorBudget",
+  title: "Forsight/Observability/ErrorBudget",
   component: ErrorBudget,
 };
 export default meta;

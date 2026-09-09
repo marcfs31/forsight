@@ -1,7 +1,7 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import forsPreset from "../tailwind-preset";
+import forsightPreset from "../tailwind-preset";
 
 /**
  * The two Tailwind integrations shipped to consumers — the v3 preset
@@ -16,8 +16,10 @@ const tokensCss = styles("tokens.css");
 const tailwindCss = styles("tailwind.css");
 
 const varRefs = (text: string) =>
-  [...text.matchAll(/var\((--fors-[a-z0-9-]+)\)/g)].map((m) => m[1]);
-const definedTokens = new Set([...tokensCss.matchAll(/(--fors-[a-z0-9-]+):/g)].map((m) => m[1]));
+  [...text.matchAll(/var\((--forsight-[a-z0-9-]+)\)/g)].map((m) => m[1]);
+const definedTokens = new Set(
+  [...tokensCss.matchAll(/(--forsight-[a-z0-9-]+):/g)].map((m) => m[1])
+);
 
 /** Flattens Tailwind's nested color object into utility suffixes: `accent`, `accent-fg`, … */
 function flattenColors(obj: Record<string, unknown>, prefix = ""): string[] {
@@ -28,7 +30,7 @@ function flattenColors(obj: Record<string, unknown>, prefix = ""): string[] {
   );
 }
 
-const extend = forsPreset.theme?.extend as Record<string, Record<string, unknown>>;
+const extend = forsightPreset.theme?.extend as Record<string, Record<string, unknown>>;
 
 describe("tailwind-preset (v3) and tailwind.css (v4 @theme)", () => {
   it("only reference tokens that tokens.css defines", () => {
@@ -58,6 +60,6 @@ describe("tailwind-preset (v3) and tailwind.css (v4 @theme)", () => {
   });
 
   it("ships the animate plugin the overlay motion classes come from", () => {
-    expect(forsPreset.plugins).toHaveLength(1);
+    expect(forsightPreset.plugins).toHaveLength(1);
   });
 });

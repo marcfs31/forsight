@@ -13,7 +13,7 @@ const p95 = [
 ];
 
 const meta: Meta<typeof LineChart> = {
-  title: "Fors/Data Viz/LineChart",
+  title: "Forsight/Data Viz/LineChart",
   component: LineChart,
   decorators: [
     (Story) => (

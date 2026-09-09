@@ -8,8 +8,8 @@ describe("Input", () => {
   it("accepts typed text", async () => {
     render(<Input placeholder="Email" />);
     const input = screen.getByPlaceholderText("Email");
-    await userEvent.type(input, "marc@fors.dev");
-    expect(input).toHaveValue("marc@fors.dev");
+    await userEvent.type(input, "marc@forsight.dev");
+    expect(input).toHaveValue("marc@forsight.dev");
   });
 
   it("marks itself invalid and shows the hint", () => {

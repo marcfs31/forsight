@@ -27,7 +27,7 @@ addons
  * of `data-theme`, which silently breaks light-theme stories (dark text on
  * a backdrop still forced dark). Instead this sets `data-theme` on the
  * preview iframe's own <html> so the real token cascade (including body's
- * `background-color: var(--fors-ink-bg)` from globals.css) does the work,
+ * `background-color: var(--forsight-ink-bg)` from globals.css) does the work,
  * matching how a real consuming app renders.
  */
 const preview: Preview = {
@@ -37,7 +37,7 @@ const preview: Preview = {
     // Storybook's own UI). Declaring the global keeps it in the URL / globals
     // API so the decorator below and the Docs container can read it.
     theme: {
-      description: "Fors theme",
+      description: "Forsight theme",
     },
     // Same as `theme`: a toggle button in manager.tsx, no stock dropdown.
     dir: {
@@ -53,11 +53,11 @@ const preview: Preview = {
     // deliberate top-down reading order (type → inputs → overlays → feedback
     // → data display → charts → observability → navigation); components
     // alphabetical within a category.
-    // Story titles are "Fors/<Category>/<Component>" — see src/**/*.stories.tsx.
+    // Story titles are "Forsight/<Category>/<Component>" — see src/**/*.stories.tsx.
     options: {
       storySort: {
         order: [
-          "Fors",
+          "Forsight",
           [
             "Overview",
             "Typography",

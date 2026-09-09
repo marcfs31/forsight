@@ -1,6 +1,6 @@
 # Contributing
 
-This is Marc Fors's internal design system — the source of truth for every component every Fors app (client or in-house) builds on. Changes here ship to every consumer, so the bar is: tested, accessible, and versioned correctly.
+This is Marc Fors's internal design system — the source of truth for every component every Forsight app (client or in-house) builds on. Changes here ship to every consumer, so the bar is: tested, accessible, and versioned correctly.
 
 ## Setup
 
@@ -100,14 +100,14 @@ Every component needs, at minimum:
 - Wide content (tables) lives in `<div className="w-full overflow-x-auto">`.
 - Control strips wrap (`flex-wrap`) or scroll (`overflow-x-auto` + `shrink-0` children).
 - No `whitespace-nowrap` on user content; add `min-w-0` to growable flex children.
-- Verify in Storybook at 375px and desktop, in **both** themes — the `Fors/Overview` "Kitchen" story is the fastest whole-system check.
+- Verify in Storybook at 375px and desktop, in **both** themes — the `Forsight/Overview` "Kitchen" story is the fastest whole-system check.
 
 ### RTL (`dir="rtl"`)
 
 - Use logical properties, not physical ones: `text-start`/`text-end` (not `text-left`/`text-right`), `ms-*`/`me-*`/`ps-*`/`pe-*` (not `ml-*`/`mr-*`/`pl-*`/`pr-*`), `start-*`/`end-*` (not `left-*`/`right-*`), `border-s`/`border-e` (not `border-l`/`border-r`). `justify-start`/`justify-end` and flex/grid item order are already logical — no change needed there.
-- `translateX`/`translateY` have no logical equivalent — anything that moves an element sideways (a toggle thumb, a slide-in animation) needs explicit `ltr:`/`rtl:`-scoped values, verified by real rendered position (`getBoundingClientRect`), not `toHaveClass` — both direction's classes are always present in the DOM regardless of which one's CSS actually wins. See `Switch.tsx`'s thumb and its `Fors/Switch` "RTL" story for the pattern.
+- `translateX`/`translateY` have no logical equivalent — anything that moves an element sideways (a toggle thumb, a slide-in animation) needs explicit `ltr:`/`rtl:`-scoped values, verified by real rendered position (`getBoundingClientRect`), not `toHaveClass` — both direction's classes are always present in the DOM regardless of which one's CSS actually wins. See `Switch.tsx`'s thumb and its `Forsight/Switch` "RTL" story for the pattern.
 - Centering (`left-1/2 -translate-x-1/2`) and Radix's own Popper positioning (`POPPER_ANIMATION_CLASSES`'s `data-[side=...]`, which reads viewport-relative collision detection, not text direction) need no changes.
-- Verify in Storybook with the toolbar's Direction toggle (or a `<div dir="rtl">` wrapper, for a fixed comparison in one story) at 375px and desktop, in both themes — `Fors/Overview` → "KitchenSinkRTL" is the whole-system check, mirroring "Kitchen".
+- Verify in Storybook with the toolbar's Direction toggle (or a `<div dir="rtl">` wrapper, for a fixed comparison in one story) at 375px and desktop, in both themes — `Forsight/Overview` → "KitchenSinkRTL" is the whole-system check, mirroring "Kitchen".
 
 Overlay or positioned components (anything opening on click/hover — dialogs, menus, tooltips, popovers) should be built on a Radix UI primitive rather than hand-rolled — see any existing overlay component (`Dialog.tsx`, `Popover.tsx`) for the pattern: unstyled Radix primitive + this repo's Tailwind token classes + `POPPER_ANIMATION_CLASSES` from `src/lib/animation.ts` for open/close motion.
 
@@ -115,11 +115,11 @@ Overlay or positioned components (anything opening on click/hover — dialogs, m
 
 - **Draw on `ChartFrame`.** It supplies the measured, responsive `<svg>` and the visually hidden data table that stands in for the picture. A plot without that table is not shippable — it is the WCAG 1.1.1 equivalent, and it is what makes the light-theme series colors permissible under the data-viz relief rule (see the comment in `src/styles/tokens.css`).
 - **Geometry lives in `src/lib/chart.ts`.** Scales, path builders and formatters are pure functions with their own unit tests; components stay thin renderers over them. Add new maths there, not inline in a component.
-- **Series colors are the eight `--fors-viz-*` slots, in order, never cycled.** Do not add a ninth hue, re-order the slots, or re-step them: the ordering is what keeps adjacent series distinguishable for colorblind readers, and `src/tokens/__tests__/contrast.test.ts` pins both the 3:1 non-text contrast bar and the exact light-theme slots allowed to take relief. Past slot 8, `seriesFill`/`seriesBg` go neutral on purpose — fold the tail into "Other".
-- **Never a second y-axis.** Two measures of different scale are two plots (see the `Fors/Overview` → "Dashboard" story), small multiples, or indexed to a common base.
+- **Series colors are the eight `--forsight-viz-*` slots, in order, never cycled.** Do not add a ninth hue, re-order the slots, or re-step them: the ordering is what keeps adjacent series distinguishable for colorblind readers, and `src/tokens/__tests__/contrast.test.ts` pins both the 3:1 non-text contrast bar and the exact light-theme slots allowed to take relief. Past slot 8, `seriesFill`/`seriesBg` go neutral on purpose — fold the tail into "Other".
+- **Never a second y-axis.** Two measures of different scale are two plots (see the `Forsight/Overview` → "Dashboard" story), small multiples, or indexed to a common base.
 - **Color is never the only carrier.** Two or more series means a legend; status means a word next to the dot; a delta means an arrow _and_ the sign; a failed span means the word "error".
 - **The hover layer is keyboard-reachable.** Plotted charts take focus and move their cursor with Arrow/Home/End, Escape dismisses, and the reading goes out through a polite `role="status"` region rather than the (aria-hidden) tooltip.
-- Verify in the `Fors/Overview` → "Dashboard" / "DashboardRTL" stories, which compose the whole family the way a real service dashboard does.
+- Verify in the `Forsight/Overview` → "Dashboard" / "DashboardRTL" stories, which compose the whole family the way a real service dashboard does.
 
 **Testing overlay components (Dialog, DropdownMenu, Popover, Tooltip, Select):** keep jsdom tests **structural and fast** — render with `defaultOpen` and assert roles / props / classes. Do **not** run `axe()` on an _open_ overlay in jsdom: with no layout engine it takes minutes and times out on CI. Open-state accessibility and real open/close interaction are covered by the Storybook test runner in real Chromium (`npm run test:storybook`) via the component's stories and `play` functions. `axe()` in a `*.test.tsx` is for **inline** components. See `.claude/skills/testing`.
 

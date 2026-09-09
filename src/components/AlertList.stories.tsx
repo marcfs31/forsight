@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { AlertList } from "./AlertList";
 
 const meta: Meta<typeof AlertList> = {
-  title: "Fors/Observability/AlertList",
+  title: "Forsight/Observability/AlertList",
   component: AlertList,
 };
 export default meta;

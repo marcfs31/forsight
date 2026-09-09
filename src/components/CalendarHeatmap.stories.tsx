@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { CalendarHeatmap, type CalendarHeatmapDay } from "./CalendarHeatmap";
 
 const meta: Meta<typeof CalendarHeatmap> = {
-  title: "Fors/Data Viz/CalendarHeatmap",
+  title: "Forsight/Data Viz/CalendarHeatmap",
   component: CalendarHeatmap,
 };
 export default meta;

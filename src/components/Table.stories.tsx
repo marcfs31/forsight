@@ -5,13 +5,13 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from ".
 import { Badge } from "./Badge";
 
 const meta: Meta = {
-  title: "Fors/Data Display/Table",
+  title: "Forsight/Data Display/Table",
 };
 export default meta;
 type Story = StoryObj;
 
 const deployments = [
-  { project: "fors-client-portal", branch: "main", status: "success", when: "2m ago" },
+  { project: "forsight-client-portal", branch: "main", status: "success", when: "2m ago" },
   { project: "habit-tracker", branch: "feature/calendar", status: "building", when: "8m ago" },
   { project: "internal-crm", branch: "main", status: "failed", when: "1h ago" },
 ];
@@ -50,7 +50,7 @@ export const Deployments: Story = {
 };
 
 const sortableDeployments = [
-  { project: "fors-client-portal", when: "2m ago", whenMinutes: 2 },
+  { project: "forsight-client-portal", when: "2m ago", whenMinutes: 2 },
   { project: "habit-tracker", when: "8m ago", whenMinutes: 8 },
   { project: "internal-crm", when: "1h ago", whenMinutes: 60 },
 ];

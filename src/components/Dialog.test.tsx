@@ -12,7 +12,7 @@ import {
 import { Button } from "./Button";
 
 // Open-state accessibility is verified in real Chromium by the Storybook
-// test runner (`Fors/Overlays/Dialog` stories). `axe` on an open portalled dialog
+// test runner (`Forsight/Overlays/Dialog` stories). `axe` on an open portalled dialog
 // under jsdom (no layout engine) is minutes-slow and unreliable.
 
 function ExampleDialog() {

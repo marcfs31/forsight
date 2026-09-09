@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Funnel } from "./Funnel";
 
 const meta: Meta<typeof Funnel> = {
-  title: "Fors/Data Viz/Funnel",
+  title: "Forsight/Data Viz/Funnel",
   component: Funnel,
   decorators: [
     (Story) => (

@@ -29,7 +29,7 @@ const spans: TraceSpan[] = [
 ];
 
 const meta: Meta<typeof TraceWaterfall> = {
-  title: "Fors/Observability/TraceWaterfall",
+  title: "Forsight/Observability/TraceWaterfall",
   component: TraceWaterfall,
   decorators: [
     (Story) => (

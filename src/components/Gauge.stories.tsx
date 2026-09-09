@@ -3,7 +3,7 @@ import { Gauge } from "./Gauge";
 import { formatPercent } from "../lib/chart";
 
 const meta: Meta<typeof Gauge> = {
-  title: "Fors/Data Viz/Gauge",
+  title: "Forsight/Data Viz/Gauge",
   component: Gauge,
   decorators: [
     (Story) => (

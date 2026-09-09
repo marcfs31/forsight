@@ -97,7 +97,7 @@ import { formatDuration, formatPercent } from "./lib/chart";
 import { DARK_PALETTE, LIGHT_PALETTE } from "./tokens/palettes";
 
 const meta: Meta = {
-  title: "Fors/Overview",
+  title: "Forsight/Overview",
   parameters: {
     layout: "fullscreen",
     // This story is a full page with a real <main> landmark, so re-enable the
@@ -197,7 +197,7 @@ function KitchenSink() {
           <header className="flex flex-wrap items-start justify-between gap-4">
             <div className="flex flex-col gap-2">
               <Heading as="h1" size="2xl">
-                Fors Design System
+                Forsight
               </Heading>
               <Text tone="secondary">
                 Rapids Teal on near-black ink · Space Grotesk + Inter · 30 components, dark &amp;
@@ -462,7 +462,7 @@ function KitchenSink() {
                 A new region is available for deployments.
               </Alert>
               <Alert variant="success" title="Deployed">
-                fors-client-portal is live in production.
+                forsight-client-portal is live in production.
               </Alert>
               <Alert variant="danger" title="Build failed">
                 Type error in <code className="font-mono">src/routes/api.ts</code>.
@@ -575,7 +575,7 @@ function KitchenSink() {
           <Section id="ov-nav" title="Navigation">
             <Breadcrumb>
               <BreadcrumbList>
-                {["Projects", "fors-client-portal"].map((crumb) => (
+                {["Projects", "forsight-client-portal"].map((crumb) => (
                   <React.Fragment key={crumb}>
                     <BreadcrumbItem>
                       <BreadcrumbLink
@@ -644,7 +644,7 @@ function KitchenSink() {
                 <AppShell className="h-full">
                   <Sidebar label="Demo navigation">
                     <SidebarHeader>
-                      <Text weight="semibold">Fors Corp</Text>
+                      <Text weight="semibold">Forsight</Text>
                     </SidebarHeader>
                     <SidebarContent>
                       <SidebarNav>
@@ -684,7 +684,7 @@ function KitchenSink() {
           open={commandOpen}
           onOpenChange={setCommandOpen}
           label="Quick actions"
-          description="Search for an action to run against fors-client-portal."
+          description="Search for an action to run against forsight-client-portal."
         >
           <CommandInput placeholder="Type a command…" />
           <CommandList>

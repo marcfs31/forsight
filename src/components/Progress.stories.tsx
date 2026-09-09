@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Progress } from "./Progress";
 
 const meta: Meta<typeof Progress> = {
-  title: "Fors/Feedback/Progress",
+  title: "Forsight/Feedback/Progress",
   component: Progress,
   args: { "aria-label": "Upload progress" },
   decorators: [

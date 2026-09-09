@@ -15,7 +15,7 @@ function ExampleTable() {
       </TableHeader>
       <TableBody>
         <TableRow>
-          <TableCell>fors-client-portal</TableCell>
+          <TableCell>forsight-client-portal</TableCell>
           <TableCell>success</TableCell>
         </TableRow>
       </TableBody>
@@ -27,7 +27,7 @@ describe("Table", () => {
   it("renders header and row content", () => {
     render(<ExampleTable />);
     expect(screen.getByRole("columnheader", { name: "Project" })).toBeInTheDocument();
-    expect(screen.getByRole("cell", { name: "fors-client-portal" })).toBeInTheDocument();
+    expect(screen.getByRole("cell", { name: "forsight-client-portal" })).toBeInTheDocument();
   });
 
   it("has no accessibility violations", async () => {

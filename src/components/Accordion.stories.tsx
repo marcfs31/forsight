@@ -3,7 +3,7 @@ import { expect, userEvent, within } from "@storybook/test";
 import { Accordion, AccordionItem, AccordionTrigger, AccordionContent } from "./Accordion";
 
 const meta: Meta = {
-  title: "Fors/Data Display/Accordion",
+  title: "Forsight/Data Display/Accordion",
 };
 export default meta;
 type Story = StoryObj;

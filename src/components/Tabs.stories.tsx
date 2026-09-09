@@ -3,7 +3,7 @@ import { expect, userEvent, within } from "@storybook/test";
 import { Tabs } from "./Tabs";
 
 const meta: Meta = {
-  title: "Fors/Data Display/Tabs",
+  title: "Forsight/Data Display/Tabs",
 };
 export default meta;
 type Story = StoryObj;

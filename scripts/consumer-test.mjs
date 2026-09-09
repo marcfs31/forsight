@@ -69,14 +69,16 @@ const cssFiles = findFiles(path.join(fixture, ".next/static"), /\.css$/);
 const css = cssFiles.map((f) => readFileSync(f, "utf8")).join("\n");
 check("build emitted at least one CSS bundle", () => cssFiles.length > 0);
 check("library styles.css survived the bundler (design tokens present)", () =>
-  css.includes("--fors-accent")
+  css.includes("--forsight-accent")
 );
-check("library component styles survived the bundler", () => css.includes("--fors-ink-surface"));
+check("library component styles survived the bundler", () =>
+  css.includes("--forsight-ink-surface")
+);
 check("consumer Tailwind v4 generated a token utility from tailwind.css (@theme)", () =>
-  /\.bg-accent\s*\{[^}]*var\(--fors-accent\)/.test(css)
+  /\.bg-accent\s*\{[^}]*var\(--forsight-accent\)/.test(css)
 );
 check("consumer Tailwind v4 generated a token radius utility", () =>
-  /\.rounded-md\s*\{[^}]*var\(--fors-radius-md\)/.test(css)
+  /\.rounded-md\s*\{[^}]*var\(--forsight-radius-md\)/.test(css)
 );
 
 // Next writes the prerendered "/" route as .next/server/app/index.html.
@@ -92,12 +94,12 @@ check(
     /data-testid="fixture-button"[^>]*class="[^"]*bg-accent/.test(html) ||
     /class="[^"]*bg-accent[^"]*"[^>]*data-testid="fixture-button"/.test(html)
 );
-check("chart series tokens survived the bundler", () => css.includes("--fors-viz-1"));
+check("chart series tokens survived the bundler", () => css.includes("--forsight-viz-1"));
 check("library StatCard (chart family) rendered inside a Server Component tree", () =>
   html.includes('data-testid="fixture-statcard"')
 );
 check("server-safe theme entry ran in the root layout (anti-flash script inlined)", () =>
-  html.includes('localStorage.getItem("fors-theme")')
+  html.includes('localStorage.getItem("forsight-theme")')
 );
 
 console.log("");

@@ -9,7 +9,7 @@ const STEPS = [
 ];
 
 const meta: Meta<typeof Stepper> = {
-  title: "Fors/Feedback/Stepper",
+  title: "Forsight/Feedback/Stepper",
   component: Stepper,
   decorators: [
     (Story) => (

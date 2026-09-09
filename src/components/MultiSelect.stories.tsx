@@ -10,7 +10,7 @@ const OPTIONS = [
 ];
 
 const meta: Meta<typeof MultiSelect> = {
-  title: "Fors/Forms/MultiSelect",
+  title: "Forsight/Forms/MultiSelect",
   component: MultiSelect,
   parameters: { layout: "centered" },
 };
