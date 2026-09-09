@@ -99,8 +99,8 @@ explicitly says to stop.
   jobs fail closed: if `changes` itself fails they run anyway, because a
   skipped job satisfies branch protection while an absent one blocks it.
 - **What the required checks actually are.** As of 2026-09-10 branch
-  protection on `main` requires nine contexts: `verify (Node 20)`, `verify
-(Node 22)`, `audit (npm audit, high+)`, `consumer (…)`, `storybook (…)`,
+  protection on `main` requires nine contexts: `verify (Node 22)`, `verify
+(Node 24)`, `audit (npm audit, high+)`, `consumer (…)`, `storybook (…)`,
   `Analyze (actions)`, `Analyze (javascript-typescript)`, `go (vet, lint,
 test, build)` and `web (dashboard build, and it matches what's embedded)`.
   Read the live list with `gh api
