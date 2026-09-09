@@ -116,6 +116,12 @@ export {
   PaginationEllipsis,
   type PaginationItemProps,
 } from "./components/Pagination";
+export {
+  FilterBar,
+  type FilterBarProps,
+  type FilterBarFacet,
+  type FilterBarOption,
+} from "./components/FilterBar";
 export { Separator, type SeparatorProps } from "./components/Separator";
 export { Label, type LabelProps } from "./components/Label";
 export { Kbd, type KbdProps } from "./components/Kbd";
