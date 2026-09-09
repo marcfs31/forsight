@@ -22,10 +22,15 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Runtime floor stays Node >=18.18 (see package.json engines) — the
-        # compiled dist runs there. The dev toolchain (test-runner, attw,
-        # concurrently) targets active LTS, so CI verifies on 20 and 22.
-        node: [20, 22]
+        # These are DEV-toolchain versions, not the runtime floor for
+        # consumers — package.json's `engines` stays >=18.18, because the
+        # compiled dist is ES2020 and runs anywhere. Node 20 left active
+        # support in April 2026 and had become the single constraint holding
+        # back four upgrades (size-limit 13 needs fs.promises.glob from
+        # 22.13, jsdom 30 declares ^22.22, @changesets/cli 3 declares ^22.11
+        # and calls module.enableCompileCache, and changesets/action v2
+        # requires that CLI). So: current LTS and current.
+        node: [22, 24]
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
@@ -75,7 +80,7 @@ jobs:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
-          node-version: 20
+          node-version: 22
           cache: npm
       - run: npm ci
       - run: npx playwright install --with-deps chromium
