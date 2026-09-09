@@ -67,7 +67,7 @@ jobs:
       # `gh api repos/changesets/action/tags`), not the mutable `v1` tag —
       # CodeQL's unpinned-tag check flags third-party Actions. v2 renames the
       # inputs this step passes, so it is a deliberate migration, not a bump.
-      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+      - uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         id: changesets
         with:
           version: npm run version-packages
