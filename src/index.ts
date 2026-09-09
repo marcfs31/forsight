@@ -153,8 +153,10 @@ export {
 export {
   Calendar,
   DatePicker,
+  DateRangePicker,
   type CalendarProps,
   type DatePickerProps,
+  type DateRangePickerProps,
 } from "./components/Calendar";
 export {
   SidebarProvider,

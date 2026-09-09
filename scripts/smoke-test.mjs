@@ -150,6 +150,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "CommandDialog",
   "Calendar",
   "DatePicker",
+  "DateRangePicker",
   "SidebarProvider",
   "Sidebar",
   "SidebarTrigger",

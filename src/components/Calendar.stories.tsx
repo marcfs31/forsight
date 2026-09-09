@@ -1,7 +1,7 @@
 import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
 import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
-import { Calendar, DatePicker } from "./Calendar";
+import { Calendar, DatePicker, DateRangePicker, type DateRangePickerProps } from "./Calendar";
 
 const meta: Meta = {
   title: "Fors/Forms/Calendar",
@@ -70,6 +70,35 @@ export const KeyboardNavigation: Story = {
   },
 };
 
+export const RangeSelection: Story = {
+  render: () => (
+    <div className="flex justify-center pt-12">
+      <Calendar
+        mode="range"
+        defaultMonth={REFERENCE_MONTH}
+        selected={{ from: new Date(2026, 8, 8), to: new Date(2026, 8, 11) }}
+        className="rounded-md border border-ink-border bg-ink-surface p-4"
+      />
+    </div>
+  ),
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    // The two endpoints and the days between them are all flagged
+    // "selected" by react-day-picker; `CalendarDayButton` gives the
+    // in-between days a softer fill, but all four remain in the accessible
+    // tree as selected.
+    await expect(
+      canvas.getByRole("button", { name: /September 8.*selected/i })
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: /September 9.*selected/i })
+    ).toBeInTheDocument();
+    await expect(
+      canvas.getByRole("button", { name: /September 11.*selected/i })
+    ).toBeInTheDocument();
+  },
+};
+
 function DatePickerExample() {
   const [value, setValue] = React.useState<Date | undefined>(new Date(2026, 8, 8));
   return (
@@ -112,6 +141,51 @@ export const DatePickerExampleStory: Story = {
     await waitFor(() => expect(screen.queryByRole("grid")).not.toBeInTheDocument());
     await expect(canvas.getByRole("button", { name: /^Selected date:/i })).toHaveAccessibleName(
       /15/
+    );
+  },
+};
+
+function DateRangePickerExample() {
+  const [value, setValue] = React.useState<DateRangePickerProps["value"]>();
+  return (
+    <div className="flex max-w-xs flex-col gap-2 pt-12">
+      <DateRangePicker value={value} onValueChange={setValue} />
+    </div>
+  );
+}
+
+/**
+ * Real-browser interaction: picking the first day of a range keeps the
+ * popover open (only `from` is known yet) and updates the trigger to show
+ * the "… " partial state; picking the second day closes the popover and the
+ * trigger shows the complete range.
+ */
+export const DateRangePickerExampleStory: Story = {
+  name: "DateRangePicker",
+  render: () => <DateRangePickerExample />,
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+    const trigger = canvas.getByRole("button", { name: "Pick a date range" });
+    await userEvent.click(trigger);
+    const grid = await screen.findByRole("grid");
+    await expect(grid).toBeInTheDocument();
+
+    const start = screen.getByRole("button", { name: /September 8/i });
+    start.focus();
+    await userEvent.keyboard("{Enter}");
+    // Only the range's start is known — the popover must stay open so the
+    // end can be picked next.
+    await expect(screen.getByRole("grid")).toBeInTheDocument();
+    await expect(canvas.getByRole("button", { name: /^Selected range:/i })).toHaveAccessibleName(
+      /8.*–.*…/
+    );
+
+    const end = screen.getByRole("button", { name: /September 15/i });
+    end.focus();
+    await userEvent.keyboard("{Enter}");
+    await waitFor(() => expect(screen.queryByRole("grid")).not.toBeInTheDocument());
+    await expect(canvas.getByRole("button", { name: /^Selected range:/i })).toHaveAccessibleName(
+      /8.*–.*15/
     );
   },
 };

@@ -21,6 +21,7 @@ import {
   BreadcrumbSeparator,
   BoxPlot,
   Button,
+  Calendar,
   Card,
   CardContent,
   CardFooter,
@@ -98,9 +99,12 @@ import {
  *
  * Portal-only overlays (Dialog / AlertDialog / Drawer / DropdownMenu /
  * Popover / Tooltip / HoverCard / Select / Combobox / MultiSelect /
- * FilterBar's add-filter menu / Toast content) are exercised open, by
- * keyboard, in their own `*.test.tsx` and in the Storybook test runner —
- * snapshotting a closed trigger here would add churn without coverage.
+ * DatePicker / DateRangePicker / FilterBar's add-filter menu / Toast
+ * content) are exercised open, by keyboard, in their own `*.test.tsx` and
+ * in the Storybook test runner — snapshotting a closed trigger here would
+ * add churn without coverage. `Calendar` itself is plain in-flow markup
+ * (not a portal), so it's snapshotted directly below, including its
+ * `range` mode.
  */
 const cases: Record<string, React.ReactElement> = {
   "Button/primary": <Button>Deploy</Button>,
@@ -247,6 +251,13 @@ const cases: Record<string, React.ReactElement> = {
         </TableRow>
       </TableBody>
     </Table>
+  ),
+  "Calendar/range-selection": (
+    <Calendar
+      mode="range"
+      selected={{ from: new Date(2026, 8, 8), to: new Date(2026, 8, 11) }}
+      defaultMonth={new Date(2026, 8, 1)}
+    />
   ),
   "Separator/horizontal": <Separator />,
   "Separator/vertical": <Separator orientation="vertical" />,
