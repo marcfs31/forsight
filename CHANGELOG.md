@@ -1,5 +1,67 @@
 # @marcfs31/fors-observability-design-system
 
+## 3.0.0
+
+### Major Changes
+
+- c224c2d: **Breaking: the public API now uses the `forsight` name throughout.** The package rename in the previous major only moved the import path; this completes it in the API itself.
+
+  CSS custom properties — all 48 of them — lose the `--fors-` prefix for `--forsight-`:
+
+  ```diff
+  -  --fors-accent: …;
+  -  --fors-ink-surface: …;
+  +  --forsight-accent: …;
+  +  --forsight-ink-surface: …;
+  ```
+
+  Anything that reads a token directly (`var(--fors-accent)`, a `style` override of `--fors-font-sans` / `--fors-font-heading`, a custom theme that sets the palette) must be updated. Apps that only use the shipped components, `styles.css`, `tailwind.css` or the Tailwind preset need no change — the token utilities (`bg-accent`, `text-fg-muted`, …) keep their names.
+
+  The `@marcfs31/forsight/theme` entry renames its exports:
+
+  | Before                 | After                      |
+  | ---------------------- | -------------------------- |
+  | `applyForsTheme`       | `applyForsightTheme`       |
+  | `forsAntiFlashScript`  | `forsightAntiFlashScript`  |
+  | `ForsTheme`            | `ForsightTheme`            |
+  | `ForsAntiFlashOptions` | `ForsightAntiFlashOptions` |
+  | `FORS_THEMES`          | `FORSIGHT_THEMES`          |
+  | `FORS_PALETTES`        | `FORSIGHT_PALETTES`        |
+  | `ForsPalette`          | `ForsightPalette`          |
+
+  The Tailwind v3 preset's default export is now `forsightPreset` (it was `forsPreset`); the import path is unchanged.
+
+  **The stored theme preference resets once.** `applyForsightTheme` and `forsightAntiFlashScript` read and write `localStorage["forsight-theme"]` instead of `localStorage["fors-theme"]`, so a returning visitor falls back to the default (dark) on their first load after the upgrade and their next toggle sticks. No migration shim is shipped: the value is a UI preference, not data.
+
+  Storybook story titles move from `Fors/…` to `Forsight/…`, and the demo content in stories uses the new brand. No component API, token _value_, or rendered behavior changes.
+
+- 25d3229: **Breaking: the package is renamed from `@marcfs31/fors-observability-design-system` to `@marcfs31/forsight`.** Every import path changes accordingly:
+
+  ```diff
+  -import { Button } from "@marcfs31/fors-observability-design-system";
+  -import "@marcfs31/fors-observability-design-system/styles.css";
+  +import { Button } from "@marcfs31/forsight";
+  +import "@marcfs31/forsight/styles.css";
+  ```
+
+  The same applies to the `/theme`, `/tailwind-preset`, `/tailwind.css`, and `/fonts.css` sub-paths. No component API, token, or behavior changes — this is a rename only. The GitHub repository is also renamed (`marcfs31/fors-observability-design-system` → `marcfs31/forsight`); GitHub redirects the old URL, but update any bookmarked links or CI references pointing at the old repo path.
+
+### Minor Changes
+
+- ac00222: Add `CodeBlock` — a monospace code/config snippet display (a curl example, a terminal command, a config file) with an optional label and a built-in `CopyButton`. Plain text only, no syntax highlighting; reach for `JSONViewer` when the content is structured data a reader might want to collapse rather than copy whole.
+- ac00222: Add `CopyButton` — an icon button that copies a value to the clipboard and briefly confirms it. The accessible name swaps to `copiedLabel` and a polite live region announces it too, so the confirmation reaches assistive tech even though nothing moves focus. Used by the upcoming `CodeBlock`; also useful standalone next to an API key or webhook URL.
+
+  Also adds the `"success (as text) on bg"` pairing to the token contrast test suite, covering the copied-state icon color.
+
+- ac00222: Add `DateRangePicker` — `DatePicker`'s two-ended sibling for picking a custom start/end window, complementing `TimeRange`'s fixed presets ("1h", "24h") for whenever a reader needs an arbitrary range. `Calendar` now also supports `mode="range"`, styling the days between the two picked ends with a softer fill distinct from the two endpoints.
+- ac00222: Add `Funnel` — a conversion/pipeline stage visualization (bars narrowing stage by stage, e.g. signups → activated → paid). Each bar scales against the first stage so the narrowing reads as overall conversion, while the percentage printed on every stage after the first is the step conversion from the stage right before it — the number a reader actually wants when hunting for where the funnel leaks.
+- ac00222: Add `HoverCard` — a rich preview shown on hover or focus (`@radix-ui/react-hover-card`) for something the trigger only partly represents (a user's profile behind their avatar, a service's health summary behind its name). Unlike `Tooltip` it can hold arbitrary content; unlike `Popover` it never traps focus and never becomes the only place to reach information — the trigger must still make sense on its own.
+- ac00222: Add `MultiSelect` — the tag-picker sibling to `Combobox`'s single-select, composed from the same `Popover` + `Command` pairing. Selected options show as plain (non-interactive) chips inside the trigger — deliberately no per-chip remove button, since that would nest an interactive control inside the trigger `<button>`; removal happens by reopening the popover and unchecking. Picking an option leaves the popover open so multiple picks don't need reopening.
+- ac00222: Add `ScrollArea` — a custom-styled scrollbar for a fixed-size panel (a side nav, a long dropdown, a code pane), built on `@radix-ui/react-scroll-area`. Keeps real native scrolling (wheel, touch, keyboard, momentum) and only re-skins the visual thumb/track; the scrollable viewport is keyboard-focusable so arrow-key scrolling works without a mouse.
+- ac00222: Add `Stepper` — a multi-step wizard/setup-progress indicator (done/current/upcoming). A real `<ol>` so a screen reader announces the step count and position, with the current step marked via `aria-current="step"`. For a bounded progress percentage instead of discrete named steps, use `Progress`.
+- ac00222: Add `sortDirection`/`onSort` to `TableHead` for sortable column headers: sets `aria-sort` and renders the header as a button with a direction indicator. Matches `Table`'s existing scope — it only renders and announces the sort state, it never sorts rows itself; compose it with your own state (or a headless table library) to actually reorder rows, as shown in the new `Sortable` story.
+- ac00222: Add `Toggle` — a single pressed/unpressed control (`@radix-ui/react-toggle`) for a standalone toolbar action ("show grid lines", "pin sidebar"), styled as a button rather than `Switch`'s track-and-thumb. For a set of related toggles, use `ToggleGroup` instead.
+
 ## 2.0.0
 
 ### Major Changes
