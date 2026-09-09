@@ -1,5 +1,5 @@
 {
-  "name": "@marcfs31/fors-observability-design-system",
+  "name": "@marcfs31/forsight",
   "version": "2.0.0",
   "private": false,
   "description": "Marc Fors's observability design system — brand tokens, React components, and data-visualization + observability primitives.",
@@ -58,11 +58,11 @@
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/marcfs31/fors-observability-design-system.git"
+    "url": "git+https://github.com/marcfs31/forsight.git"
   },
-  "homepage": "https://marcfs31.github.io/fors-observability-design-system/",
+  "homepage": "https://marcfs31.github.io/forsight/",
   "bugs": {
-    "url": "https://github.com/marcfs31/fors-observability-design-system/issues"
+    "url": "https://github.com/marcfs31/forsight/issues"
   },
   "publishConfig": {
     "registry": "https://npm.pkg.github.com",

@@ -1,0 +1,15 @@
+@import "tailwindcss";
+@import "@marcfs31/forsight/tailwind.css";
+
+/* Required: design tokens + compiled component styles (see the design
+   system's own README "Package entries" table). */
+@import "@marcfs31/forsight/styles.css";
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  margin: 0;
+  background: var(--fors-ink-bg);
+}

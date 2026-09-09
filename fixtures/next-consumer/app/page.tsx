@@ -1,14 +1,7 @@
 // Server Component page: library components used directly in an RSC tree
 // (the package's own "use client" boundary must make this work), plus one
 // element styled with the token vocabulary from the consumer's Tailwind.
-import {
-  Button,
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-  StatCard,
-} from "@marcfs31/fors-observability-design-system";
+import { Button, Card, CardContent, CardHeader, CardTitle, StatCard } from "@marcfs31/forsight";
 
 export default function Page() {
   return (
