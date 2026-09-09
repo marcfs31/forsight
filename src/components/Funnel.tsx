@@ -49,7 +49,16 @@ export const Funnel = React.forwardRef<HTMLOListElement, FunnelProps>(
                 />
                 <span className="relative min-w-0 flex-1 truncate text-fg">{stage.label}</span>
                 {stepConversion !== undefined ? (
-                  <span className="relative shrink-0 font-mono text-xs text-fg-muted">
+                  // `text-fg-secondary`, not the lighter `text-fg-muted` —
+                  // this badge can sit on top of the accent overlay bar
+                  // above (when `shareOfFirst` is high, the bar reaches all
+                  // the way under it), and `fg-muted` doesn't have enough
+                  // contrast margin to survive that tint. Caught only by the
+                  // Storybook test runner's real-Chromium axe check, at a
+                  // high-conversion stage where the bar was wide enough to
+                  // reach this far — matches BarList's value text, which
+                  // sits in the same overlay zone and uses the same color.
+                  <span className="relative shrink-0 font-mono text-xs text-fg-secondary">
                     <span className="sr-only">Conversion from previous stage: </span>
                     {formatPercent(stepConversion, 0)}
                   </span>

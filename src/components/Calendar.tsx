@@ -217,8 +217,13 @@ const rangeDateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day
  * "24h") for whenever a reader needs an arbitrary range instead. The
  * popover stays open after the first click (only the range's start is
  * known yet) and closes once both ends are picked; picking a new start
- * after a complete range restarts it, matching react-day-picker's own
- * range-mode behavior.
+ * after a complete range restarts it. The underlying `Calendar` is given
+ * `min={1}` so the two ends must be distinct days — without it,
+ * react-day-picker's own range algorithm treats a single click as a
+ * complete one-day range and the popover would close before a second day
+ * could ever be picked. One consequence: clicking the start day again
+ * before picking an end clears the selection rather than producing a
+ * one-day range — use `DatePicker` for a single specific day.
  */
 export function DateRangePicker({
   value,
@@ -257,6 +262,7 @@ export function DateRangePicker({
       <PopoverContent align="start" aria-label="Choose a date range" className="w-auto p-2">
         <Calendar
           mode="range"
+          min={1}
           selected={value}
           onSelect={(range) => {
             onValueChange?.(range);

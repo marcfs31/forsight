@@ -56,6 +56,7 @@ import {
   Progress,
   RadioGroup,
   RadioGroupItem,
+  ScrollArea,
   Separator,
   Sidebar,
   SidebarHeader,
@@ -279,6 +280,14 @@ const cases: Record<string, React.ReactElement> = {
       <CollapsibleTrigger>Show more</CollapsibleTrigger>
       <CollapsibleContent>Extra detail</CollapsibleContent>
     </Collapsible>
+  ),
+  // The custom scrollbar/thumb only mount once Radix measures real overflow
+  // (a real layout engine, which jsdom doesn't have) — this snapshot covers
+  // the static wrapper markup only; see ScrollArea.test.tsx.
+  "ScrollArea/static": (
+    <ScrollArea className="h-40 w-64">
+      <p>Plenty of content that would overflow in a real browser.</p>
+    </ScrollArea>
   ),
   "Sidebar/expanded": (
     <SidebarProvider>

@@ -138,6 +138,7 @@ export { Kbd, type KbdProps } from "./components/Kbd";
 export { EmptyState, type EmptyStateProps } from "./components/EmptyState";
 export { JSONViewer, type JSONViewerProps } from "./components/JSONViewer";
 export { Collapsible, CollapsibleTrigger, CollapsibleContent } from "./components/Collapsible";
+export { ScrollArea, type ScrollAreaProps } from "./components/ScrollArea";
 export {
   Command,
   CommandDialog,

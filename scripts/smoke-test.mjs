@@ -146,6 +146,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "EmptyState",
   "JSONViewer",
   "Collapsible",
+  "ScrollArea",
   "Command",
   "CommandDialog",
   "Calendar",
