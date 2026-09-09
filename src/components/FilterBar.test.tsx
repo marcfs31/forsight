@@ -20,10 +20,6 @@ async function openAddFilter() {
   await userEvent.keyboard("{Enter}");
 }
 
-// CI has demonstrated ~102s for one of these (Node 22 job, 2026-09-09) — well
-// past the 90s this was originally set to. Comfortable margin above that.
-const SLOW_TEST_TIMEOUT = 180000;
-
 describe("FilterBar", () => {
   it("renders a chip per applied filter", () => {
     render(
@@ -77,43 +73,35 @@ describe("FilterBar", () => {
     expect(onFiltersChange).toHaveBeenCalledWith([]);
   });
 
-  it(
-    "lists available options grouped by facet, excluding already-applied ones",
-    async () => {
-      render(
-        <FilterBar label="Filters" filters={FILTERS} onFiltersChange={vi.fn()} options={OPTIONS} />
-      );
-      await openAddFilter();
-      expect(screen.getByText("Service")).toBeInTheDocument();
-      expect(screen.getByText("Environment")).toBeInTheDocument();
-      // checkout-api is already applied, so it's excluded from the add list.
-      expect(screen.queryByRole("option", { name: "checkout-api" })).not.toBeInTheDocument();
-      expect(screen.getByRole("option", { name: "search-api" })).toBeInTheDocument();
-    },
-    SLOW_TEST_TIMEOUT
-  );
+  it("lists available options grouped by facet, excluding already-applied ones", async () => {
+    render(
+      <FilterBar label="Filters" filters={FILTERS} onFiltersChange={vi.fn()} options={OPTIONS} />
+    );
+    await openAddFilter();
+    expect(screen.getByText("Service")).toBeInTheDocument();
+    expect(screen.getByText("Environment")).toBeInTheDocument();
+    // checkout-api is already applied, so it's excluded from the add list.
+    expect(screen.queryByRole("option", { name: "checkout-api" })).not.toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "search-api" })).toBeInTheDocument();
+  });
 
-  it(
-    "calls onFiltersChange with the new facet appended when an option is picked",
-    async () => {
-      const onFiltersChange = vi.fn();
-      render(
-        <FilterBar
-          label="Filters"
-          filters={FILTERS}
-          onFiltersChange={onFiltersChange}
-          options={OPTIONS}
-        />
-      );
-      await openAddFilter();
-      await userEvent.click(screen.getByRole("option", { name: "Production" }));
-      expect(onFiltersChange).toHaveBeenCalledWith([
-        ...FILTERS,
-        { key: "env", label: "Environment", value: "production" },
-      ]);
-    },
-    SLOW_TEST_TIMEOUT
-  );
+  it("calls onFiltersChange with the new facet appended when an option is picked", async () => {
+    const onFiltersChange = vi.fn();
+    render(
+      <FilterBar
+        label="Filters"
+        filters={FILTERS}
+        onFiltersChange={onFiltersChange}
+        options={OPTIONS}
+      />
+    );
+    await openAddFilter();
+    await userEvent.click(screen.getByRole("option", { name: "Production" }));
+    expect(onFiltersChange).toHaveBeenCalledWith([
+      ...FILTERS,
+      { key: "env", label: "Environment", value: "production" },
+    ]);
+  });
 
   it("has no accessibility violations", async () => {
     const { container } = render(

@@ -18,8 +18,6 @@ async function openMultiSelect() {
   await userEvent.keyboard("{Enter}");
 }
 
-const SLOW_TEST_TIMEOUT = 180000;
-
 describe("MultiSelect", () => {
   it("shows the placeholder when nothing is selected", () => {
     render(
@@ -50,64 +48,52 @@ describe("MultiSelect", () => {
     expect(trigger).toHaveTextContent("search-api");
   });
 
-  it(
-    "adds a value and keeps the popover open when an option is picked",
-    async () => {
-      const onValueChange = vi.fn();
-      render(
-        <MultiSelect
-          options={OPTIONS}
-          value={["checkout-api"]}
-          onValueChange={onValueChange}
-          aria-label="Services"
-        />
-      );
-      await openMultiSelect();
-      await userEvent.click(screen.getByRole("option", { name: "search-api" }));
-      expect(onValueChange).toHaveBeenCalledWith(["checkout-api", "search-api"]);
-      // Still open — the option list is still present.
-      expect(screen.getByRole("option", { name: /checkout-api/ })).toBeInTheDocument();
-    },
-    SLOW_TEST_TIMEOUT
-  );
+  it("adds a value and keeps the popover open when an option is picked", async () => {
+    const onValueChange = vi.fn();
+    render(
+      <MultiSelect
+        options={OPTIONS}
+        value={["checkout-api"]}
+        onValueChange={onValueChange}
+        aria-label="Services"
+      />
+    );
+    await openMultiSelect();
+    await userEvent.click(screen.getByRole("option", { name: "search-api" }));
+    expect(onValueChange).toHaveBeenCalledWith(["checkout-api", "search-api"]);
+    // Still open — the option list is still present.
+    expect(screen.getByRole("option", { name: /checkout-api/ })).toBeInTheDocument();
+  });
 
-  it(
-    "removes a value when an already-selected option is picked again",
-    async () => {
-      const onValueChange = vi.fn();
-      render(
-        <MultiSelect
-          options={OPTIONS}
-          value={["checkout-api", "search-api"]}
-          onValueChange={onValueChange}
-          aria-label="Services"
-        />
-      );
-      await openMultiSelect();
-      await userEvent.click(screen.getByRole("option", { name: /checkout-api/ }));
-      expect(onValueChange).toHaveBeenCalledWith(["search-api"]);
-    },
-    SLOW_TEST_TIMEOUT
-  );
+  it("removes a value when an already-selected option is picked again", async () => {
+    const onValueChange = vi.fn();
+    render(
+      <MultiSelect
+        options={OPTIONS}
+        value={["checkout-api", "search-api"]}
+        onValueChange={onValueChange}
+        aria-label="Services"
+      />
+    );
+    await openMultiSelect();
+    await userEvent.click(screen.getByRole("option", { name: /checkout-api/ }));
+    expect(onValueChange).toHaveBeenCalledWith(["search-api"]);
+  });
 
-  it(
-    "does not allow toggling a disabled option",
-    async () => {
-      const onValueChange = vi.fn();
-      render(
-        <MultiSelect
-          options={OPTIONS}
-          value={[]}
-          onValueChange={onValueChange}
-          aria-label="Services"
-        />
-      );
-      await openMultiSelect();
-      await userEvent.click(screen.getByRole("option", { name: "payments-api" }));
-      expect(onValueChange).not.toHaveBeenCalled();
-    },
-    SLOW_TEST_TIMEOUT
-  );
+  it("does not allow toggling a disabled option", async () => {
+    const onValueChange = vi.fn();
+    render(
+      <MultiSelect
+        options={OPTIONS}
+        value={[]}
+        onValueChange={onValueChange}
+        aria-label="Services"
+      />
+    );
+    await openMultiSelect();
+    await userEvent.click(screen.getByRole("option", { name: "payments-api" }));
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
 
   it("disables the trigger when disabled is set", () => {
     render(
