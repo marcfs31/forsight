@@ -4,7 +4,7 @@ import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "./Tool
 import { Button } from "./Button";
 
 const meta: Meta = {
-  title: "Fors/Overlays/Tooltip",
+  title: "Forsight/Overlays/Tooltip",
   parameters: { layout: "fullscreen" },
 };
 export default meta;

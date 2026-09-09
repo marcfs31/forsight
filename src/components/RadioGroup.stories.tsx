@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { RadioGroup, RadioGroupItem } from "./RadioGroup";
 
 const meta: Meta = {
-  title: "Fors/Forms/RadioGroup",
+  title: "Forsight/Forms/RadioGroup",
 };
 export default meta;
 type Story = StoryObj;

@@ -14,7 +14,7 @@ import {
 import { Button } from "./Button";
 
 const meta: Meta = {
-  title: "Fors/Overlays/AlertDialog",
+  title: "Forsight/Overlays/AlertDialog",
   parameters: { layout: "fullscreen" },
 };
 export default meta;

@@ -4,11 +4,16 @@
 // bundle ("@marcfs31/forsight") is a separate client entry.
 
 export {
-  FORS_THEMES,
-  applyForsTheme,
-  forsAntiFlashScript,
-  type ForsTheme,
-  type ForsAntiFlashOptions,
+  FORSIGHT_THEMES,
+  applyForsightTheme,
+  forsightAntiFlashScript,
+  type ForsightTheme,
+  type ForsightAntiFlashOptions,
 } from "./theme";
-export { FORS_PALETTES, DARK_PALETTE, LIGHT_PALETTE, type ForsPalette } from "./tokens/palettes";
+export {
+  FORSIGHT_PALETTES,
+  DARK_PALETTE,
+  LIGHT_PALETTE,
+  type ForsightPalette,
+} from "./tokens/palettes";
 export { cn } from "./lib/cn";

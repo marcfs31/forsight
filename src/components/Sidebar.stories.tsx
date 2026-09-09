@@ -15,7 +15,7 @@ import {
 import { Text } from "./Text";
 
 const meta: Meta = {
-  title: "Fors/Navigation/Sidebar",
+  title: "Forsight/Navigation/Sidebar",
   parameters: {
     layout: "fullscreen",
     a11y: { options: { rules: { region: { enabled: true } } } },
@@ -51,7 +51,7 @@ function DemoNav() {
   return (
     <>
       <SidebarHeader>
-        <Text weight="semibold">Fors Corp</Text>
+        <Text weight="semibold">Forsight</Text>
       </SidebarHeader>
       <SidebarContent>
         <SidebarNav>

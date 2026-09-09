@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { CodeBlock } from "./CodeBlock";
 
 const meta: Meta<typeof CodeBlock> = {
-  title: "Fors/Data Display/CodeBlock",
+  title: "Forsight/Data Display/CodeBlock",
   component: CodeBlock,
   decorators: [
     (Story) => (

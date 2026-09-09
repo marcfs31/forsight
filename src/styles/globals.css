@@ -13,8 +13,8 @@
 
 @layer base {
   body {
-    background-color: var(--fors-ink-bg);
-    color: var(--fors-fg);
+    background-color: var(--forsight-ink-bg);
+    color: var(--forsight-fg);
   }
 }
 

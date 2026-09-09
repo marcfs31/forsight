@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { FORS_PALETTES, type ForsPalette } from "../palettes";
+import { FORSIGHT_PALETTES, type ForsightPalette } from "../palettes";
 
 const AA_NORMAL_TEXT = 4.5;
 /** WCAG 1.4.11 — graphical objects (chart marks carry meaning, but are not text). */
@@ -32,7 +32,7 @@ function contrastRatio(hexA: string, hexB: string): number {
 }
 
 /** Every fg/bg pairing an existing component actually renders. */
-function pairsFor(p: ForsPalette): Array<[string, string, string]> {
+function pairsFor(p: ForsightPalette): Array<[string, string, string]> {
   return [
     ["fg on bg", p.fg, p.bg],
     ["fg on surface", p.fg, p.surface],
@@ -76,8 +76,8 @@ function pairsFor(p: ForsPalette): Array<[string, string, string]> {
   ];
 }
 
-describe("Fors token contrast (WCAG AA, 4.5:1)", () => {
-  for (const [themeName, palette] of Object.entries(FORS_PALETTES)) {
+describe("Forsight token contrast (WCAG AA, 4.5:1)", () => {
+  for (const [themeName, palette] of Object.entries(FORSIGHT_PALETTES)) {
     describe(`${themeName} theme`, () => {
       for (const [label, fg, bg] of pairsFor(palette)) {
         it(`${label} passes AA`, () => {
@@ -103,8 +103,8 @@ describe("Fors token contrast (WCAG AA, 4.5:1)", () => {
  */
 const LIGHT_VIZ_RELIEF = new Set(["#1baf7a", "#eda100", "#e87ba4"]);
 
-describe("Fors chart series contrast (WCAG 1.4.11, 3:1 non-text)", () => {
-  for (const [themeName, palette] of Object.entries(FORS_PALETTES)) {
+describe("Forsight chart series contrast (WCAG 1.4.11, 3:1 non-text)", () => {
+  for (const [themeName, palette] of Object.entries(FORSIGHT_PALETTES)) {
     describe(`${themeName} theme`, () => {
       palette.viz.forEach((color, i) => {
         // A chart can be drawn straight on the page (bg) or inside a Card

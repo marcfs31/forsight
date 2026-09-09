@@ -3,15 +3,15 @@
 // the path a bundler can drop if the package mis-declares `sideEffects`.
 import "@marcfs31/forsight/styles.css";
 import "./globals.css";
-import { forsAntiFlashScript } from "@marcfs31/forsight/theme";
+import { forsightAntiFlashScript } from "@marcfs31/forsight/theme";
 
-export const metadata = { title: "Fors design-system consumer fixture" };
+export const metadata = { title: "Forsight design-system consumer fixture" };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en" suppressHydrationWarning>
       <head>
-        <script dangerouslySetInnerHTML={{ __html: forsAntiFlashScript() }} />
+        <script dangerouslySetInnerHTML={{ __html: forsightAntiFlashScript() }} />
       </head>
       <body>{children}</body>
     </html>

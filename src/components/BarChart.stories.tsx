@@ -4,7 +4,7 @@ import { BarChart } from "./BarChart";
 const buckets = ["10:00", "11:00", "12:00", "13:00", "14:00", "15:00"];
 
 const meta: Meta<typeof BarChart> = {
-  title: "Fors/Data Viz/BarChart",
+  title: "Forsight/Data Viz/BarChart",
   component: BarChart,
   decorators: [
     (Story) => (

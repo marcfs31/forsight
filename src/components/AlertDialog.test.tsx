@@ -15,7 +15,7 @@ import {
 import { Button } from "./Button";
 
 // Open-state accessibility and focus behavior are verified in real Chromium
-// by the Storybook test runner (`Fors/Overlays/AlertDialog` stories) — same
+// by the Storybook test runner (`Forsight/Overlays/AlertDialog` stories) — same
 // rationale as Dialog.test.tsx.
 
 function ExampleAlertDialog() {

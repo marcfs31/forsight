@@ -12,7 +12,7 @@ import {
 import { Button } from "./Button";
 
 // Open-state accessibility and the slide animation are verified in real
-// Chromium by the Storybook test runner (`Fors/Overlays/Drawer` stories) —
+// Chromium by the Storybook test runner (`Forsight/Overlays/Drawer` stories) —
 // same rationale as Dialog.test.tsx.
 
 function ExampleDrawer(props: { side?: "start" | "end"; hideClose?: boolean }) {

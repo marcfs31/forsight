@@ -3,7 +3,7 @@ import { BoxPlot } from "./BoxPlot";
 import { formatDuration } from "../lib/chart";
 
 const meta: Meta<typeof BoxPlot> = {
-  title: "Fors/Data Viz/BoxPlot",
+  title: "Forsight/Data Viz/BoxPlot",
   component: BoxPlot,
   parameters: { layout: "fullscreen" },
 };

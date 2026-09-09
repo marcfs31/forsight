@@ -3,7 +3,7 @@ import { Spinner } from "./Spinner";
 import { Button } from "./Button";
 
 const meta: Meta<typeof Spinner> = {
-  title: "Fors/Feedback/Spinner",
+  title: "Forsight/Feedback/Spinner",
   component: Spinner,
 };
 export default meta;

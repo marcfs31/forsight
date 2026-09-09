@@ -1,7 +1,7 @@
 /**
  * Marc Fors — design tokens.
  *
- * Brand concept: "fors" (Swedish/Norwegian for rapids/waterfall) — force, flow,
+ * Brand concept: "Forsight" — from "fors" (Swedish/Norwegian for rapids/waterfall): force, flow,
  * clarity, momentum. A dark-first, engineering-forward palette: near-black ink
  * surfaces, one signature accent (Rapids Teal) for primary action, one warm
  * counterpoint (Spark Amber) for secondary emphasis.
@@ -24,44 +24,44 @@
   color-scheme: dark;
 
   /* Ink surfaces (dark-first) */
-  --fors-ink-bg: #0b0f14;
-  --fors-ink-surface: #12181f;
-  --fors-ink-surface-2: #1a222b;
-  --fors-ink-border: #232c36;
-  --fors-ink-border-subtle: #1c242d;
+  --forsight-ink-bg: #0b0f14;
+  --forsight-ink-surface: #12181f;
+  --forsight-ink-surface-2: #1a222b;
+  --forsight-ink-border: #232c36;
+  --forsight-ink-border-subtle: #1c242d;
 
   /* Foreground */
-  --fors-fg: #eaf0f5;
-  --fors-fg-secondary: #a7b4c0;
-  --fors-fg-muted: #8a95a1;
+  --forsight-fg: #eaf0f5;
+  --forsight-fg-secondary: #a7b4c0;
+  --forsight-fg-muted: #8a95a1;
 
   /* Accent — Rapids Teal (signature) */
-  --fors-accent: #16c7b0;
-  --fors-accent-hover: #3fdbc5;
-  --fors-accent-active: #10a090;
-  --fors-accent-subtle: #113330;
-  --fors-accent-fg: #04231f;
+  --forsight-accent: #16c7b0;
+  --forsight-accent-hover: #3fdbc5;
+  --forsight-accent-active: #10a090;
+  --forsight-accent-subtle: #113330;
+  --forsight-accent-fg: #04231f;
 
   /* Spark — Amber (secondary emphasis / CTA contrast) */
-  --fors-spark: #ff8a3d;
-  --fors-spark-hover: #ffa766;
-  --fors-spark-subtle: #3a2414;
-  --fors-spark-fg: #23130a;
+  --forsight-spark: #ff8a3d;
+  --forsight-spark-hover: #ffa766;
+  --forsight-spark-subtle: #3a2414;
+  --forsight-spark-fg: #23130a;
 
   /* Semantic */
-  --fors-danger: #ff5470;
-  --fors-danger-subtle: #3a1420;
-  --fors-danger-fg: #2a0a10;
+  --forsight-danger: #ff5470;
+  --forsight-danger-subtle: #3a1420;
+  --forsight-danger-fg: #2a0a10;
 
-  --fors-success: #2fd97a;
-  --fors-success-subtle: #10301f;
-  --fors-success-fg: #04170c;
+  --forsight-success: #2fd97a;
+  --forsight-success-subtle: #10301f;
+  --forsight-success-fg: #04170c;
 
-  --fors-warning: #ffc93d;
-  --fors-warning-subtle: #332a10;
-  --fors-warning-fg: #241d08;
+  --forsight-warning: #ffc93d;
+  --forsight-warning-subtle: #332a10;
+  --forsight-warning-fg: #241d08;
 
-  --fors-focus-ring: rgba(22, 199, 176, 0.45);
+  --forsight-focus-ring: rgba(22, 199, 176, 0.45);
 
   /* Categorical data-visualization series (chart marks only — never text).
      Eight fixed slots, assigned in order and never cycled: a 9th series folds
@@ -71,79 +71,79 @@
      without re-running the CVD/contrast validation recorded in
      src/tokens/__tests__/contrast.test.ts. Dark steps are selected for the dark
      surface, not derived from the light ones. */
-  --fors-viz-1: #3987e5;
-  --fors-viz-2: #d95926;
-  --fors-viz-3: #199e70;
-  --fors-viz-4: #c98500;
-  --fors-viz-5: #d55181;
-  --fors-viz-6: #008300;
-  --fors-viz-7: #9085e9;
-  --fors-viz-8: #e66767;
+  --forsight-viz-1: #3987e5;
+  --forsight-viz-2: #d95926;
+  --forsight-viz-3: #199e70;
+  --forsight-viz-4: #c98500;
+  --forsight-viz-5: #d55181;
+  --forsight-viz-6: #008300;
+  --forsight-viz-7: #9085e9;
+  --forsight-viz-8: #e66767;
 
-  /* Type families (theme-independent). Override --fors-font-sans /
-     --fors-font-heading on :root to swap in self-hosted faces — e.g. point
+  /* Type families (theme-independent). Override --forsight-font-sans /
+     --forsight-font-heading on :root to swap in self-hosted faces — e.g. point
      them at a next/font CSS variable. The names below match what
      "@marcfs31/forsight/fonts.css" loads from Google Fonts. */
-  --fors-font-sans: "Inter", system-ui, -apple-system, sans-serif;
-  --fors-font-heading: "Space Grotesk", var(--fors-font-sans);
-  --fors-font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
+  --forsight-font-sans: "Inter", system-ui, -apple-system, sans-serif;
+  --forsight-font-heading: "Space Grotesk", var(--forsight-font-sans);
+  --forsight-font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;
 
   /* Shape (theme-independent) */
-  --fors-radius-sm: 4px;
-  --fors-radius-md: 8px;
-  --fors-radius-lg: 12px;
-  --fors-radius-xl: 16px;
+  --forsight-radius-sm: 4px;
+  --forsight-radius-md: 8px;
+  --forsight-radius-lg: 12px;
+  --forsight-radius-xl: 16px;
 
   /* Motion (theme-independent; prefers-reduced-motion override in globals.css) */
-  --fors-duration-fast: 120ms;
-  --fors-duration-base: 180ms;
+  --forsight-duration-fast: 120ms;
+  --forsight-duration-base: 180ms;
 
   /* Elevation — soft, low-opacity, tuned for dark surfaces */
-  --fors-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-  --fors-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
-  --fors-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
+  --forsight-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --forsight-shadow-md: 0 4px 12px rgba(0, 0, 0, 0.45);
+  --forsight-shadow-lg: 0 12px 32px rgba(0, 0, 0, 0.5);
 }
 
 [data-theme="light"] {
   color-scheme: light;
 
-  --fors-ink-bg: #f7f9fb;
-  --fors-ink-surface: #ffffff;
-  --fors-ink-surface-2: #eef2f5;
-  --fors-ink-border: #d7dee4;
-  --fors-ink-border-subtle: #e6ebef;
+  --forsight-ink-bg: #f7f9fb;
+  --forsight-ink-surface: #ffffff;
+  --forsight-ink-surface-2: #eef2f5;
+  --forsight-ink-border: #d7dee4;
+  --forsight-ink-border-subtle: #e6ebef;
 
-  --fors-fg: #0d1420;
-  --fors-fg-secondary: #3c4650;
-  --fors-fg-muted: #5a6570;
+  --forsight-fg: #0d1420;
+  --forsight-fg-secondary: #3c4650;
+  --forsight-fg-muted: #5a6570;
 
   /* Bright dark-mode hues don't have enough contrast as light-mode text or
      solid-fill colors, so the value is darkened per theme while the semantic
      role (and its paired on-color text) stays the same. */
-  --fors-accent: #0b6c5e;
-  --fors-accent-hover: #0d7c69;
-  --fors-accent-active: #094f45;
-  --fors-accent-subtle: #e3f5f2;
-  --fors-accent-fg: #ffffff;
+  --forsight-accent: #0b6c5e;
+  --forsight-accent-hover: #0d7c69;
+  --forsight-accent-active: #094f45;
+  --forsight-accent-subtle: #e3f5f2;
+  --forsight-accent-fg: #ffffff;
 
-  --fors-spark: #a04a08;
-  --fors-spark-hover: #8a3f06;
-  --fors-spark-subtle: #fdecd9;
-  --fors-spark-fg: #ffffff;
+  --forsight-spark: #a04a08;
+  --forsight-spark-hover: #8a3f06;
+  --forsight-spark-subtle: #fdecd9;
+  --forsight-spark-fg: #ffffff;
 
-  --fors-danger: #c22a45;
-  --fors-danger-subtle: #fbe4e8;
-  --fors-danger-fg: #ffffff;
+  --forsight-danger: #c22a45;
+  --forsight-danger-subtle: #fbe4e8;
+  --forsight-danger-fg: #ffffff;
 
-  --fors-success: #157a44;
-  --fors-success-subtle: #e2f6ea;
-  --fors-success-fg: #ffffff;
+  --forsight-success: #157a44;
+  --forsight-success-subtle: #e2f6ea;
+  --forsight-success-fg: #ffffff;
 
-  --fors-warning: #8a6200;
-  --fors-warning-subtle: #fdf3d9;
-  --fors-warning-fg: #ffffff;
+  --forsight-warning: #8a6200;
+  --forsight-warning-subtle: #fdf3d9;
+  --forsight-warning-fg: #ffffff;
 
-  --fors-focus-ring: rgba(11, 108, 94, 0.45);
+  --forsight-focus-ring: rgba(11, 108, 94, 0.45);
 
   /* Light steps of the same eight hues (see the dark block). viz-3/4/5 sit
      below the 3:1 non-text contrast bar on the white surface, which the
@@ -151,19 +151,19 @@
      ships a legend and a screen-reader data table, so series identity is never
      carried by color alone. contrast.test.ts pins exactly which slots may
      take that relief. */
-  --fors-viz-1: #2a78d6;
-  --fors-viz-2: #eb6834;
-  --fors-viz-3: #1baf7a;
-  --fors-viz-4: #eda100;
-  --fors-viz-5: #e87ba4;
-  --fors-viz-6: #008300;
-  --fors-viz-7: #4a3aa7;
-  --fors-viz-8: #e34948;
+  --forsight-viz-1: #2a78d6;
+  --forsight-viz-2: #eb6834;
+  --forsight-viz-3: #1baf7a;
+  --forsight-viz-4: #eda100;
+  --forsight-viz-5: #e87ba4;
+  --forsight-viz-6: #008300;
+  --forsight-viz-7: #4a3aa7;
+  --forsight-viz-8: #e34948;
 
   /* Dark theme's 0.4-0.5 alpha black shadows read as a harsh hard drop-shadow
      on white surfaces — light theme needs much lower alpha to read as a soft
      elevation instead. */
-  --fors-shadow-sm: 0 1px 2px rgba(16, 24, 32, 0.06);
-  --fors-shadow-md: 0 4px 12px rgba(16, 24, 32, 0.08);
-  --fors-shadow-lg: 0 12px 32px rgba(16, 24, 32, 0.12);
+  --forsight-shadow-sm: 0 1px 2px rgba(16, 24, 32, 0.06);
+  --forsight-shadow-md: 0 4px 12px rgba(16, 24, 32, 0.08);
+  --forsight-shadow-lg: 0 12px 32px rgba(16, 24, 32, 0.12);
 }

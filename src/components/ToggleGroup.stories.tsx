@@ -3,7 +3,7 @@ import { expect, userEvent, within } from "@storybook/test";
 import { ToggleGroup, ToggleGroupItem } from "./ToggleGroup";
 
 const meta: Meta<typeof ToggleGroup> = {
-  title: "Fors/Forms/ToggleGroup",
+  title: "Forsight/Forms/ToggleGroup",
   component: ToggleGroup,
 };
 export default meta;

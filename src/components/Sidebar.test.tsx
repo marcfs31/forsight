@@ -27,7 +27,7 @@ function ExampleShell() {
     <SidebarProvider>
       <AppShell>
         <Sidebar label="Main navigation">
-          <SidebarHeader>Fors Corp</SidebarHeader>
+          <SidebarHeader>Forsight</SidebarHeader>
           <SidebarContent>
             <SidebarNav>
               <SidebarNavItem href="#overview" active icon={<svg aria-hidden="true" />}>

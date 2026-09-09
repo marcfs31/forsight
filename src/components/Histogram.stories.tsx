@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Histogram } from "./Histogram";
 
 const meta: Meta<typeof Histogram> = {
-  title: "Fors/Data Viz/Histogram",
+  title: "Forsight/Data Viz/Histogram",
   component: Histogram,
   parameters: { layout: "fullscreen" },
 };

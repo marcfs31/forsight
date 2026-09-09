@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Input } from "./Input";
 
 const meta: Meta<typeof Input> = {
-  title: "Fors/Forms/Input",
+  title: "Forsight/Forms/Input",
   component: Input,
   // A text field needs a programmatic label — a placeholder is not one.
   // In app code, render a `<label htmlFor>` bound to the Input's `id`;

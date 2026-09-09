@@ -3,7 +3,7 @@ import { expect, userEvent, within } from "@storybook/test";
 import { JSONViewer } from "./JSONViewer";
 
 const meta: Meta<typeof JSONViewer> = {
-  title: "Fors/Data Display/JSONViewer",
+  title: "Forsight/Data Display/JSONViewer",
   component: JSONViewer,
 };
 export default meta;

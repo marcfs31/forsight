@@ -1,7 +1,7 @@
 ---
 name: component-audit
 description: >-
-  Audit existing Fors design-system components for accessibility (WCAG 2.1 AA)
+  Audit existing Forsight design-system components for accessibility (WCAG 2.1 AA)
   and responsive behavior, and apply the fixes. Use for sweeps like "check every
   component for a11y problems", "review responsiveness across the library", "fix
   any axe warnings before release", or a pre-release hardening pass. Covers the
@@ -9,7 +9,7 @@ description: >-
   constraints, and the verification gate.
 ---
 
-# Auditing Fors components for accessibility & responsiveness
+# Auditing Forsight components for accessibility & responsiveness
 
 Use this for a **sweep** across many components. For a single new component,
 use the `new-component` skill instead (same rubric, authoring context).
@@ -94,7 +94,7 @@ npm run storybook & npm run test:storybook   # real-browser: render smoke + full
 
 `npx vitest run -u` if a DOM snapshot changed — then re-read the diff.
 
-Then eyeball Storybook — the `Fors/Overview` "Kitchen" story is the fastest
+Then eyeball Storybook — the `Forsight/Overview` "Kitchen" story is the fastest
 whole-system check — at 375px and desktop, in both themes.
 
 **Versioning** (see the `release` skill): an audit that changed a prop, ARIA

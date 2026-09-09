@@ -19,7 +19,7 @@ const ninetyDays = Array.from({ length: 90 }, (_, i) => {
 });
 
 const meta: Meta<typeof UptimeBar> = {
-  title: "Fors/Observability/UptimeBar",
+  title: "Forsight/Observability/UptimeBar",
   component: UptimeBar,
   decorators: [
     (Story) => (

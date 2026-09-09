@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Kbd } from "./Kbd";
 
 const meta: Meta<typeof Kbd> = {
-  title: "Fors/Data Display/Kbd",
+  title: "Forsight/Data Display/Kbd",
   component: Kbd,
 };
 export default meta;

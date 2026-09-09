@@ -12,7 +12,7 @@ const FRAMEWORKS = [
 ];
 
 const meta: Meta<typeof Combobox> = {
-  title: "Fors/Forms/Combobox",
+  title: "Forsight/Forms/Combobox",
   component: Combobox,
   parameters: { layout: "centered" },
 };

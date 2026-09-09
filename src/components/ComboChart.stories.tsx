@@ -3,7 +3,7 @@ import { ComboChart } from "./ComboChart";
 import { formatDuration } from "../lib/chart";
 
 const meta: Meta<typeof ComboChart> = {
-  title: "Fors/Data Viz/ComboChart",
+  title: "Forsight/Data Viz/ComboChart",
   component: ComboChart,
   parameters: { layout: "fullscreen" },
 };
