@@ -210,6 +210,26 @@ jobs:
                 fi
               fi
             fi
+            # A PR whose head moved for a reason other than falling behind —
+            # Dependabot rebasing it, or release.yml pushing a new version
+            # commit — has no check runs at all on its current head, so its
+            # required checks sit at "expected" and it never merges. Nothing
+            # else re-triggers them (the push was made with GITHUB_TOKEN), so
+            # dispatch them here whenever the head carries none of ours.
+            if [ "$state" != "BEHIND" ]; then
+              head=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json headRefOid -q .headRefOid)
+              runs=$(gh api "repos/${GITHUB_REPOSITORY}/commits/${head}/check-runs" \
+                       --jq '[.check_runs[].name] | join("|")' 2>/dev/null || echo "")
+              case "$runs" in
+                *"verify ("*) ;;
+                *)
+                  echo "#$n: no CI check runs on ${head} — dispatching"
+                  for wf in $REQUIRED_WORKFLOWS; do
+                    gh workflow run "$wf" --repo "$GITHUB_REPOSITORY" --ref "$ref" || echo "::warning::#$n: could not dispatch $wf"
+                  done
+                  ;;
+              esac
+            fi
             if [ "$state" = "BEHIND" ]; then
               before=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json headRefOid -q .headRefOid)
               after="$before"
