@@ -13,3 +13,8 @@ fixtures/**/next-env.d.ts
 .claude/settings.json
 .claude/skills/graft
 .mcp.json
+
+# botobs is a separate Go module with its own toolchain and conventions
+# (gofmt for Go source; its own README/docs style) — not part of this
+# project's formatting gate. See eslint.config.js's matching exclusion.
+botobs

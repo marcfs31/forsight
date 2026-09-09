@@ -18,6 +18,14 @@ export default tseslint.config(
       // `graft init` / `graft upgrade`.
       ".claude/helpers",
       "fixtures/**/.next",
+      // botobs is a separate Go module with its own toolchain (golangci-lint
+      // for the Go source; botobs/web is its own npm project with its own
+      // tsconfig, not part of this one). Its embedded dashboard build output
+      // (botobs/internal/api/webdist/) is checked-in minified JS/CSS, not
+      // source — linting it as if it were this project's TypeScript is what
+      // broke this exclusion's absence in the first place (1600+ false
+      // "'document' is not defined" errors from a single-line bundle).
+      "botobs",
     ],
   },
   js.configs.recommended,
