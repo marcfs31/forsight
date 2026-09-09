@@ -129,6 +129,14 @@ updates:
     directory: "/"
     schedule:
       interval: "daily"
+    ignore:
+      # changesets/action v2 requires Changesets CLI v3, which requires
+      # Node ^22.11 — so it is blocked by the same Node 20 floor as
+      # @changesets/cli, size-limit 13 and jsdom 30. It was auto-merged once
+      # (PR #21), silently stopped publishing, and had to be reverted in
+      # PR #34. Remove this together with Node 20.
+      - dependency-name: "changesets/action"
+        update-types: ["version-update:semver-major"]
     cooldown:
       # Only `default-days` here: Dependabot rejects `semver-major-days` for
       # the github-actions ecosystem ("not supported for the package
