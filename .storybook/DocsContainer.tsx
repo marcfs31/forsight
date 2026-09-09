@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { DocsContainer, type DocsContainerProps } from "@storybook/blocks";
 import { addons } from "storybook/internal/preview-api";
 import { GLOBALS_UPDATED } from "storybook/internal/core-events";
-import { forsDark, forsLight } from "./theme";
+import { forsightDark, forsightLight } from "./theme";
 
 /**
  * Docs pages follow the Theme toolbar. Storybook's stock DocsContainer takes
@@ -31,7 +31,7 @@ export function ForsDocsContainer({ context, children }: DocsContainerProps) {
   }, []);
 
   return (
-    <DocsContainer context={context} theme={theme === "light" ? forsLight : forsDark}>
+    <DocsContainer context={context} theme={theme === "light" ? forsightLight : forsightDark}>
       {children}
     </DocsContainer>
   );

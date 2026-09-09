@@ -1,7 +1,7 @@
 ---
 name: release
 description: >-
-  SemVer, Changesets, and git-tagging workflow for the Fors design system. Use
+  SemVer, Changesets, and git-tagging workflow for the Forsight design system. Use
   when deciding whether a change needs a changeset and which bump type, when
   cutting a version, when tagging a release, or when checking that versions and
   tags are in sync ("make sure everything is properly SemVered and tagged"). The
@@ -9,7 +9,7 @@ description: >-
   matching annotated `vX.Y.Z` git tag on its release commit.
 ---
 
-# Versioning & releasing the Fors design system
+# Versioning & releasing the Forsight design system
 
 Managed with [Changesets](https://github.com/changesets/changesets). Published to
 GitHub Packages (`@marcfs31/fors-design-system`). Consumers pin a version, so the

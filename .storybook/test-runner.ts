@@ -50,7 +50,7 @@ const config: TestRunnerConfig = {
 
     // `region` (content must sit inside a landmark) is a page-level rule; an
     // isolated component story has no landmarks by design, so it's off by
-    // default here. The full-page `Fors/Overview` story re-enables it via its
+    // default here. The full-page `Forsight/Overview` story re-enables it via its
     // own `parameters.a11y.options`.
     const storyOptions = storyContext.parameters?.a11y?.options ?? {};
     const axeOptions = {

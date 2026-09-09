@@ -3,7 +3,7 @@ import { expect, within } from "@storybook/test";
 import { Switch } from "./Switch";
 
 const meta: Meta<typeof Switch> = {
-  title: "Fors/Forms/Switch",
+  title: "Forsight/Forms/Switch",
   component: Switch,
   // Radix Switch renders a <button role="switch"> with no text — it always
   // needs an accessible name: an `aria-label`, or a `<label htmlFor>` bound

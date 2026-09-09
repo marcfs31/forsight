@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { StatusDot, STATUS_LABELS, type ServiceStatus } from "./StatusDot";
 
 const meta: Meta<typeof StatusDot> = {
-  title: "Fors/Observability/StatusDot",
+  title: "Forsight/Observability/StatusDot",
   component: StatusDot,
   decorators: [
     (Story) => (

@@ -3,7 +3,7 @@ import { BarList } from "./BarList";
 import { formatDuration } from "../lib/chart";
 
 const meta: Meta<typeof BarList> = {
-  title: "Fors/Data Viz/BarList",
+  title: "Forsight/Data Viz/BarList",
   component: BarList,
   decorators: [
     (Story) => (

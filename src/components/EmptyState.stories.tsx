@@ -3,7 +3,7 @@ import { EmptyState } from "./EmptyState";
 import { Button } from "./Button";
 
 const meta: Meta<typeof EmptyState> = {
-  title: "Fors/Data Display/EmptyState",
+  title: "Forsight/Data Display/EmptyState",
   component: EmptyState,
 };
 export default meta;

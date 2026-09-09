@@ -4,7 +4,7 @@ import { StatCard } from "./StatCard";
 const trend = [310, 302, 288, 296, 271, 264, 258, 249, 252, 244, 240, 248];
 
 const meta: Meta<typeof StatCard> = {
-  title: "Fors/Observability/StatCard",
+  title: "Forsight/Observability/StatCard",
   component: StatCard,
   decorators: [
     (Story) => (

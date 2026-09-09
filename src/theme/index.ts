@@ -5,21 +5,21 @@
  * setting) and switcher UI, then calls these two functions.
  */
 
-export const FORS_THEMES = ["dark", "light"] as const;
-export type ForsTheme = (typeof FORS_THEMES)[number];
+export const FORSIGHT_THEMES = ["dark", "light"] as const;
+export type ForsightTheme = (typeof FORSIGHT_THEMES)[number];
 
-/** Sets the `data-theme` attribute that every Fors token resolves against. */
-export function applyForsTheme(
-  theme: ForsTheme,
+/** Sets the `data-theme` attribute that every Forsight token resolves against. */
+export function applyForsightTheme(
+  theme: ForsightTheme,
   target: HTMLElement = document.documentElement
 ): void {
   target.setAttribute("data-theme", theme);
 }
 
-export interface ForsAntiFlashOptions {
+export interface ForsightAntiFlashOptions {
   /** localStorage key the consuming app stores its chosen theme under. */
   storageKey?: string;
-  /** Valid theme values to accept from storage — defaults to both Fors themes. */
+  /** Valid theme values to accept from storage — defaults to both Forsight themes. */
   themes?: readonly string[];
 }
 
@@ -30,9 +30,9 @@ export interface ForsAntiFlashOptions {
  * Mirrors the standard anti-flash-script pattern, exported here as a
  * parameterized utility instead of something every app hand-copies.
  */
-export function forsAntiFlashScript(opts: ForsAntiFlashOptions = {}): string {
-  const storageKey = opts.storageKey ?? "fors-theme";
-  const themes = opts.themes ?? FORS_THEMES;
+export function forsightAntiFlashScript(opts: ForsightAntiFlashOptions = {}): string {
+  const storageKey = opts.storageKey ?? "forsight-theme";
+  const themes = opts.themes ?? FORSIGHT_THEMES;
   return `(function(){try{var t=localStorage.getItem(${scriptLiteral(storageKey)});var themes=${scriptLiteral(
     themes
   )};if(t&&themes.indexOf(t)!==-1){document.documentElement.setAttribute("data-theme",t);}}catch(e){}})();`;

@@ -16,7 +16,7 @@ const shared = {
   inputBorderRadius: 8,
 };
 
-export const forsDark: ThemeVars = create({
+export const forsightDark: ThemeVars = create({
   ...shared,
   base: "dark",
   colorPrimary: "#16c7b0",
@@ -41,7 +41,7 @@ export const forsDark: ThemeVars = create({
   inputTextColor: "#eaf0f5",
 });
 
-export const forsLight: ThemeVars = create({
+export const forsightLight: ThemeVars = create({
   ...shared,
   base: "light",
   colorPrimary: "#0b6c5e",

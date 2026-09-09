@@ -6,7 +6,7 @@ import { StatusDot } from "./StatusDot";
 import { Text } from "./Text";
 
 const meta: Meta = {
-  title: "Fors/Overlays/HoverCard",
+  title: "Forsight/Overlays/HoverCard",
   parameters: { layout: "centered" },
 };
 export default meta;

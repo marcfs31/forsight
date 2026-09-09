@@ -29,7 +29,7 @@ function Example({ initial = "24h" }: { initial?: string }) {
 }
 
 const meta: Meta = {
-  title: "Fors/Observability/TimeRange",
+  title: "Forsight/Observability/TimeRange",
   decorators: [
     (Story) => (
       <div className="p-4 sm:p-8">

@@ -1,7 +1,7 @@
 ---
 name: testing
 description: >-
-  How the Fors design system is tested and how to keep coverage complete when
+  How the Forsight design system is tested and how to keep coverage complete when
   creating or modifying a component. Use when adding or changing tests, when a
   component change needs regression protection, when CI test jobs fail, or when
   deciding what kind of test a given change needs. Covers every layer (unit,
@@ -10,7 +10,7 @@ description: >-
   checklist.
 ---
 
-# Testing the Fors design system
+# Testing the Forsight design system
 
 The goal: **any error or regression introduced by creating or modifying a
 component is caught before it reaches `main`.** No single tool does that — the

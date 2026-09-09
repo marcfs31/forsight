@@ -13,7 +13,7 @@ const PinIcon = (
 );
 
 const meta: Meta<typeof Toggle> = {
-  title: "Fors/Forms/Toggle",
+  title: "Forsight/Forms/Toggle",
   component: Toggle,
 };
 export default meta;

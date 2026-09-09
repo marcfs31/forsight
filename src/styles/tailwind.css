@@ -1,11 +1,11 @@
 /**
  * Tailwind v4 integration, exported as "@marcfs31/forsight/tailwind.css".
  *
- * Maps the Fors tokens into Tailwind's theme namespaces so a consumer app on
+ * Maps the Forsight tokens into Tailwind's theme namespaces so a consumer app on
  * Tailwind v4 can use the same utility vocabulary the components are built
  * with (bg-accent, text-fg-muted, border-ink-border, rounded-md, shadow-md,
  * font-heading, ...) in its own markup. `@theme inline` emits utilities that
- * reference the --fors-* custom properties directly, so they follow the
+ * reference the --forsight-* custom properties directly, so they follow the
  * [data-theme] switch at runtime like the components do.
  *
  * Usage (consumer's global stylesheet):
@@ -18,61 +18,61 @@
  * mapping in sync with src/tailwind-preset.ts.
  */
 @theme inline {
-  --color-ink-bg: var(--fors-ink-bg);
-  --color-ink-surface: var(--fors-ink-surface);
-  --color-ink-surface-2: var(--fors-ink-surface-2);
-  --color-ink-border: var(--fors-ink-border);
-  --color-ink-border-subtle: var(--fors-ink-border-subtle);
+  --color-ink-bg: var(--forsight-ink-bg);
+  --color-ink-surface: var(--forsight-ink-surface);
+  --color-ink-surface-2: var(--forsight-ink-surface-2);
+  --color-ink-border: var(--forsight-ink-border);
+  --color-ink-border-subtle: var(--forsight-ink-border-subtle);
 
-  --color-fg: var(--fors-fg);
-  --color-fg-secondary: var(--fors-fg-secondary);
-  --color-fg-muted: var(--fors-fg-muted);
+  --color-fg: var(--forsight-fg);
+  --color-fg-secondary: var(--forsight-fg-secondary);
+  --color-fg-muted: var(--forsight-fg-muted);
 
-  --color-accent: var(--fors-accent);
-  --color-accent-hover: var(--fors-accent-hover);
-  --color-accent-active: var(--fors-accent-active);
-  --color-accent-subtle: var(--fors-accent-subtle);
-  --color-accent-fg: var(--fors-accent-fg);
+  --color-accent: var(--forsight-accent);
+  --color-accent-hover: var(--forsight-accent-hover);
+  --color-accent-active: var(--forsight-accent-active);
+  --color-accent-subtle: var(--forsight-accent-subtle);
+  --color-accent-fg: var(--forsight-accent-fg);
 
-  --color-spark: var(--fors-spark);
-  --color-spark-hover: var(--fors-spark-hover);
-  --color-spark-subtle: var(--fors-spark-subtle);
-  --color-spark-fg: var(--fors-spark-fg);
+  --color-spark: var(--forsight-spark);
+  --color-spark-hover: var(--forsight-spark-hover);
+  --color-spark-subtle: var(--forsight-spark-subtle);
+  --color-spark-fg: var(--forsight-spark-fg);
 
-  --color-danger: var(--fors-danger);
-  --color-danger-subtle: var(--fors-danger-subtle);
-  --color-danger-fg: var(--fors-danger-fg);
+  --color-danger: var(--forsight-danger);
+  --color-danger-subtle: var(--forsight-danger-subtle);
+  --color-danger-fg: var(--forsight-danger-fg);
 
-  --color-success: var(--fors-success);
-  --color-success-subtle: var(--fors-success-subtle);
-  --color-success-fg: var(--fors-success-fg);
+  --color-success: var(--forsight-success);
+  --color-success-subtle: var(--forsight-success-subtle);
+  --color-success-fg: var(--forsight-success-fg);
 
-  --color-warning: var(--fors-warning);
-  --color-warning-subtle: var(--fors-warning-subtle);
-  --color-warning-fg: var(--fors-warning-fg);
+  --color-warning: var(--forsight-warning);
+  --color-warning-subtle: var(--forsight-warning-subtle);
+  --color-warning-fg: var(--forsight-warning-fg);
 
-  --color-focus-ring: var(--fors-focus-ring);
+  --color-focus-ring: var(--forsight-focus-ring);
 
-  --color-viz-1: var(--fors-viz-1);
-  --color-viz-2: var(--fors-viz-2);
-  --color-viz-3: var(--fors-viz-3);
-  --color-viz-4: var(--fors-viz-4);
-  --color-viz-5: var(--fors-viz-5);
-  --color-viz-6: var(--fors-viz-6);
-  --color-viz-7: var(--fors-viz-7);
-  --color-viz-8: var(--fors-viz-8);
+  --color-viz-1: var(--forsight-viz-1);
+  --color-viz-2: var(--forsight-viz-2);
+  --color-viz-3: var(--forsight-viz-3);
+  --color-viz-4: var(--forsight-viz-4);
+  --color-viz-5: var(--forsight-viz-5);
+  --color-viz-6: var(--forsight-viz-6);
+  --color-viz-7: var(--forsight-viz-7);
+  --color-viz-8: var(--forsight-viz-8);
 
-  --font-heading: var(--fors-font-heading);
-  --font-sans: var(--fors-font-sans);
-  --font-mono: var(--fors-font-mono);
+  --font-heading: var(--forsight-font-heading);
+  --font-sans: var(--forsight-font-sans);
+  --font-mono: var(--forsight-font-mono);
 
-  --radius-sm: var(--fors-radius-sm);
-  --radius-md: var(--fors-radius-md);
-  --radius-lg: var(--fors-radius-lg);
-  --radius-xl: var(--fors-radius-xl);
+  --radius-sm: var(--forsight-radius-sm);
+  --radius-md: var(--forsight-radius-md);
+  --radius-lg: var(--forsight-radius-lg);
+  --radius-xl: var(--forsight-radius-xl);
 
-  --shadow-sm: var(--fors-shadow-sm);
-  --shadow-md: var(--fors-shadow-md);
-  --shadow-lg: var(--fors-shadow-lg);
-  --shadow-focus-ring: 0 0 0 3px var(--fors-focus-ring);
+  --shadow-sm: var(--forsight-shadow-sm);
+  --shadow-md: var(--forsight-shadow-md);
+  --shadow-lg: var(--forsight-shadow-lg);
+  --shadow-focus-ring: 0 0 0 3px var(--forsight-focus-ring);
 }

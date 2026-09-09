@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Alert } from "./Alert";
 
 const meta: Meta<typeof Alert> = {
-  title: "Fors/Feedback/Alert",
+  title: "Forsight/Feedback/Alert",
   component: Alert,
 };
 export default meta;

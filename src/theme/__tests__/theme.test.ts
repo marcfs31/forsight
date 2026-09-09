@@ -1,58 +1,60 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
-import { FORS_THEMES, applyForsTheme, forsAntiFlashScript } from "../index";
+import { FORSIGHT_THEMES, applyForsightTheme, forsightAntiFlashScript } from "../index";
 
 afterEach(() => {
   document.documentElement.removeAttribute("data-theme");
   localStorage.clear();
 });
 
-describe("applyForsTheme", () => {
+describe("applyForsightTheme", () => {
   it("sets data-theme on <html> by default", () => {
-    applyForsTheme("light");
+    applyForsightTheme("light");
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("sets data-theme on a custom target element", () => {
     const el = document.createElement("div");
-    applyForsTheme("dark", el);
+    applyForsightTheme("dark", el);
     expect(el.getAttribute("data-theme")).toBe("dark");
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
   });
 });
 
-describe("forsAntiFlashScript", () => {
+describe("forsightAntiFlashScript", () => {
   it("applies the stored theme before paint when a valid value is present", () => {
-    localStorage.setItem("fors-theme", "light");
-    new Function(forsAntiFlashScript())();
+    localStorage.setItem("forsight-theme", "light");
+    new Function(forsightAntiFlashScript())();
     expect(document.documentElement.getAttribute("data-theme")).toBe("light");
   });
 
   it("does nothing when localStorage has no stored theme", () => {
-    new Function(forsAntiFlashScript())();
+    new Function(forsightAntiFlashScript())();
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
   });
 
   it("does nothing when the stored value isn't a recognized theme", () => {
-    localStorage.setItem("fors-theme", "solarized");
-    new Function(forsAntiFlashScript())();
+    localStorage.setItem("forsight-theme", "solarized");
+    new Function(forsightAntiFlashScript())();
     expect(document.documentElement.hasAttribute("data-theme")).toBe(false);
   });
 
   it("honors a custom storageKey and theme list", () => {
     localStorage.setItem("acme-theme", "midnight");
-    new Function(forsAntiFlashScript({ storageKey: "acme-theme", themes: ["midnight", "day"] }))();
+    new Function(
+      forsightAntiFlashScript({ storageKey: "acme-theme", themes: ["midnight", "day"] })
+    )();
     expect(document.documentElement.getAttribute("data-theme")).toBe("midnight");
   });
 
-  it("defaults to accepting exactly FORS_THEMES", () => {
-    const script = forsAntiFlashScript();
-    for (const theme of FORS_THEMES) {
+  it("defaults to accepting exactly FORSIGHT_THEMES", () => {
+    const script = forsightAntiFlashScript();
+    for (const theme of FORSIGHT_THEMES) {
       expect(script).toContain(theme);
     }
   });
 
   it("escapes values so the script can't break out of an inline <script>", () => {
-    const script = forsAntiFlashScript({
+    const script = forsightAntiFlashScript({
       storageKey: "</script><img src=x onerror=alert(1)>",
       themes: ["dark\u2028", "light</script>"],
     });

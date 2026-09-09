@@ -3,7 +3,7 @@ import { Separator } from "./Separator";
 import { Text } from "./Text";
 
 const meta: Meta<typeof Separator> = {
-  title: "Fors/Data Display/Separator",
+  title: "Forsight/Data Display/Separator",
   component: Separator,
 };
 export default meta;

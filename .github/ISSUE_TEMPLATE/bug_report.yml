@@ -6,7 +6,7 @@ body:
     id: component
     attributes:
       label: Component / token
-      placeholder: e.g. Tabs, --fors-accent
+      placeholder: e.g. Tabs, --forsight-accent
     validations:
       required: true
   - type: textarea

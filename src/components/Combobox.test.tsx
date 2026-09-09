@@ -5,7 +5,7 @@ import { axe } from "../test-utils/axe";
 import { Combobox } from "./Combobox";
 
 // Open-state accessibility is verified in real Chromium by the Storybook
-// test runner (`Fors/Forms/Combobox` stories) — same rationale as
+// test runner (`Forsight/Forms/Combobox` stories) — same rationale as
 // Dialog.test.tsx / Popover's portalled content.
 
 const FRAMEWORKS = [

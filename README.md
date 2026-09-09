@@ -9,7 +9,7 @@ This package is the **observability fork** of [`@marcfs31/fors-design-system`](h
 
 **[Browse the component library →](https://marcfs31.github.io/forsight/)** (Storybook, deployed from `main`)
 
-**Brand concept.** "Fors" is Swedish/Norwegian for rapids — force, flow, clarity, momentum. The palette is dark-first and engineering-forward: near-black ink surfaces, a signature Rapids Teal accent, a Spark Amber secondary, Inter for body/UI text, Space Grotesk for headings. A light theme is included for apps that need it — see [Theming](#theming) below.
+**Brand concept.** "Forsight" is built on _fors_, Swedish/Norwegian for rapids — force, flow, clarity, momentum — and on the foresight an observability tool is meant to give you. The palette is dark-first and engineering-forward: near-black ink surfaces, a signature Rapids Teal accent, a Spark Amber secondary, Inter for body/UI text, Space Grotesk for headings. A light theme is included for apps that need it — see [Theming](#theming) below.
 
 **Compatibility.** React 18 and 19 · Next.js App Router, [RSC-ready](#using-with-nextjs) (the components entry ships `"use client"`) · ESM + CJS, validated with `publint`/`arethetypeswrong` on every resolution mode.
 
@@ -54,7 +54,7 @@ Package entries:
 | Import                               | What it is                                                                                                                                                                                                        |
 | ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `@marcfs31/forsight`                 | The components. Every one is interactive (hooks / Radix), so the bundle ships a `"use client"` directive — usable directly inside a React Server Component tree with no wrapper.                                  |
-| `@marcfs31/forsight/theme`           | Server-safe utilities (`applyForsTheme`, `forsAntiFlashScript`, the raw palettes, `cn`). No `"use client"` — call these from a Server Component (e.g. a Next.js root layout).                                     |
+| `@marcfs31/forsight/theme`           | Server-safe utilities (`applyForsightTheme`, `forsightAntiFlashScript`, the raw palettes, `cn`). No `"use client"` — call these from a Server Component (e.g. a Next.js root layout).                             |
 | `@marcfs31/forsight/styles.css`      | **Required.** Design tokens + compiled component styles. Tailwind's component/utility layers only (no Preflight reset, no network calls) — safe alongside an app that runs its own Tailwind base and its own CSP. |
 | `@marcfs31/forsight/tailwind.css`    | Optional, Tailwind **v4** apps: `@theme` mapping so your own markup can use the token utilities (`bg-accent`, `text-fg-muted`, `rounded-md`, …). See [Tailwind](#tailwind).                                       |
 | `@marcfs31/forsight/tailwind-preset` | Optional, Tailwind **v3** apps: the same mapping as a preset for `tailwind.config`. See [Tailwind](#tailwind).                                                                                                    |
@@ -64,7 +64,7 @@ Runtime dependencies (Radix primitives, `cmdk`, `react-day-picker`, `class-varia
 
 ### Tailwind
 
-The components are already styled by `styles.css`; you don't need Tailwind to use them. If your app _does_ use Tailwind and you want the Fors token vocabulary available in your own markup, add the matching integration:
+The components are already styled by `styles.css`; you don't need Tailwind to use them. If your app _does_ use Tailwind and you want the Forsight token vocabulary available in your own markup, add the matching integration:
 
 **Tailwind v4** — in your global stylesheet:
 
@@ -76,15 +76,15 @@ The components are already styled by `styles.css`; you don't need Tailwind to us
 **Tailwind v3** — in `tailwind.config.ts`:
 
 ```ts
-import forsPreset from "@marcfs31/forsight/tailwind-preset";
+import forsightPreset from "@marcfs31/forsight/tailwind-preset";
 
 export default {
-  presets: [forsPreset],
+  presets: [forsightPreset],
   content: ["./app/**/*.{ts,tsx}", "./components/**/*.{ts,tsx}"],
 };
 ```
 
-Either way you then get `bg-ink-surface`, `text-fg-secondary`, `border-ink-border`, `bg-accent` / `text-accent-fg`, `bg-danger-subtle`, `rounded-md`, `shadow-md`, `font-heading`, and so on — every value resolves through the `--fors-*` custom properties, so it follows the [theme switch](#theming) at runtime. (Tailwind v4 has no duration namespace; use `duration-[var(--fors-duration-fast)]` / `duration-[var(--fors-duration-base)]` for the motion tokens.)
+Either way you then get `bg-ink-surface`, `text-fg-secondary`, `border-ink-border`, `bg-accent` / `text-accent-fg`, `bg-danger-subtle`, `rounded-md`, `shadow-md`, `font-heading`, and so on — every value resolves through the `--forsight-*` custom properties, so it follows the [theme switch](#theming) at runtime. (Tailwind v4 has no duration namespace; use `duration-[var(--forsight-duration-fast)]` / `duration-[var(--forsight-duration-base)]` for the motion tokens.)
 
 ### Fonts
 
@@ -92,7 +92,7 @@ Either way you then get `bg-ink-surface`, `text-fg-secondary`, `border-ink-borde
 
 - **Quickest**: `import "@marcfs31/forsight/fonts.css"` — loads both from Google Fonts.
 - **Next.js / production**: use `next/font` and point the tokens at it (see [Using with Next.js](#using-with-nextjs)).
-- **Self-hosted**: set `--fors-font-sans` / `--fors-font-heading` on `:root` to your own stack — every component reads the font through those two CSS variables.
+- **Self-hosted**: set `--forsight-font-sans` / `--forsight-font-heading` on `:root` to your own stack — every component reads the font through those two CSS variables.
 
 Without any of the above, text falls back to `system-ui` — never invisible, just not on-brand.
 
@@ -101,13 +101,13 @@ Without any of the above, text falls back to `system-ui` — never invisible, ju
 Dark is the default — nothing to configure. For an app that also needs light mode, import the theme utilities from the **server-safe entry** and own the switcher/persistence yourself:
 
 ```tsx
-import { applyForsTheme, forsAntiFlashScript } from "@marcfs31/forsight/theme";
+import { applyForsightTheme, forsightAntiFlashScript } from "@marcfs31/forsight/theme";
 
 // In your root layout's <head>, before hydration:
-<script dangerouslySetInnerHTML={{ __html: forsAntiFlashScript() }} />;
+<script dangerouslySetInnerHTML={{ __html: forsightAntiFlashScript() }} />;
 
 // Wherever the user toggles theme:
-applyForsTheme("light");
+applyForsightTheme("light");
 ```
 
 ## Using with Next.js
@@ -117,7 +117,7 @@ App Router, Server Components, `next/font` — all supported.
 ```tsx
 // app/layout.tsx (Server Component — no "use client" needed here)
 import "@marcfs31/forsight/styles.css";
-import { forsAntiFlashScript } from "@marcfs31/forsight/theme";
+import { forsightAntiFlashScript } from "@marcfs31/forsight/theme";
 import { Inter, Space_Grotesk } from "next/font/google";
 
 const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
@@ -131,14 +131,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${inter.variable} ${spaceGrotesk.variable}`}
       style={
         {
-          "--fors-font-sans": "var(--font-inter)",
-          "--fors-font-heading": "var(--font-space-grotesk)",
+          "--forsight-font-sans": "var(--font-inter)",
+          "--forsight-font-heading": "var(--font-space-grotesk)",
         } as React.CSSProperties
       }
     >
       <head>
         {/* Applies a stored theme before paint — no flash of the wrong theme. */}
-        <script dangerouslySetInnerHTML={{ __html: forsAntiFlashScript() }} />
+        <script dangerouslySetInnerHTML={{ __html: forsightAntiFlashScript() }} />
       </head>
       <body>{children}</body>
     </html>
@@ -207,7 +207,7 @@ Charts are drawn as SVG from this repo's own geometry helpers (`niceScale`, `lin
 
 Three rules the charts hold to, which is most of what makes them readable:
 
-- **Series colors are eight fixed slots**, `--fors-viz-1` … `--fors-viz-8`, assigned in order and never cycled. The ordering is the colorblind-safety mechanism: adjacent slots are the pairs a stack or a legend puts side by side, and every adjacent pair clears the CVD and normal-vision separation floors in both themes. A ninth series is drawn neutral — the signal to fold the tail into "Other" or use small multiples.
+- **Series colors are eight fixed slots**, `--forsight-viz-1` … `--forsight-viz-8`, assigned in order and never cycled. The ordering is the colorblind-safety mechanism: adjacent slots are the pairs a stack or a legend puts side by side, and every adjacent pair clears the CVD and normal-vision separation floors in both themes. A ninth series is drawn neutral — the signal to fold the tail into "Other" or use small multiples.
 - **A chart is a picture and a table.** Every plot renders its data as a visually hidden `<table>` (or, for `Heatmap` and `TraceWaterfall`, _is_ a real table), so the numbers are never available only to sighted readers. `Sparkline` summarizes instead — count, low, high, latest — because forty cells at that size help nobody.
 - **The cursor is keyboard-reachable.** Hovering a plot reads a point out; so does focusing it and pressing Arrow/Home/End, with Escape to dismiss. Identity always has a text carrier (legend, direct label, printed value) beside the color.
 

@@ -1,17 +1,17 @@
 ---
 name: new-component
 description: >-
-  Create or design a new component for the Fors design system. Use whenever the
+  Create or design a new component for the Forsight design system. Use whenever the
   task is to add, scaffold, build, or design a new component (e.g. "add a
   Combobox", "build a DatePicker", "we need a Stepper component") — it defines
   the file set, the code conventions, and the accessibility, responsiveness,
-  testing, and versioning gates every Fors component must pass before it lands
+  testing, and versioning gates every Forsight component must pass before it lands
   on main.
 ---
 
-# Adding a component to the Fors design system
+# Adding a component to the Forsight design system
 
-This system ships to every Fors app (client and in-house). A component that is
+This system ships to every Forsight app (client and in-house). A component that is
 wrong here is wrong everywhere. The bar is: **tested, accessible (WCAG 2.1 AA),
 responsive, versioned.** Nothing merges to `main` until every gate below passes.
 
@@ -23,12 +23,12 @@ Related skills: **`testing`** (the full test pyramid + per-change checklist),
 
 For a component named `Thing`, create all of:
 
-| File                               | Purpose                                                                                                                                                                                     |
-| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `src/components/Thing.tsx`         | the component                                                                                                                                                                               |
-| `src/components/Thing.stories.tsx` | 2–5 realistic named-export stories; `title: "Fors/<Category>/Thing"` — Typography, Forms, Overlays, Feedback, Data Display, or Navigation (sidebar order is set in `.storybook/preview.ts`) |
-| `src/components/Thing.test.tsx`    | behavior + keyboard + `axe` tests                                                                                                                                                           |
-| `src/index.ts`                     | add the `export { Thing, type ThingProps }` line (keep alphabetical-ish grouping already there)                                                                                             |
+| File                               | Purpose                                                                                                                                                                                         |
+| ---------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `src/components/Thing.tsx`         | the component                                                                                                                                                                                   |
+| `src/components/Thing.stories.tsx` | 2–5 realistic named-export stories; `title: "Forsight/<Category>/Thing"` — Typography, Forms, Overlays, Feedback, Data Display, or Navigation (sidebar order is set in `.storybook/preview.ts`) |
+| `src/components/Thing.test.tsx`    | behavior + keyboard + `axe` tests                                                                                                                                                               |
+| `src/index.ts`                     | add the `export { Thing, type ThingProps }` line (keep alphabetical-ish grouping already there)                                                                                                 |
 
 Then `npx changeset` → **minor** bump, summary describing the new component (that text becomes the CHANGELOG entry).
 
@@ -87,7 +87,7 @@ size). The component-authoring minimum:
 Prefer composing existing tokens. If a new one is truly needed, update **all four** in the same change:
 
 1. `src/styles/tokens.css` — the `:root` block **and** the `[data-theme="light"]` block (a light value that clears contrast).
-2. `src/tokens/palettes.ts` — the `DARK_PALETTE` / `LIGHT_PALETTE` objects and the `ForsPalette` type.
+2. `src/tokens/palettes.ts` — the `DARK_PALETTE` / `LIGHT_PALETTE` objects and the `ForsightPalette` type.
 3. `tailwind.config.ts` — map it into the utility vocabulary.
 4. `src/tokens/__tests__/contrast.test.ts` — assert its fg/bg pairing passes AA in both themes.
 
@@ -108,6 +108,6 @@ npm run build-storybook
 npm run storybook & npm run test:storybook   # real-browser render smoke + full axe + play tests
 ```
 
-Then verify visually in Storybook at mobile (375px) and desktop, in **both** themes (Theme toolbar) and **both** directions (Direction toolbar), plus the `Fors/Overview` "Kitchen"/"KitchenSinkRTL" stories if the component belongs there.
+Then verify visually in Storybook at mobile (375px) and desktop, in **both** themes (Theme toolbar) and **both** directions (Direction toolbar), plus the `Forsight/Overview` "Kitchen"/"KitchenSinkRTL" stories if the component belongs there.
 
 **Versioning** (see the `release` skill): `npx changeset` → **minor** for a new component; commit the `.changeset/*.md` with the code. The version bump + tag is a separate release step.

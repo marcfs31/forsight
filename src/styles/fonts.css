@@ -5,6 +5,6 @@
  *
  * Quick start / non-framework use:  import both stylesheets.
  * Next.js / production:  skip this, load the faces with `next/font` (or
- *   self-host), and point --fors-font-sans / --fors-font-heading at them.
+ *   self-host), and point --forsight-font-sans / --forsight-font-heading at them.
  */
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");

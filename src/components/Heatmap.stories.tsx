@@ -4,7 +4,7 @@ import { Heatmap } from "./Heatmap";
 const hours = Array.from({ length: 12 }, (_, i) => String(i * 2).padStart(2, "0"));
 
 const meta: Meta<typeof Heatmap> = {
-  title: "Fors/Data Viz/Heatmap",
+  title: "Forsight/Data Viz/Heatmap",
   component: Heatmap,
   decorators: [
     (Story) => (

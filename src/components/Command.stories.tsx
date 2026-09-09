@@ -13,7 +13,7 @@ import {
 } from "./Command";
 
 const meta: Meta = {
-  title: "Fors/Overlays/Command",
+  title: "Forsight/Overlays/Command",
   parameters: { layout: "fullscreen" },
 };
 export default meta;

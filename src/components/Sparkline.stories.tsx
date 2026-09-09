@@ -4,7 +4,7 @@ import { Sparkline } from "./Sparkline";
 const samples = [42, 48, 39, 51, 61, 55, 72, 68, 81, 76, 90, 84];
 
 const meta: Meta<typeof Sparkline> = {
-  title: "Fors/Data Viz/Sparkline",
+  title: "Forsight/Data Viz/Sparkline",
   component: Sparkline,
   decorators: [
     (Story) => (

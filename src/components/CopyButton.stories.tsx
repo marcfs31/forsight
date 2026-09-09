@@ -3,7 +3,7 @@ import { expect, userEvent, within, waitFor } from "@storybook/test";
 import { CopyButton } from "./CopyButton";
 
 const meta: Meta<typeof CopyButton> = {
-  title: "Fors/Data Display/CopyButton",
+  title: "Forsight/Data Display/CopyButton",
   component: CopyButton,
 };
 export default meta;

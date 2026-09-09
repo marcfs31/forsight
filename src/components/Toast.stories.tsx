@@ -9,7 +9,7 @@ import {
 } from "./Toast";
 
 const meta: Meta = {
-  title: "Fors/Overlays/Toast",
+  title: "Forsight/Overlays/Toast",
   parameters: { layout: "fullscreen" },
 };
 export default meta;
@@ -21,7 +21,7 @@ export const Default: Story = {
       <ToastRoot open>
         <div className="flex-1">
           <ToastTitle>Deployed</ToastTitle>
-          <ToastDescription>fors-client-portal is live at v14.</ToastDescription>
+          <ToastDescription>forsight-client-portal is live at v14.</ToastDescription>
         </div>
         <ToastClose />
       </ToastRoot>
@@ -51,7 +51,7 @@ export const Success: Story = {
       <ToastRoot open variant="success">
         <div className="flex-1">
           <ToastTitle>Invite sent</ToastTitle>
-          <ToastDescription>marc@fors.dev was invited to the team.</ToastDescription>
+          <ToastDescription>marc@forsight.dev was invited to the team.</ToastDescription>
         </div>
         <ToastClose />
       </ToastRoot>

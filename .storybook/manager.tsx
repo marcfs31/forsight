@@ -3,7 +3,7 @@ import { addons, types, useGlobals, useStorybookApi } from "storybook/internal/m
 import { IconButton } from "storybook/internal/components";
 import { ArrowLeftIcon, ArrowRightIcon, MoonIcon, SunIcon } from "@storybook/icons";
 import { GLOBALS_UPDATED, SET_GLOBALS } from "storybook/internal/core-events";
-import { forsDark, forsLight } from "./theme";
+import { forsightDark, forsightLight } from "./theme";
 
 /**
  * One `theme` global drives everything: the stories (data-theme, set in
@@ -13,10 +13,10 @@ import { forsDark, forsLight } from "./theme";
  * re-themes the manager whenever the theme global changes, from any source
  * (the button, the URL's `globals=theme:light`, or a story's own globals).
  */
-const ADDON_ID = "fors/theme";
+const ADDON_ID = "forsight/theme";
 
 function themeFor(globals: Record<string, unknown>) {
-  return globals.theme === "light" ? forsLight : forsDark;
+  return globals.theme === "light" ? forsightLight : forsightDark;
 }
 
 function ThemeToggle() {
@@ -86,4 +86,4 @@ addons.register(ADDON_ID, (api) => {
 });
 
 // Before the preview reports its globals, paint the brand default.
-addons.setConfig({ theme: forsDark });
+addons.setConfig({ theme: forsightDark });

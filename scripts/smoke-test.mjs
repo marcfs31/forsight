@@ -81,21 +81,24 @@ check('theme entry has NO "use client" directive', () => {
 });
 check("theme entry exports the server-safe utilities", () => {
   return (
-    typeof theme.applyForsTheme === "function" &&
-    typeof theme.forsAntiFlashScript === "function" &&
-    Array.isArray(theme.FORS_THEMES) &&
-    typeof theme.FORS_PALETTES === "object" &&
+    typeof theme.applyForsightTheme === "function" &&
+    typeof theme.forsightAntiFlashScript === "function" &&
+    Array.isArray(theme.FORSIGHT_THEMES) &&
+    typeof theme.FORSIGHT_PALETTES === "object" &&
     typeof theme.cn === "function"
   );
 });
 check("theme entry is NOT re-exported from the components entry", () => {
-  return mod.applyForsTheme === undefined && mod.FORS_PALETTES === undefined;
+  return mod.applyForsightTheme === undefined && mod.FORSIGHT_PALETTES === undefined;
 });
-check("forsAntiFlashScript() returns a non-empty string", () => {
-  return typeof theme.forsAntiFlashScript() === "string" && theme.forsAntiFlashScript().length > 0;
+check("forsightAntiFlashScript() returns a non-empty string", () => {
+  return (
+    typeof theme.forsightAntiFlashScript() === "string" &&
+    theme.forsightAntiFlashScript().length > 0
+  );
 });
-check("FORS_THEMES contains dark and light", () => {
-  return theme.FORS_THEMES.includes("dark") && theme.FORS_THEMES.includes("light");
+check("FORSIGHT_THEMES contains dark and light", () => {
+  return theme.FORSIGHT_THEMES.includes("dark") && theme.FORSIGHT_THEMES.includes("light");
 });
 
 const EXPECTED_COMPONENT_EXPORTS = [
@@ -200,7 +203,7 @@ check(
   "styles.css was actually processed by Tailwind (no literal @tailwind directives left)",
   () => !css.includes("@tailwind")
 );
-check("styles.css contains compiled component styles", () => css.includes("--fors-accent"));
+check("styles.css contains compiled component styles", () => css.includes("--forsight-accent"));
 check("styles.css makes no network calls (no webfont @import)", () => !css.includes("@import"));
 check("styles.css is non-trivial in size", () => statSync(distStyles).size > 1000);
 

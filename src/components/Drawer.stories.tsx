@@ -14,7 +14,7 @@ import { Button } from "./Button";
 import { Text } from "./Text";
 
 const meta: Meta = {
-  title: "Fors/Overlays/Drawer",
+  title: "Forsight/Overlays/Drawer",
   parameters: { layout: "fullscreen" },
 };
 export default meta;

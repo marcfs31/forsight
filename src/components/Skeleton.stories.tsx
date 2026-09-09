@@ -3,7 +3,7 @@ import { Skeleton } from "./Skeleton";
 import { Card, CardHeader, CardContent } from "./Card";
 
 const meta: Meta<typeof Skeleton> = {
-  title: "Fors/Feedback/Skeleton",
+  title: "Forsight/Feedback/Skeleton",
   component: Skeleton,
 };
 export default meta;

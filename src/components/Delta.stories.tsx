@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Delta } from "./Delta";
 
 const meta: Meta<typeof Delta> = {
-  title: "Fors/Observability/Delta",
+  title: "Forsight/Observability/Delta",
   component: Delta,
   decorators: [
     (Story) => (

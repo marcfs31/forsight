@@ -4,93 +4,93 @@ import animate from "tailwindcss-animate";
 /**
  * Tailwind v3 preset, exported as "@marcfs31/forsight/tailwind-preset".
  *
- * Maps the Fors tokens (CSS custom properties in src/styles/tokens.css) into
+ * Maps the Forsight tokens (CSS custom properties in src/styles/tokens.css) into
  * the `bg-*` / `text-*` / `border-*` / `rounded-*` / `shadow-*` utility
  * vocabulary the components are built with, so a consumer app on Tailwind v3
  * can use the same class names in its own markup:
  *
  *   // tailwind.config.ts
- *   import forsPreset from "@marcfs31/forsight/tailwind-preset";
- *   export default { presets: [forsPreset], content: [...] };
+ *   import forsightPreset from "@marcfs31/forsight/tailwind-preset";
+ *   export default { presets: [forsightPreset], content: [...] };
  *
  * This repo's own tailwind.config.ts consumes the same preset. Tailwind v4
  * consumers use the "@marcfs31/forsight/tailwind.css" export instead.
  * Keep both in sync.
  */
-const forsPreset: Partial<Config> = {
+const forsightPreset: Partial<Config> = {
   theme: {
     extend: {
       colors: {
         ink: {
-          bg: "var(--fors-ink-bg)",
-          surface: "var(--fors-ink-surface)",
-          "surface-2": "var(--fors-ink-surface-2)",
-          border: "var(--fors-ink-border)",
-          "border-subtle": "var(--fors-ink-border-subtle)",
+          bg: "var(--forsight-ink-bg)",
+          surface: "var(--forsight-ink-surface)",
+          "surface-2": "var(--forsight-ink-surface-2)",
+          border: "var(--forsight-ink-border)",
+          "border-subtle": "var(--forsight-ink-border-subtle)",
         },
         fg: {
-          DEFAULT: "var(--fors-fg)",
-          secondary: "var(--fors-fg-secondary)",
-          muted: "var(--fors-fg-muted)",
+          DEFAULT: "var(--forsight-fg)",
+          secondary: "var(--forsight-fg-secondary)",
+          muted: "var(--forsight-fg-muted)",
         },
         accent: {
-          DEFAULT: "var(--fors-accent)",
-          hover: "var(--fors-accent-hover)",
-          active: "var(--fors-accent-active)",
-          subtle: "var(--fors-accent-subtle)",
-          fg: "var(--fors-accent-fg)",
+          DEFAULT: "var(--forsight-accent)",
+          hover: "var(--forsight-accent-hover)",
+          active: "var(--forsight-accent-active)",
+          subtle: "var(--forsight-accent-subtle)",
+          fg: "var(--forsight-accent-fg)",
         },
         spark: {
-          DEFAULT: "var(--fors-spark)",
-          hover: "var(--fors-spark-hover)",
-          subtle: "var(--fors-spark-subtle)",
-          fg: "var(--fors-spark-fg)",
+          DEFAULT: "var(--forsight-spark)",
+          hover: "var(--forsight-spark-hover)",
+          subtle: "var(--forsight-spark-subtle)",
+          fg: "var(--forsight-spark-fg)",
         },
         danger: {
-          DEFAULT: "var(--fors-danger)",
-          subtle: "var(--fors-danger-subtle)",
-          fg: "var(--fors-danger-fg)",
+          DEFAULT: "var(--forsight-danger)",
+          subtle: "var(--forsight-danger-subtle)",
+          fg: "var(--forsight-danger-fg)",
         },
         success: {
-          DEFAULT: "var(--fors-success)",
-          subtle: "var(--fors-success-subtle)",
-          fg: "var(--fors-success-fg)",
+          DEFAULT: "var(--forsight-success)",
+          subtle: "var(--forsight-success-subtle)",
+          fg: "var(--forsight-success-fg)",
         },
         warning: {
-          DEFAULT: "var(--fors-warning)",
-          subtle: "var(--fors-warning-subtle)",
-          fg: "var(--fors-warning-fg)",
+          DEFAULT: "var(--forsight-warning)",
+          subtle: "var(--forsight-warning-subtle)",
+          fg: "var(--forsight-warning-fg)",
         },
-        "focus-ring": "var(--fors-focus-ring)",
-        "viz-1": "var(--fors-viz-1)",
-        "viz-2": "var(--fors-viz-2)",
-        "viz-3": "var(--fors-viz-3)",
-        "viz-4": "var(--fors-viz-4)",
-        "viz-5": "var(--fors-viz-5)",
-        "viz-6": "var(--fors-viz-6)",
-        "viz-7": "var(--fors-viz-7)",
-        "viz-8": "var(--fors-viz-8)",
+        "focus-ring": "var(--forsight-focus-ring)",
+        "viz-1": "var(--forsight-viz-1)",
+        "viz-2": "var(--forsight-viz-2)",
+        "viz-3": "var(--forsight-viz-3)",
+        "viz-4": "var(--forsight-viz-4)",
+        "viz-5": "var(--forsight-viz-5)",
+        "viz-6": "var(--forsight-viz-6)",
+        "viz-7": "var(--forsight-viz-7)",
+        "viz-8": "var(--forsight-viz-8)",
       },
       fontFamily: {
-        heading: "var(--fors-font-heading)",
-        sans: "var(--fors-font-sans)",
-        mono: "var(--fors-font-mono)",
+        heading: "var(--forsight-font-heading)",
+        sans: "var(--forsight-font-sans)",
+        mono: "var(--forsight-font-mono)",
       },
       borderRadius: {
-        sm: "var(--fors-radius-sm)",
-        md: "var(--fors-radius-md)",
-        lg: "var(--fors-radius-lg)",
-        xl: "var(--fors-radius-xl)",
+        sm: "var(--forsight-radius-sm)",
+        md: "var(--forsight-radius-md)",
+        lg: "var(--forsight-radius-lg)",
+        xl: "var(--forsight-radius-xl)",
       },
       transitionDuration: {
-        fast: "var(--fors-duration-fast)",
-        base: "var(--fors-duration-base)",
+        fast: "var(--forsight-duration-fast)",
+        base: "var(--forsight-duration-base)",
       },
       boxShadow: {
-        sm: "var(--fors-shadow-sm)",
-        md: "var(--fors-shadow-md)",
-        lg: "var(--fors-shadow-lg)",
-        "focus-ring": "0 0 0 3px var(--fors-focus-ring)",
+        sm: "var(--forsight-shadow-sm)",
+        md: "var(--forsight-shadow-md)",
+        lg: "var(--forsight-shadow-lg)",
+        "focus-ring": "0 0 0 3px var(--forsight-focus-ring)",
       },
       keyframes: {
         // tailwindcss-animate's fade/zoom/slide utilities cover every other
@@ -116,14 +116,14 @@ const forsPreset: Partial<Config> = {
         },
       },
       animation: {
-        "accordion-down": "accordion-down var(--fors-duration-base) ease-out",
-        "accordion-up": "accordion-up var(--fors-duration-base) ease-out",
-        "collapsible-down": "collapsible-down var(--fors-duration-base) ease-out",
-        "collapsible-up": "collapsible-up var(--fors-duration-base) ease-out",
+        "accordion-down": "accordion-down var(--forsight-duration-base) ease-out",
+        "accordion-up": "accordion-up var(--forsight-duration-base) ease-out",
+        "collapsible-down": "collapsible-down var(--forsight-duration-base) ease-out",
+        "collapsible-up": "collapsible-up var(--forsight-duration-base) ease-out",
       },
     },
   },
   plugins: [animate],
 };
 
-export default forsPreset;
+export default forsightPreset;

@@ -4,7 +4,7 @@ import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
 import { Calendar, DatePicker, DateRangePicker, type DateRangePickerProps } from "./Calendar";
 
 const meta: Meta = {
-  title: "Fors/Forms/Calendar",
+  title: "Forsight/Forms/Calendar",
   parameters: { layout: "fullscreen" },
 };
 export default meta;

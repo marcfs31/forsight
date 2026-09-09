@@ -14,7 +14,7 @@ const OPTIONS: FilterBarOption[] = [
 ];
 
 const meta: Meta<typeof FilterBar> = {
-  title: "Fors/Navigation/FilterBar",
+  title: "Forsight/Navigation/FilterBar",
   component: FilterBar,
 };
 export default meta;

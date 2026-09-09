@@ -2,7 +2,7 @@ import type { Meta, StoryObj } from "@storybook/react";
 import { Textarea } from "./Textarea";
 
 const meta: Meta<typeof Textarea> = {
-  title: "Fors/Forms/Textarea",
+  title: "Forsight/Forms/Textarea",
   component: Textarea,
   // Like Input: needs a real label. App code binds a `<label htmlFor>` to
   // the Textarea's `id`; the stories use `aria-label` to stay compact.

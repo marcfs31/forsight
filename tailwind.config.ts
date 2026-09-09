@@ -1,5 +1,5 @@
 import type { Config } from "tailwindcss";
-import forsPreset from "./src/tailwind-preset";
+import forsightPreset from "./src/tailwind-preset";
 
 /**
  * Repo-local Tailwind config (Storybook + the shipped styles.css build).
@@ -7,6 +7,6 @@ import forsPreset from "./src/tailwind-preset";
  * published for Tailwind v3 consumers; this file only adds the content scan.
  */
 export default {
-  presets: [forsPreset],
+  presets: [forsightPreset],
   content: ["./src/**/*.{ts,tsx}", "./.storybook/**/*.{ts,tsx}"],
 } satisfies Config;

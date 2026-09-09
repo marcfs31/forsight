@@ -285,7 +285,7 @@ const cases: Record<string, React.ReactElement> = {
     </span>
   ),
   "CopyButton/idle": <CopyButton value="hello world" />,
-  "CodeBlock/with-label": <CodeBlock code="npm install fors" label="Terminal" />,
+  "CodeBlock/with-label": <CodeBlock code="npm install forsight" label="Terminal" />,
   "Collapsible/closed": (
     <Collapsible>
       <CollapsibleTrigger>Show more</CollapsibleTrigger>
@@ -303,7 +303,7 @@ const cases: Record<string, React.ReactElement> = {
   "Sidebar/expanded": (
     <SidebarProvider>
       <Sidebar label="Main navigation">
-        <SidebarHeader>Fors Corp</SidebarHeader>
+        <SidebarHeader>Forsight</SidebarHeader>
         <SidebarNav>
           <SidebarNavItem href="#a" active>
             Overview

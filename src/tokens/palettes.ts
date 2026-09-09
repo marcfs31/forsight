@@ -6,7 +6,7 @@
  * two files drifting apart in general.
  */
 
-export interface ForsPalette {
+export interface ForsightPalette {
   bg: string;
   surface: string;
   surface2: string;
@@ -35,7 +35,7 @@ export interface ForsPalette {
   viz: readonly [string, string, string, string, string, string, string, string];
 }
 
-export const DARK_PALETTE: ForsPalette = {
+export const DARK_PALETTE: ForsightPalette = {
   bg: "#0b0f14",
   surface: "#12181f",
   surface2: "#1a222b",
@@ -63,7 +63,7 @@ export const DARK_PALETTE: ForsPalette = {
   viz: ["#3987e5", "#d95926", "#199e70", "#c98500", "#d55181", "#008300", "#9085e9", "#e66767"],
 };
 
-export const LIGHT_PALETTE: ForsPalette = {
+export const LIGHT_PALETTE: ForsightPalette = {
   bg: "#f7f9fb",
   surface: "#ffffff",
   surface2: "#eef2f5",
@@ -91,4 +91,4 @@ export const LIGHT_PALETTE: ForsPalette = {
   viz: ["#2a78d6", "#eb6834", "#1baf7a", "#eda100", "#e87ba4", "#008300", "#4a3aa7", "#e34948"],
 };
 
-export const FORS_PALETTES = { dark: DARK_PALETTE, light: LIGHT_PALETTE } as const;
+export const FORSIGHT_PALETTES = { dark: DARK_PALETTE, light: LIGHT_PALETTE } as const;
