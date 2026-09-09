@@ -1,6 +1,6 @@
 # Contributing
 
-This is Fors Corporation's internal design system — the source of truth for every component every Fors app (client or in-house) builds on. Changes here ship to every consumer, so the bar is: tested, accessible, and versioned correctly.
+This is Marc Fors's internal design system — the source of truth for every component every Fors app (client or in-house) builds on. Changes here ship to every consumer, so the bar is: tested, accessible, and versioned correctly.
 
 ## Setup
 
