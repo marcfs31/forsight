@@ -76,7 +76,16 @@ describe("BarChart", () => {
   it("ignores a pointer event with no coordinates", () => {
     const { container } = render(<BarChart label="Responses" labels={labels} series={series} />);
     const plot = container.querySelector("[tabindex='0']") as HTMLElement;
-    fireEvent.pointerMove(plot);
+    // The guard under test fires when a pointer event carries no usable
+    // coordinate. It cannot be reached through fireEvent's init object any
+    // more: jsdom 30 implements PointerEvent properly, and `clientX` is a
+    // WebIDL `long`, so both an omitted value and NaN arrive as 0 — a
+    // perfectly valid coordinate the component is right to honour. Defining
+    // the property on a constructed event sidesteps that coercion and aims
+    // the test back at the branch it names.
+    const event = new PointerEvent("pointermove", { bubbles: true });
+    Object.defineProperty(event, "clientX", { value: NaN });
+    fireEvent(plot, event);
     expect(screen.getByRole("status")).toHaveTextContent("");
   });
 
