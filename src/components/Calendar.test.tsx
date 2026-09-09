@@ -2,7 +2,7 @@ import { describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { axe } from "../test-utils/axe";
-import { Calendar, DatePicker } from "./Calendar";
+import { Calendar, DatePicker, DateRangePicker } from "./Calendar";
 
 // Calendar itself isn't a floating-ui popper (it's plain in-flow markup), so
 // it renders fast under jsdom and gets full axe coverage here. DatePicker
@@ -65,6 +65,36 @@ describe("Calendar", () => {
     );
     expect(await axe(container)).toHaveNoViolations();
   });
+
+  it("marks every day between a range's two ends as selected, not just the endpoints", () => {
+    render(
+      <Calendar
+        mode="range"
+        selected={{ from: new Date(2026, 8, 8), to: new Date(2026, 8, 11) }}
+        defaultMonth={new Date(2026, 8, 1)}
+      />
+    );
+    // react-day-picker's own accessible-name wording flags every day inside
+    // the range as "selected", including the two endpoints — this is what
+    // `range_middle`'s distinct fill in `CalendarDayButton` is styling.
+    for (const day of [8, 9, 10, 11]) {
+      expect(
+        screen.getByRole("button", { name: new RegExp(`September ${day}.*selected`, "i") })
+      ).toBeInTheDocument();
+    }
+    expect(screen.getByRole("button", { name: /September 12(?!.*selected)/i })).toBeInTheDocument();
+  });
+
+  it("has no accessibility violations in range mode", async () => {
+    const { container } = render(
+      <Calendar
+        mode="range"
+        selected={{ from: new Date(2026, 8, 8), to: new Date(2026, 8, 11) }}
+        defaultMonth={new Date(2026, 8, 1)}
+      />
+    );
+    expect(await axe(container)).toHaveNoViolations();
+  });
 });
 
 describe("DatePicker", () => {
@@ -86,6 +116,33 @@ describe("DatePicker", () => {
 
   it("is closed until the trigger is activated", () => {
     render(<DatePicker />);
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    expect(screen.queryByRole("grid")).not.toBeInTheDocument();
+  });
+});
+
+describe("DateRangePicker", () => {
+  it("uses the placeholder as the trigger's accessible name when nothing is selected", () => {
+    render(<DateRangePicker placeholder="Pick a deploy window" />);
+    expect(screen.getByRole("button", { name: "Pick a deploy window" })).toBeInTheDocument();
+  });
+
+  it("shows a partial range with a trailing ellipsis while only the start is picked", () => {
+    render(<DateRangePicker value={{ from: new Date(2026, 8, 8), to: undefined }} />);
+    expect(
+      screen.getByRole("button", { name: /^Selected range:.*–\s*…\. Change range\.$/ })
+    ).toBeInTheDocument();
+  });
+
+  it("reflects a complete range in the trigger's accessible name", () => {
+    render(<DateRangePicker value={{ from: new Date(2026, 8, 8), to: new Date(2026, 8, 11) }} />);
+    expect(
+      screen.getByRole("button", { name: /^Selected range:.*–.*\. Change range\.$/ })
+    ).toBeInTheDocument();
+  });
+
+  it("is closed until the trigger is activated", () => {
+    render(<DateRangePicker />);
     expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
     expect(screen.queryByRole("grid")).not.toBeInTheDocument();
   });

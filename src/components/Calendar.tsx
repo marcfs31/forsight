@@ -4,6 +4,7 @@ import {
   UI,
   DayFlag,
   SelectionState,
+  type DateRange,
   type DayButtonProps,
   type DayPickerProps,
 } from "react-day-picker";
@@ -66,8 +67,17 @@ function CalendarDayButton({ className, day: _day, modifiers, ...props }: DayBut
         "hover:bg-ink-surface-2",
         "focus-visible:outline-none focus-visible:shadow-focus-ring",
         modifiers.outside && "text-fg-muted opacity-50",
-        modifiers.today && !modifiers.selected && "font-semibold text-accent",
-        modifiers.selected && "bg-accent text-accent-fg hover:bg-accent-hover",
+        modifiers.today &&
+          !modifiers.selected &&
+          !modifiers.range_middle &&
+          "font-semibold text-accent",
+        // range_middle's softer fill must win over the plain `selected`
+        // check below — react-day-picker's range mode sets `selected` true
+        // for every day in the range, not just the two endpoints.
+        modifiers.range_middle && "bg-accent-subtle text-accent",
+        (modifiers.selected || modifiers.range_start || modifiers.range_end) &&
+          !modifiers.range_middle &&
+          "bg-accent text-accent-fg hover:bg-accent-hover",
         modifiers.disabled && "pointer-events-none text-fg-muted opacity-30",
         className
       )}
@@ -77,10 +87,12 @@ function CalendarDayButton({ className, day: _day, modifiers, ...props }: DayBut
 }
 
 /**
- * Date grid built on `react-day-picker` — reach for `DatePicker` instead when
- * you need a compact form field rather than an always-visible grid. Scoped
- * to single/multiple selection for now; range selection isn't wired up yet.
- * react-day-picker implements the full WAI-ARIA date-grid keyboard model
+ * Date grid built on `react-day-picker` — reach for `DatePicker`/
+ * `DateRangePicker` instead when you need a compact form field rather than
+ * an always-visible grid. Supports `mode="single"`/`"multiple"`/`"range"`;
+ * in range mode, the days between the two picked ends get a softer fill
+ * (`range_middle`) distinct from the two endpoints. react-day-picker
+ * implements the full WAI-ARIA date-grid keyboard model
  * (arrow keys, Home/End/PageUp/PageDown) and month-nav accessible names
  * itself — this wrapper only restyles it with this repo's tokens. No `ref`
  * prop: `DayPicker` is a plain function component with no ref-forwarding
@@ -174,6 +186,87 @@ export function DatePicker({
           onSelect={(date) => {
             onValueChange?.(date);
             setOpen(false);
+          }}
+          disabled={disabled}
+          autoFocus
+        />
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+export interface DateRangePickerProps {
+  /** The selected range. `to` may be `undefined` while only the start has been picked. */
+  value?: DateRange;
+  /** Fires as each end is picked — once with only `from` set, again with both set. The popover stays open until both ends are picked. */
+  onValueChange?: (range: DateRange | undefined) => void;
+  /** Shown (and used as the field's accessible name) when nothing is selected. */
+  placeholder?: string;
+  /** Matches `Calendar`'s `disabled` matcher. */
+  disabled?: DayPickerProps["disabled"];
+  className?: string;
+  /** Forwarded to the trigger button, e.g. to pair it with a `<label htmlFor>`. */
+  id?: string;
+}
+
+const rangeDateFormat = new Intl.DateTimeFormat(undefined, { month: "short", day: "numeric" });
+
+/**
+ * `DatePicker`'s two-ended sibling — a compact form field for a custom
+ * start/end window, complementing `TimeRange`'s fixed presets ("1h",
+ * "24h") for whenever a reader needs an arbitrary range instead. The
+ * popover stays open after the first click (only the range's start is
+ * known yet) and closes once both ends are picked; picking a new start
+ * after a complete range restarts it. The underlying `Calendar` is given
+ * `min={1}` so the two ends must be distinct days — without it,
+ * react-day-picker's own range algorithm treats a single click as a
+ * complete one-day range and the popover would close before a second day
+ * could ever be picked. One consequence: clicking the start day again
+ * before picking an end clears the selection rather than producing a
+ * one-day range — use `DatePicker` for a single specific day.
+ */
+export function DateRangePicker({
+  value,
+  onValueChange,
+  placeholder = "Pick a date range",
+  disabled,
+  className,
+  id,
+}: DateRangePickerProps) {
+  const [open, setOpen] = React.useState(false);
+  const label =
+    value?.from && value?.to
+      ? `${rangeDateFormat.format(value.from)} – ${rangeDateFormat.format(value.to)}`
+      : value?.from
+        ? `${rangeDateFormat.format(value.from)} – …`
+        : placeholder;
+
+  return (
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
+        <button
+          id={id}
+          type="button"
+          aria-label={value?.from ? `Selected range: ${label}. Change range.` : placeholder}
+          className={cn(
+            "flex h-10 w-full items-center gap-2 rounded-md border border-ink-border bg-ink-surface px-3 text-sm font-sans transition-colors duration-base",
+            "focus-visible:outline-none focus-visible:shadow-focus-ring",
+            value?.from ? "text-fg" : "text-fg-muted",
+            className
+          )}
+        >
+          {CALENDAR_ICON}
+          {label}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent align="start" aria-label="Choose a date range" className="w-auto p-2">
+        <Calendar
+          mode="range"
+          min={1}
+          selected={value}
+          onSelect={(range) => {
+            onValueChange?.(range);
+            if (range?.from && range?.to) setOpen(false);
           }}
           disabled={disabled}
           autoFocus

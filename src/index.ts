@@ -26,6 +26,7 @@ export { Text, type TextProps } from "./components/Text";
 export { Checkbox, type CheckboxProps } from "./components/Checkbox";
 export { RadioGroup, RadioGroupItem } from "./components/RadioGroup";
 export { Switch } from "./components/Switch";
+export { Toggle, type ToggleProps } from "./components/Toggle";
 export { ToggleGroup, ToggleGroupItem, type ToggleGroupItemProps } from "./components/ToggleGroup";
 export {
   Select,
@@ -36,6 +37,11 @@ export {
   SelectItem,
 } from "./components/Select";
 export { Combobox, type ComboboxProps, type ComboboxOption } from "./components/Combobox";
+export {
+  MultiSelect,
+  type MultiSelectProps,
+  type MultiSelectOption,
+} from "./components/MultiSelect";
 export {
   Dialog,
   DialogTrigger,
@@ -94,6 +100,7 @@ export { Spinner, type SpinnerProps } from "./components/Spinner";
 export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "./components/Table";
 export { Progress, type ProgressProps } from "./components/Progress";
 export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from "./components/Popover";
+export { HoverCard, HoverCardTrigger, HoverCardContent } from "./components/HoverCard";
 export {
   Accordion,
   AccordionItem,
@@ -102,6 +109,9 @@ export {
 } from "./components/Accordion";
 export { Slider } from "./components/Slider";
 export { Skeleton } from "./components/Skeleton";
+export { CopyButton, type CopyButtonProps } from "./components/CopyButton";
+export { CodeBlock, type CodeBlockProps } from "./components/CodeBlock";
+export { Stepper, type StepperProps, type StepperStep } from "./components/Stepper";
 export {
   Breadcrumb,
   BreadcrumbList,
@@ -128,6 +138,7 @@ export { Kbd, type KbdProps } from "./components/Kbd";
 export { EmptyState, type EmptyStateProps } from "./components/EmptyState";
 export { JSONViewer, type JSONViewerProps } from "./components/JSONViewer";
 export { Collapsible, CollapsibleTrigger, CollapsibleContent } from "./components/Collapsible";
+export { ScrollArea, type ScrollAreaProps } from "./components/ScrollArea";
 export {
   Command,
   CommandDialog,
@@ -143,8 +154,10 @@ export {
 export {
   Calendar,
   DatePicker,
+  DateRangePicker,
   type CalendarProps,
   type DatePickerProps,
+  type DateRangePickerProps,
 } from "./components/Calendar";
 export {
   SidebarProvider,
@@ -175,6 +188,7 @@ export {
 export { LineChart, type LineChartProps, type ChartSeries } from "./components/LineChart";
 export { BarChart, type BarChartProps } from "./components/BarChart";
 export { BarList, type BarListProps, type BarListItem } from "./components/BarList";
+export { Funnel, type FunnelProps, type FunnelStage } from "./components/Funnel";
 export { Sparkline, type SparklineProps } from "./components/Sparkline";
 export { DonutChart, type DonutChartProps, type DonutSlice } from "./components/DonutChart";
 export { Heatmap, type HeatmapProps, type HeatmapRow } from "./components/Heatmap";

@@ -21,6 +21,7 @@ import {
   BreadcrumbSeparator,
   BoxPlot,
   Button,
+  Calendar,
   Card,
   CardContent,
   CardFooter,
@@ -32,10 +33,13 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  CodeBlock,
+  CopyButton,
   Delta,
   DonutChart,
   EmptyState,
   ErrorBudget,
+  Funnel,
   Gauge,
   Heading,
   Heatmap,
@@ -52,6 +56,7 @@ import {
   Progress,
   RadioGroup,
   RadioGroupItem,
+  ScrollArea,
   Separator,
   Sidebar,
   SidebarHeader,
@@ -62,6 +67,7 @@ import {
   Slider,
   Sparkline,
   Spinner,
+  Stepper,
   StatCard,
   StatusDot,
   Switch,
@@ -74,6 +80,7 @@ import {
   Tabs,
   Text,
   Textarea,
+  Toggle,
   ToggleGroup,
   ToggleGroupItem,
   TimeRange,
@@ -93,10 +100,13 @@ import {
  * and eyeball the snapshot diff in the PR.
  *
  * Portal-only overlays (Dialog / AlertDialog / Drawer / DropdownMenu /
- * Popover / Tooltip / Select / Combobox / FilterBar's add-filter menu /
- * Toast content) are exercised open, by keyboard, in their own
- * `*.test.tsx` and in the Storybook test runner — snapshotting a closed
- * trigger here would add churn without coverage.
+ * Popover / Tooltip / HoverCard / Select / Combobox / MultiSelect /
+ * DatePicker / DateRangePicker / FilterBar's add-filter menu / Toast
+ * content) are exercised open, by keyboard, in their own `*.test.tsx` and
+ * in the Storybook test runner — snapshotting a closed trigger here would
+ * add churn without coverage. `Calendar` itself is plain in-flow markup
+ * (not a portal), so it's snapshotted directly below, including its
+ * `range` mode.
  */
 const cases: Record<string, React.ReactElement> = {
   "Button/primary": <Button>Deploy</Button>,
@@ -132,6 +142,11 @@ const cases: Record<string, React.ReactElement> = {
     </RadioGroup>
   ),
   "Slider/single": <Slider defaultValue={[40]} max={100} aria-label="Limit" />,
+  "Toggle/pressed": (
+    <Toggle aria-label="Pin sidebar" defaultPressed>
+      Pin
+    </Toggle>
+  ),
   "ToggleGroup/single-select": (
     <ToggleGroup type="single" defaultValue="chart" aria-label="View mode">
       <ToggleGroupItem value="table">Table</ToggleGroupItem>
@@ -152,6 +167,13 @@ const cases: Record<string, React.ReactElement> = {
   "Progress/68": <Progress value={68} aria-label="Upload" />,
   "Spinner/md": <Spinner label="Loading" />,
   "Skeleton/line": <Skeleton className="h-4 w-32" />,
+  "Stepper/middle-step": (
+    <Stepper
+      label="Setup progress"
+      steps={[{ label: "Account" }, { label: "Team" }, { label: "Billing" }]}
+      currentStep={1}
+    />
+  ),
   "Avatar/initials": <Avatar initials="MF" alt="Marc Fors" />,
   "AvatarGroup/overflow": (
     <AvatarGroup max={2}>
@@ -232,6 +254,24 @@ const cases: Record<string, React.ReactElement> = {
       </TableBody>
     </Table>
   ),
+  "Table/sortable-header": (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead sortDirection="ascending" onSort={() => {}}>
+            Deployed
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+    </Table>
+  ),
+  "Calendar/range-selection": (
+    <Calendar
+      mode="range"
+      selected={{ from: new Date(2026, 8, 8), to: new Date(2026, 8, 11) }}
+      defaultMonth={new Date(2026, 8, 1)}
+    />
+  ),
   "Separator/horizontal": <Separator />,
   "Separator/vertical": <Separator orientation="vertical" />,
   "Label/basic": <Label htmlFor="x">Workspace name</Label>,
@@ -244,11 +284,21 @@ const cases: Record<string, React.ReactElement> = {
       <Kbd>K</Kbd>
     </span>
   ),
+  "CopyButton/idle": <CopyButton value="hello world" />,
+  "CodeBlock/with-label": <CodeBlock code="npm install fors" label="Terminal" />,
   "Collapsible/closed": (
     <Collapsible>
       <CollapsibleTrigger>Show more</CollapsibleTrigger>
       <CollapsibleContent>Extra detail</CollapsibleContent>
     </Collapsible>
+  ),
+  // The custom scrollbar/thumb only mount once Radix measures real overflow
+  // (a real layout engine, which jsdom doesn't have) — this snapshot covers
+  // the static wrapper markup only; see ScrollArea.test.tsx.
+  "ScrollArea/static": (
+    <ScrollArea className="h-40 w-64">
+      <p>Plenty of content that would overflow in a real browser.</p>
+    </ScrollArea>
   ),
   "Sidebar/expanded": (
     <SidebarProvider>
@@ -301,6 +351,15 @@ const cases: Record<string, React.ReactElement> = {
       items={[
         { label: "/api/checkout", value: 1240 },
         { label: "/api/search", value: 620 },
+      ]}
+    />
+  ),
+  "Funnel/narrowing-stages": (
+    <Funnel
+      stages={[
+        { label: "Visited pricing page", value: 1000 },
+        { label: "Started signup", value: 400 },
+        { label: "Became a paying customer", value: 100 },
       ]}
     />
   ),
