@@ -7,6 +7,7 @@ import {
   AccordionItem,
   AccordionTrigger,
   Alert,
+  AlertList,
   Avatar,
   AvatarGroup,
   Badge,
@@ -18,6 +19,7 @@ import {
   BreadcrumbList,
   BreadcrumbPage,
   BreadcrumbSeparator,
+  BoxPlot,
   Button,
   Card,
   CardContent,
@@ -26,15 +28,21 @@ import {
   CardTitle,
   ChartLegend,
   Checkbox,
+  ComboChart,
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
   Delta,
   DonutChart,
+  EmptyState,
+  ErrorBudget,
   Gauge,
   Heading,
   Heatmap,
+  Histogram,
   Input,
+  JSONViewer,
+  Kbd,
   Label,
   LineChart,
   LogStream,
@@ -66,6 +74,8 @@ import {
   Tabs,
   Text,
   Textarea,
+  ToggleGroup,
+  ToggleGroupItem,
   TimeRange,
   Timeline,
   TraceWaterfall,
@@ -82,8 +92,9 @@ import {
  * When a change IS intentional, re-generate with `npx vitest run -u`
  * and eyeball the snapshot diff in the PR.
  *
- * Portal-only overlays (Dialog / DropdownMenu / Popover / Tooltip / Select
- * / Toast content) are exercised open, by keyboard, in their own
+ * Portal-only overlays (Dialog / AlertDialog / Drawer / DropdownMenu /
+ * Popover / Tooltip / Select / Combobox / FilterBar's add-filter menu /
+ * Toast content) are exercised open, by keyboard, in their own
  * `*.test.tsx` and in the Storybook test runner — snapshotting a closed
  * trigger here would add churn without coverage.
  */
@@ -121,6 +132,18 @@ const cases: Record<string, React.ReactElement> = {
     </RadioGroup>
   ),
   "Slider/single": <Slider defaultValue={[40]} max={100} aria-label="Limit" />,
+  "ToggleGroup/single-select": (
+    <ToggleGroup type="single" defaultValue="chart" aria-label="View mode">
+      <ToggleGroupItem value="table">Table</ToggleGroupItem>
+      <ToggleGroupItem value="chart">Chart</ToggleGroupItem>
+    </ToggleGroup>
+  ),
+  "ToggleGroup/multi-select": (
+    <ToggleGroup type="multiple" defaultValue={["errors"]} aria-label="Log levels shown">
+      <ToggleGroupItem value="info">Info</ToggleGroupItem>
+      <ToggleGroupItem value="errors">Errors</ToggleGroupItem>
+    </ToggleGroup>
+  ),
   "Alert/danger": (
     <Alert variant="danger" title="Build failed">
       Type error in api.ts
@@ -153,6 +176,9 @@ const cases: Record<string, React.ReactElement> = {
         <Button size="sm">Go</Button>
       </CardFooter>
     </Card>
+  ),
+  "EmptyState/with-description": (
+    <EmptyState title="No deployments yet" description="Push to see them here." />
   ),
   "Tabs/default": (
     <Tabs.Root defaultValue="a">
@@ -209,6 +235,15 @@ const cases: Record<string, React.ReactElement> = {
   "Separator/horizontal": <Separator />,
   "Separator/vertical": <Separator orientation="vertical" />,
   "Label/basic": <Label htmlFor="x">Workspace name</Label>,
+  "JSONViewer/nested-object": (
+    <JSONViewer label="Span attributes" data={{ service: "checkout-api", http: { status: 500 } }} />
+  ),
+  "Kbd/shortcut": (
+    <span>
+      <Kbd>⌘</Kbd>
+      <Kbd>K</Kbd>
+    </span>
+  ),
   "Collapsible/closed": (
     <Collapsible>
       <CollapsibleTrigger>Show more</CollapsibleTrigger>
@@ -289,6 +324,34 @@ const cases: Record<string, React.ReactElement> = {
       ]}
     />
   ),
+  "ComboChart/bar-and-line": (
+    <ComboChart
+      label="Requests and latency"
+      labels={["12:00", "13:00", "14:00"]}
+      series={[
+        { name: "Requests", type: "bar", values: [1200, 1800, 1400] },
+        { name: "p99 latency", type: "line", values: [180, 340, 190] },
+      ]}
+    />
+  ),
+  "BoxPlot/two-boxes": (
+    <BoxPlot
+      label="Latency spread"
+      boxes={[
+        { label: "checkout", min: 40, q1: 80, median: 120, q3: 180, max: 420 },
+        { label: "search", min: 20, q1: 35, median: 50, q3: 70, max: 160 },
+      ]}
+    />
+  ),
+  "Histogram/buckets": (
+    <Histogram
+      label="Request duration"
+      buckets={[
+        { label: "0–50ms", count: 420 },
+        { label: "50–100ms", count: 980 },
+      ]}
+    />
+  ),
   "Gauge/with-target": (
     <Gauge label="Error budget" value={62} target={80} caption="of 30-day budget" />
   ),
@@ -315,6 +378,24 @@ const cases: Record<string, React.ReactElement> = {
     />
   ),
   "Delta/increase-is-bad": <Delta value={30.2} goodDirection="down" />,
+  "ErrorBudget/at-risk": (
+    <ErrorBudget label="30-day error budget" consumed={78} caption="Resets in 3 days" />
+  ),
+  "AlertList/active-and-resolved": (
+    <AlertList
+      label="Active alerts"
+      items={[
+        { id: "1", severity: "critical", title: "Elevated 5xx rate", time: "2 min ago" },
+        {
+          id: "2",
+          severity: "info",
+          title: "Disk usage above 80%",
+          time: "20 min ago",
+          resolved: true,
+        },
+      ]}
+    />
+  ),
   "StatusDot/degraded": <StatusDot status="degraded" pulse />,
   "UptimeBar/with-incident": (
     <UptimeBar
