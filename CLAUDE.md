@@ -132,6 +132,14 @@ build)` and `web (dashboard build, and it matches what's embedded)` are NOT
   `webdist/` embed for a `forsight/web` bump, a regenerated lockfile.
 - Refreshing `forsight/internal/api/webdist/` with `make build-web` on a PR
   that changes `forsight/web/`.
+- **One carve-out from auto-merge: a MAJOR bump of a GitHub Action.** It is
+  the only class no status check can validate, because the workflow it
+  changes runs after the merge, not on the PR. `changesets/action` 1.9.0 ->
+  2.1.1 auto-merged green on 2026-09-09 and silently broke the release
+  pipeline: v2 renamed every input `release.yml` passed, and unknown inputs
+  are ignored rather than rejected, so publishing would simply have stopped.
+  Action patch/minor still auto-merge, and so does every major in every other
+  ecosystem.
 - **Major bumps are applied, not parked.** Read the package's real changelog
   and migration notes, make the migration, run the full gate, push. A major
   that needs a coordinated family bump (Vite + Vitest + plugin-react,
