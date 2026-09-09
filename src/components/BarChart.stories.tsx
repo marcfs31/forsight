@@ -50,3 +50,19 @@ export const Stacked: Story = {
     stacked: true,
   },
 };
+
+export const WithAnnotations: Story = {
+  name: "With annotations",
+  args: {
+    label: "Responses by service",
+    labels: buckets,
+    series: [
+      { name: "checkout", values: [1200, 1420, 1310, 1680, 1520, 1390] },
+      { name: "search", values: [890, 940, 1020, 1240, 1180, 1010] },
+    ],
+    annotations: [
+      { value: 2000, text: "Capacity: 2000 req/s", tone: "warning" },
+      { label: "13:00", text: "Cache config rollback", tone: "danger" },
+    ],
+  },
+};

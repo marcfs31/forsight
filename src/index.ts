@@ -26,6 +26,7 @@ export { Text, type TextProps } from "./components/Text";
 export { Checkbox, type CheckboxProps } from "./components/Checkbox";
 export { RadioGroup, RadioGroupItem } from "./components/RadioGroup";
 export { Switch } from "./components/Switch";
+export { ToggleGroup, ToggleGroupItem, type ToggleGroupItemProps } from "./components/ToggleGroup";
 export {
   Select,
   SelectGroup,
@@ -34,6 +35,7 @@ export {
   SelectContent,
   SelectItem,
 } from "./components/Select";
+export { Combobox, type ComboboxProps, type ComboboxOption } from "./components/Combobox";
 export {
   Dialog,
   DialogTrigger,
@@ -44,6 +46,27 @@ export {
   DialogDescription,
   DialogFooter,
 } from "./components/Dialog";
+export {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from "./components/AlertDialog";
+export {
+  Drawer,
+  DrawerTrigger,
+  DrawerClose,
+  DrawerContent,
+  DrawerHeader,
+  DrawerTitle,
+  DrawerDescription,
+  DrawerFooter,
+} from "./components/Drawer";
 export {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -93,8 +116,17 @@ export {
   PaginationEllipsis,
   type PaginationItemProps,
 } from "./components/Pagination";
+export {
+  FilterBar,
+  type FilterBarProps,
+  type FilterBarFacet,
+  type FilterBarOption,
+} from "./components/FilterBar";
 export { Separator, type SeparatorProps } from "./components/Separator";
 export { Label, type LabelProps } from "./components/Label";
+export { Kbd, type KbdProps } from "./components/Kbd";
+export { EmptyState, type EmptyStateProps } from "./components/EmptyState";
+export { JSONViewer, type JSONViewerProps } from "./components/JSONViewer";
 export { Collapsible, CollapsibleTrigger, CollapsibleContent } from "./components/Collapsible";
 export {
   Command,
@@ -146,6 +178,20 @@ export { BarList, type BarListProps, type BarListItem } from "./components/BarLi
 export { Sparkline, type SparklineProps } from "./components/Sparkline";
 export { DonutChart, type DonutChartProps, type DonutSlice } from "./components/DonutChart";
 export { Heatmap, type HeatmapProps, type HeatmapRow } from "./components/Heatmap";
+export {
+  CalendarHeatmap,
+  type CalendarHeatmapProps,
+  type CalendarHeatmapDay,
+} from "./components/CalendarHeatmap";
+export { Histogram, type HistogramProps, type HistogramBucket } from "./components/Histogram";
+export { BoxPlot, type BoxPlotProps, type BoxPlotBox } from "./components/BoxPlot";
+export {
+  ComboChart,
+  type ComboChartProps,
+  type ComboChartSeries,
+  type ComboChartBarSeries,
+  type ComboChartLineSeries,
+} from "./components/ComboChart";
 export { Gauge, type GaugeProps } from "./components/Gauge";
 
 // ── Observability ───────────────────────────────────────────────────────────
@@ -158,6 +204,17 @@ export {
   type ServiceStatus,
 } from "./components/StatusDot";
 export { UptimeBar, type UptimeBarProps, type UptimeSegment } from "./components/UptimeBar";
+export {
+  AlertList,
+  type AlertListProps,
+  type AlertListItem,
+  type AlertSeverity,
+} from "./components/AlertList";
+export {
+  ErrorBudget,
+  type ErrorBudgetProps,
+  type ErrorBudgetStatus,
+} from "./components/ErrorBudget";
 export {
   LogStream,
   LOG_LEVELS,
@@ -181,6 +238,7 @@ export { TimeRange, type TimeRangeProps, type TimeRangeOption } from "./componen
 // Chart maths, exported so an app can build a custom plot on ChartFrame that
 // lands its marks on the same scales and formats as the built-in charts.
 export {
+  ANNOTATION_TONE_CLASSES,
   arcPath,
   areaPath,
   barPath,
@@ -196,6 +254,8 @@ export {
   seriesFill,
   seriesStroke,
   SERIES_SLOTS,
+  splitAtGaps,
+  type ChartAnnotation,
   type NiceScale,
   type Point,
 } from "./lib/chart";

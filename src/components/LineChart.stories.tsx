@@ -60,6 +60,20 @@ export const WithGaps: Story = {
   },
 };
 
+export const WithAnnotations: Story = {
+  name: "With annotations",
+  args: {
+    label: "p95 latency, last 24 hours",
+    description: "checkout-api",
+    labels: hours,
+    series: [{ name: "checkout-api", values: p95 }],
+    annotations: [
+      { value: 300, text: "SLO: 300ms", tone: "danger" },
+      { label: "08:00", text: "Deploy v2.4.1", tone: "accent" },
+    ],
+  },
+};
+
 export const KeyboardCursor: Story = {
   name: "Keyboard cursor",
   args: { ...SingleSeries.args } as Story["args"],
