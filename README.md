@@ -3,7 +3,7 @@
 [![CI](https://github.com/marcfs31/fors-observability-design-system/actions/workflows/ci.yml/badge.svg)](https://github.com/marcfs31/fors-observability-design-system/actions/workflows/ci.yml)
 [![Storybook](https://img.shields.io/badge/Storybook-live-16C7B0)](https://marcfs31.github.io/fors-observability-design-system/)
 
-The design system behind Fors Corporation's software: brand tokens and a React component library shared across every custom client app and in-house product Fors builds, so nothing starts from a blank Tailwind config again.
+The design system behind Marc Fors's software: brand tokens and a React component library shared across every custom client app and in-house product Fors builds, so nothing starts from a blank Tailwind config again.
 
 This package is the **observability fork** of [`@marcfs31/fors-design-system`](https://github.com/marcfs31/fors-design-system): the same tokens and base components, plus two families for the dashboards Fors builds on top of them — [data visualization](#data-visualization) (charts drawn in plain SVG, no charting dependency) and [observability](#observability) (metric tiles, health, uptime, logs, traces). Every import path changes to `@marcfs31/fors-observability-design-system`; nothing else about the base API moves.
 
