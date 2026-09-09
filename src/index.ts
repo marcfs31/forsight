@@ -100,6 +100,7 @@ export { Spinner, type SpinnerProps } from "./components/Spinner";
 export { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from "./components/Table";
 export { Progress, type ProgressProps } from "./components/Progress";
 export { Popover, PopoverTrigger, PopoverAnchor, PopoverContent } from "./components/Popover";
+export { HoverCard, HoverCardTrigger, HoverCardContent } from "./components/HoverCard";
 export {
   Accordion,
   AccordionItem,

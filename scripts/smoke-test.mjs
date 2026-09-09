@@ -130,6 +130,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "Table",
   "Progress",
   "Popover",
+  "HoverCard",
   "Accordion",
   "Slider",
   "Skeleton",
