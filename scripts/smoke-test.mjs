@@ -118,6 +118,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "ToggleGroupItem",
   "Select",
   "Combobox",
+  "MultiSelect",
   "Dialog",
   "AlertDialog",
   "Drawer",

@@ -37,6 +37,11 @@ export {
 } from "./components/Select";
 export { Combobox, type ComboboxProps, type ComboboxOption } from "./components/Combobox";
 export {
+  MultiSelect,
+  type MultiSelectProps,
+  type MultiSelectOption,
+} from "./components/MultiSelect";
+export {
   Dialog,
   DialogTrigger,
   DialogClose,
