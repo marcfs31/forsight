@@ -93,9 +93,9 @@
   },
   "size-limit": [
     {
-      "name": "JS bundle (import * from index.js, incl. Radix + cmdk + react-day-picker deps, brotli). Raised from 92 KB for the component-library-expansion batch (AlertDialog, Drawer, ToggleGroup, Combobox, Kbd, EmptyState, Histogram, BoxPlot, ComboChart, CalendarHeatmap, AlertList, and more to follow) — two new Radix deps (alert-dialog, toggle-group) plus the rest composed from existing primitives and chart geometry.",
+      "name": "JS bundle (import * from index.js, incl. Radix + cmdk + react-day-picker deps, brotli). Raised from 100 KB for the second component-library-expansion batch (MultiSelect, Toggle, HoverCard, CopyButton, CodeBlock, Stepper, and more to follow) — two more Radix deps (toggle, hover-card) plus the rest composed from existing primitives.",
       "path": "dist/index.js",
-      "limit": "100 KB"
+      "limit": "105 KB"
     },
     {
       "name": "Compiled CSS (brotli)",

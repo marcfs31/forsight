@@ -33,6 +33,9 @@ const DEFAULT_VIEWPORT = { width: 1280, height: 720 };
 const config: TestRunnerConfig = {
   async preVisit(page, context) {
     await page.emulateMedia({ reducedMotion: "reduce" });
+    // Chromium refuses navigator.clipboard.writeText() without this explicit
+    // grant — CopyButton's play tests need it to exercise a real copy.
+    await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
     const storyContext = await getStoryContext(page, context);
     const viewport = storyContext.parameters?.viewport as
       { width: number; height: number } | undefined;
