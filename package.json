@@ -140,7 +140,7 @@
     "@arethetypeswrong/cli": "^0.18.2",
     "@changesets/cli": "^2.27.9",
     "@eslint/js": "^9.11.1",
-    "@size-limit/preset-small-lib": "^11.2.0",
+    "@size-limit/preset-small-lib": "^13.0.3",
     "@storybook/addon-a11y": "^8.3.5",
     "@storybook/addon-essentials": "^8.3.5",
     "@storybook/react": "^8.3.5",
