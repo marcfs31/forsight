@@ -110,6 +110,7 @@ export {
 export { Slider } from "./components/Slider";
 export { Skeleton } from "./components/Skeleton";
 export { CopyButton, type CopyButtonProps } from "./components/CopyButton";
+export { CodeBlock, type CodeBlockProps } from "./components/CodeBlock";
 export {
   Breadcrumb,
   BreadcrumbList,

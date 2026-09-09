@@ -32,6 +32,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  CodeBlock,
   CopyButton,
   Delta,
   DonutChart,
@@ -252,6 +253,7 @@ const cases: Record<string, React.ReactElement> = {
     </span>
   ),
   "CopyButton/idle": <CopyButton value="hello world" />,
+  "CodeBlock/with-label": <CodeBlock code="npm install fors" label="Terminal" />,
   "Collapsible/closed": (
     <Collapsible>
       <CollapsibleTrigger>Show more</CollapsibleTrigger>
