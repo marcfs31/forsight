@@ -37,7 +37,15 @@ describe("CopyButton", () => {
   });
 
   it("reverts to the idle label after resetAfter elapses", async () => {
-    render(<CopyButton value="hello" resetAfter={20} />);
+    // 250ms, not 20ms. The assertion below runs after an awaited click, so a
+    // 20ms window was a race against the scheduler rather than a test: on a
+    // loaded parallel run the label could revert before it was ever checked,
+    // which is exactly how this failed once jsdom 30 made the whole suite
+    // fast enough to run more of it at once. The window only has to exceed
+    // scheduler jitter; waitFor's own 1s default still leaves ample room to
+    // observe the revert, so nothing here is weakened — the same two states
+    // are asserted in the same order.
+    render(<CopyButton value="hello" resetAfter={250} />);
     await userEvent.click(screen.getByRole("button", { name: "Copy" }));
     expect(screen.getByRole("button", { name: "Copied!" })).toBeInTheDocument();
 
