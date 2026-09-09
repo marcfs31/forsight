@@ -10,7 +10,7 @@ export default meta;
 type Story = StoryObj<typeof CopyButton>;
 
 export const Default: Story = {
-  render: () => <CopyButton value="npm install @marcfs31/fors-observability-design-system" />,
+  render: () => <CopyButton value="npm install @marcfs31/forsight" />,
 };
 
 export const InContext: Story = {

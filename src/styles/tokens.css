@@ -83,7 +83,7 @@
   /* Type families (theme-independent). Override --fors-font-sans /
      --fors-font-heading on :root to swap in self-hosted faces — e.g. point
      them at a next/font CSS variable. The names below match what
-     "@marcfs31/fors-observability-design-system/fonts.css" loads from Google Fonts. */
+     "@marcfs31/forsight/fonts.css" loads from Google Fonts. */
   --fors-font-sans: "Inter", system-ui, -apple-system, sans-serif;
   --fors-font-heading: "Space Grotesk", var(--fors-font-sans);
   --fors-font-mono: "JetBrains Mono", ui-monospace, "SFMono-Regular", monospace;

@@ -8,8 +8,8 @@ import { create, type ThemeVars } from "@storybook/theming";
  * story. Keep the values in sync with tokens.css when a color changes.
  */
 const shared = {
-  brandTitle: "Fors Observability DS",
-  brandUrl: "https://marcfs31.github.io/fors-observability-design-system/",
+  brandTitle: "Forsight",
+  brandUrl: "https://marcfs31.github.io/forsight/",
   fontBase: '"Inter", system-ui, -apple-system, sans-serif',
   fontCode: '"JetBrains Mono", ui-monospace, "SFMono-Regular", monospace',
   appBorderRadius: 8,

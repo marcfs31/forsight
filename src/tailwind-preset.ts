@@ -2,7 +2,7 @@ import type { Config } from "tailwindcss";
 import animate from "tailwindcss-animate";
 
 /**
- * Tailwind v3 preset, exported as "@marcfs31/fors-observability-design-system/tailwind-preset".
+ * Tailwind v3 preset, exported as "@marcfs31/forsight/tailwind-preset".
  *
  * Maps the Fors tokens (CSS custom properties in src/styles/tokens.css) into
  * the `bg-*` / `text-*` / `border-*` / `rounded-*` / `shadow-*` utility
@@ -10,11 +10,11 @@ import animate from "tailwindcss-animate";
  * can use the same class names in its own markup:
  *
  *   // tailwind.config.ts
- *   import forsPreset from "@marcfs31/fors-observability-design-system/tailwind-preset";
+ *   import forsPreset from "@marcfs31/forsight/tailwind-preset";
  *   export default { presets: [forsPreset], content: [...] };
  *
  * This repo's own tailwind.config.ts consumes the same preset. Tailwind v4
- * consumers use the "@marcfs31/fors-observability-design-system/tailwind.css" export instead.
+ * consumers use the "@marcfs31/forsight/tailwind.css" export instead.
  * Keep both in sync.
  */
 const forsPreset: Partial<Config> = {
