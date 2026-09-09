@@ -30,19 +30,47 @@ import { injectAxe, checkA11y } from "axe-playwright";
  */
 const DEFAULT_VIEWPORT = { width: 1280, height: 720 };
 
+/**
+ * `getStoryContext` reads Storybook's story store, which throws
+ * `StoryStoreAccessedBeforeInitializationError` if the preview iframe has
+ * not finished building its index yet. That is a startup race, not a broken
+ * story: it can only bite the first story the runner visits in a worker, and
+ * it took down an unrelated `Spinner` story on CI while the other 225 tests
+ * passed. Retrying is the correct synchronization — the alternative is a
+ * fixed sleep, which is either too short (flaky again) or too long (paid on
+ * every one of the 72 suites).
+ */
+async function storyContextWhenReady(
+  page: Parameters<typeof getStoryContext>[0],
+  context: Parameters<typeof getStoryContext>[1]
+) {
+  const deadline = Date.now() + 15_000;
+  for (;;) {
+    try {
+      return await getStoryContext(page, context);
+    } catch (error) {
+      const isIndexNotReady =
+        error instanceof Error &&
+        /StoryStoreAccessedBeforeInitialization|index is ready/i.test(error.message);
+      if (!isIndexNotReady || Date.now() > deadline) throw error;
+      await page.waitForTimeout(100);
+    }
+  }
+}
+
 const config: TestRunnerConfig = {
   async preVisit(page, context) {
     await page.emulateMedia({ reducedMotion: "reduce" });
     // Chromium refuses navigator.clipboard.writeText() without this explicit
     // grant — CopyButton's play tests need it to exercise a real copy.
     await page.context().grantPermissions(["clipboard-read", "clipboard-write"]);
-    const storyContext = await getStoryContext(page, context);
+    const storyContext = await storyContextWhenReady(page, context);
     const viewport = storyContext.parameters?.viewport as
       { width: number; height: number } | undefined;
     await page.setViewportSize(viewport ?? DEFAULT_VIEWPORT);
   },
   async postVisit(page, context) {
-    const storyContext = await getStoryContext(page, context);
+    const storyContext = await storyContextWhenReady(page, context);
     if (storyContext.parameters?.a11y?.disable) return;
 
     await injectAxe(page);
