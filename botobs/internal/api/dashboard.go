@@ -1,27 +1,30 @@
 package api
 
-import "net/http"
+import (
+	"embed"
+	"io/fs"
+	"net/http"
+)
 
-// PlaceholderDashboard serves a minimal, dependency-free page confirming the
-// agent is up while the real dashboard (botobs/web — a small React app built
-// on @marcfs31/fors-observability-design-system) isn't embedded into this
-// build. DashboardHandler (built.go, go:embed-gated) replaces this once the
-// web app's build output exists.
-func PlaceholderDashboard() http.Handler {
-	const body = `<!doctype html>
-<html>
-<head><title>botobs</title></head>
-<body style="font: 14px system-ui; background:#0b0f14; color:#eaf0f5; padding:2rem;">
-  <h1>botobs is running</h1>
-  <p>The full dashboard isn't built into this binary yet. Try:</p>
-  <ul>
-    <li><a style="color:#16c7b0" href="/healthz">/healthz</a></li>
-    <li><a style="color:#16c7b0" href="/api/v1/metrics">/api/v1/metrics</a></li>
-  </ul>
-</body>
-</html>`
-	return http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Content-Type", "text/html; charset=utf-8")
-		_, _ = w.Write([]byte(body))
-	})
+// webdist holds the dashboard's static build output — a small React app
+// (botobs/web) built on @marcfs31/fors-observability-design-system, the
+// same design system this repo publishes. `go:embed` can't reach outside its
+// own package directory, so `make build` copies web/dist's contents here
+// before compiling (see the Makefile); what's checked into git is a minimal
+// fallback page, so a bare `go build`/`go test` always works with no Node
+// involved at all — only a *release* build needs the web toolchain.
+//
+//go:embed all:webdist
+var webdist embed.FS
+
+// DashboardHandler serves the embedded dashboard build (or its fallback
+// page) at "/".
+func DashboardHandler() http.Handler {
+	sub, err := fs.Sub(webdist, "webdist")
+	if err != nil {
+		// Only possible if the embed directive above and this path drift
+		// apart, which a build would already have caught.
+		panic(err)
+	}
+	return http.FileServer(http.FS(sub))
 }

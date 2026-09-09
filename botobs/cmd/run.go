@@ -70,7 +70,7 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 		otlpHandler = otlp.NewHandler(st, st)
 	}
 
-	server := api.NewServer(st, otlpHandler, api.PlaceholderDashboard(), logger)
+	server := api.NewServer(st, otlpHandler, api.DashboardHandler(), logger)
 	httpServer := &http.Server{Addr: opts.addr, Handler: server.Handler()}
 
 	serveErr := make(chan error, 1)
