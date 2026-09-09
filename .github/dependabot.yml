@@ -61,6 +61,14 @@ updates:
       # every pass and is told to drop it then.
       - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
+      # Same shape, different blocker: @changesets/cli v3 declares engines
+      # `node ^22.11 || ^24 || >=26` and calls module.enableCompileCache(),
+      # so it cannot run on the Node 20 this repo still supports (.nvmrc and
+      # the CI matrix). Remove this entry together with Node 20 — which also
+      # unblocks size-limit 13 and jsdom 30, and lets changesets/action move
+      # to v2 (v2 requires CLI v3; see release.yml).
+      - dependency-name: "@changesets/cli"
+        update-types: ["version-update:semver-major"]
 
   # The agent's dashboard (private, embedded into the Go binary). A bump here
   # changes forsight/internal/api/webdist/ — `make build-web` must be re-run
