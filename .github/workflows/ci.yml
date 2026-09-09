@@ -4,6 +4,12 @@ on:
   push:
     branches: [main]
   pull_request:
+  # Dispatched by dependabot-automerge.yml / release.yml on a head they moved
+  # with GITHUB_TOKEN. Such pushes create no workflow runs of their own
+  # (workflow_dispatch is the documented exception); a PR opened or updated by
+  # GITHUB_TOKEN does produce `pull_request` runs, but parked in an
+  # approval-required state, so the dispatched run is what actually reports.
+  workflow_dispatch:
 
 # CI never writes to the repo — pin the token to read-only.
 permissions:

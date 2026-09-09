@@ -1,23 +1,83 @@
 name: forsight CI
 
+# Runs on every push to `main` and every PR with NO `paths:` filter, so both
+# real jobs can be required status checks on `main`. The distinction that
+# forces this shape: a job skipped by its own `if:` reports "skipped", which
+# branch protection accepts as satisfied, whereas a workflow that never starts
+# because of a `paths:` filter leaves its checks "expected" forever and blocks
+# the merge. The cheap `changes` job decides what this diff can actually
+# affect; `go` and `web` only do real work when it matters, and they run
+# anyway whenever `changes` did not itself succeed — a broken detector must
+# never wave the real checks through.
 on:
   push:
     branches: [main]
-    paths:
-      - "forsight/**"
-      - ".github/workflows/forsight-ci.yml"
   pull_request:
-    paths:
-      - "forsight/**"
-      - ".github/workflows/forsight-ci.yml"
+  # Dispatched by dependabot-automerge.yml / release.yml on a head they moved
+  # with GITHUB_TOKEN. Such pushes create no workflow runs of their own
+  # (workflow_dispatch is the documented exception); a PR opened or updated by
+  # GITHUB_TOKEN does produce `pull_request` runs, but parked in an
+  # approval-required state, so the dispatched run is what actually reports.
+  workflow_dispatch:
 
 # Never writes to the repo — pin the token to read-only, same as ci.yml.
 permissions:
   contents: read
 
 jobs:
+  changes:
+    name: changes (what this diff can affect)
+    runs-on: ubuntu-latest
+    outputs:
+      go: ${{ steps.detect.outputs.go }}
+      web: ${{ steps.detect.outputs.web }}
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+      - id: detect
+        env:
+          EVENT: ${{ github.event_name }}
+          BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          base=""
+          if [ "$EVENT" = "push" ] && [ -n "${BEFORE:-}" ] && git cat-file -e "$BEFORE" 2>/dev/null; then
+            base="$BEFORE"
+          else
+            git fetch -q origin main
+            base=$(git merge-base origin/main HEAD || true)
+          fi
+          changed=""
+          if [ -n "$base" ] && [ "$base" != "$(git rev-parse HEAD)" ]; then
+            changed=$(git diff --name-only "$base" HEAD || true)
+          fi
+          printf 'base=%s\nchanged files:\n%s\n' "${base:-<none>}" "$changed"
+          go=false; web=false
+          # The Go module itself (the dashboard's sources are the web job's concern).
+          if grep -qE '^(forsight/(cmd|internal|deploy|main\.go|go\.(mod|sum)|Makefile|install\.sh)|\.github/workflows/forsight-ci\.yml)' <<<"$changed"; then go=true; fi
+          # What the embedded dashboard build is made of. Deliberately NOT the
+          # design system's own sources: forsight/web consumes it through a
+          # `file:../..` link, so every root `src/`/dependency change would
+          # otherwise re-hash the bundle and make this check red on PRs that
+          # cannot fix it (Dependabot cannot run `make build-web`). The embed
+          # is a snapshot, refreshed deliberately — the next forsight/web PR
+          # picks the design-system changes up with it, because `make
+          # build-web` rebuilds both. See CLAUDE.md, "two artifacts".
+          if grep -qE '^(forsight/web/|forsight/internal/api/webdist/|\.github/workflows/forsight-ci\.yml)' <<<"$changed"; then web=true; fi
+          # No usable base (a dispatch on an unknown ref, a first push, a
+          # history rewrite): fail open and run everything.
+          if [ -z "$changed" ]; then go=true; web=true; fi
+          echo "go=$go" >> "$GITHUB_OUTPUT"
+          echo "web=$web" >> "$GITHUB_OUTPUT"
+          echo "go=$go web=$web"
+
   go:
     name: go (vet, lint, test, build)
+    needs: changes
+    # Fail closed: a `needs` failure would otherwise SKIP this job, and a
+    # skipped job counts as success for branch protection.
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.go == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -45,6 +105,8 @@ jobs:
 
   web:
     name: web (dashboard build, and it matches what's embedded)
+    needs: changes
+    if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.web == 'true') }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
@@ -63,11 +125,11 @@ jobs:
         working-directory: forsight/web
       # Vite's output is content-hashed, so an unchanged source tree
       # rebuilds byte-for-byte identical — if this diff is non-empty,
-      # someone changed forsight/web (or the design system) without running
-      # `make build-web` and committing the refreshed embed, which is
-      # exactly the drift internal/api/dashboard.go's doc comment warns
-      # against (see also CONTRIBUTING.md's "Snapshots are reviewed, not
-      # rubber-stamped" — this is that same discipline for a generated
-      # embed instead of a test snapshot).
+      # someone changed forsight/web (or the design system it bundles)
+      # without running `make build-web` and committing the refreshed embed,
+      # which is exactly the drift internal/api/dashboard.go's doc comment
+      # warns against (see also CONTRIBUTING.md's "Snapshots are reviewed,
+      # not rubber-stamped" — the same discipline for a generated embed
+      # instead of a test snapshot).
       - name: Diff the fresh build against internal/api/webdist/
         run: diff -rq forsight/web/dist forsight/internal/api/webdist
