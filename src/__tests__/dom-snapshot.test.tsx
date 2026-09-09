@@ -74,6 +74,7 @@ import {
   Tabs,
   Text,
   Textarea,
+  Toggle,
   ToggleGroup,
   ToggleGroupItem,
   TimeRange,
@@ -132,6 +133,11 @@ const cases: Record<string, React.ReactElement> = {
     </RadioGroup>
   ),
   "Slider/single": <Slider defaultValue={[40]} max={100} aria-label="Limit" />,
+  "Toggle/pressed": (
+    <Toggle aria-label="Pin sidebar" defaultPressed>
+      Pin
+    </Toggle>
+  ),
   "ToggleGroup/single-select": (
     <ToggleGroup type="single" defaultValue="chart" aria-label="View mode">
       <ToggleGroupItem value="table">Table</ToggleGroupItem>

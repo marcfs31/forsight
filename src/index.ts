@@ -26,6 +26,7 @@ export { Text, type TextProps } from "./components/Text";
 export { Checkbox, type CheckboxProps } from "./components/Checkbox";
 export { RadioGroup, RadioGroupItem } from "./components/RadioGroup";
 export { Switch } from "./components/Switch";
+export { Toggle, type ToggleProps } from "./components/Toggle";
 export { ToggleGroup, ToggleGroupItem, type ToggleGroupItemProps } from "./components/ToggleGroup";
 export {
   Select,
