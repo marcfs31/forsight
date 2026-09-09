@@ -2,9 +2,14 @@ name: CodeQL
 
 # Static analysis for security *and* code quality (the `security-and-quality`
 # suite adds maintainability/correctness queries to the default security set).
-# Both "Analyze (…)" jobs are required status checks on `main`, so a new
-# finding blocks the merge until it is fixed — not suppressed — see
-# CONTRIBUTING.md "Security & code-quality policy".
+# Both "Analyze (…)" jobs are required status checks on `main`, so the analysis
+# must RUN and succeed before a merge. Note what that does and does not mean:
+# `github/codeql-action/analyze` does not fail its job because an alert was
+# found, so these two checks prove the scan happened, not that it was clean.
+# The check that reflects findings on a PR is "Code scanning results / CodeQL",
+# produced by the `pull_request` analysis. New findings are fixed at the source
+# — never suppressed — by the standing mandate in CLAUDE.md and the triage
+# routine it names; see CONTRIBUTING.md "Security & code-quality policy".
 on:
   push:
     branches: [main]
@@ -12,6 +17,12 @@ on:
     branches: [main]
   schedule:
     - cron: "45 18 * * 1" # weekly, catches newly published queries/advisories
+  # Dispatched by dependabot-automerge.yml / release.yml on a head they moved
+  # with GITHUB_TOKEN. Such pushes create no workflow runs of their own
+  # (workflow_dispatch is the documented exception); a PR opened or updated by
+  # GITHUB_TOKEN does produce `pull_request` runs, but parked in an
+  # approval-required state, so the dispatched run is what actually reports.
+  workflow_dispatch:
 
 permissions:
   contents: read
