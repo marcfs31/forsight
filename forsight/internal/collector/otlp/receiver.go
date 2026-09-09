@@ -2,24 +2,34 @@
 // every OpenTelemetry SDK speaks by default, so any instrumented app can
 // point its OTLP exporter at forsight with no forsight-specific integration.
 //
-// v1 scope (see forsight/README.md's roadmap for what's deliberately deferred):
-// metrics Gauge and Sum (the two point-in-time/counter shapes almost every
-// app actually emits) and traces, both over the standard
-// "/v1/metrics"/"/v1/traces" HTTP paths with a protobuf body
-// (Content-Type: application/x-protobuf, the default for every OTel SDK's
-// OTLP/HTTP exporter). Histogram/ExponentialHistogram/Summary metric types
-// and OTLP/JSON bodies are not handled yet — an unrecognized metric type is
-// skipped, not an error, so a mixed batch still gets the points it can use.
+// All five OTLP metric point types are handled (Gauge, Sum, Histogram,
+// ExponentialHistogram, Summary), flattened onto forsight's flat
+// name+value+labels model.Metric the same way Prometheus itself does for
+// classic histograms: a `_count` and `_sum` series plus one `_bucket` series
+// per boundary, labeled `le="<bound>"`, with cumulative counts (OTLP's own
+// bucket_counts are per-bucket, not cumulative — this receiver sums them
+// going up, matching what a Prometheus-literate reader expects `_bucket` to
+// mean). ExponentialHistogram gets `_count`/`_sum`/`_min`/`_max` only, not a
+// reconstructed per-bucket series — its buckets are base-2 exponential with
+// a dynamic `scale`, and rebuilding boundary values from that isn't worth
+// the complexity for what's usually an already-approximate distribution;
+// `_count`/`_sum` alone is real, useful data, just not full fidelity.
+//
+// Both OTLP/protobuf (the default for every OTel SDK's HTTP exporter) and
+// OTLP/JSON bodies are accepted, selected by the request's Content-Type.
 package otlp
 
 import (
 	"context"
 	"encoding/hex"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
+	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
 	collectormetrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
@@ -66,7 +76,7 @@ func (h *Handler) handleMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req collectormetrics.ExportMetricsServiceRequest
-	if err := proto.Unmarshal(body, &req); err != nil {
+	if err := unmarshalOTLP(r, body, &req); err != nil {
 		http.Error(w, "invalid OTLP metrics payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -76,7 +86,7 @@ func (h *Handler) handleMetrics(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to store metrics", http.StatusInternalServerError)
 		return
 	}
-	writeEmptyProtoResponse(w)
+	writeEmptyResponse(w, r)
 }
 
 func (h *Handler) handleTraces(w http.ResponseWriter, r *http.Request) {
@@ -86,7 +96,7 @@ func (h *Handler) handleTraces(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var req collectortrace.ExportTraceServiceRequest
-	if err := proto.Unmarshal(body, &req); err != nil {
+	if err := unmarshalOTLP(r, body, &req); err != nil {
 		http.Error(w, "invalid OTLP traces payload: "+err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -96,15 +106,37 @@ func (h *Handler) handleTraces(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "failed to store spans", http.StatusInternalServerError)
 		return
 	}
-	writeEmptyProtoResponse(w)
+	writeEmptyResponse(w, r)
 }
 
-// writeEmptyProtoResponse satisfies OTLP/HTTP clients, which expect a
-// (possibly empty) ExportServiceResponse protobuf body on success — an empty
-// body with 200 status is a valid empty message, so this just sets the
-// content type and status without constructing one.
-func writeEmptyProtoResponse(w http.ResponseWriter) {
-	w.Header().Set("Content-Type", "application/x-protobuf")
+// isJSONRequest is the only signal OTLP/HTTP defines for which codec a body
+// uses — there's no magic byte to sniff, protobuf's wire format is not
+// self-describing. A request with no Content-Type at all (some minimal
+// clients omit it) falls back to protobuf, the default every real OTel SDK
+// exporter uses.
+func isJSONRequest(r *http.Request) bool {
+	return strings.Contains(r.Header.Get("Content-Type"), "json")
+}
+
+func unmarshalOTLP(r *http.Request, body []byte, msg proto.Message) error {
+	if isJSONRequest(r) {
+		return protojson.Unmarshal(body, msg)
+	}
+	return proto.Unmarshal(body, msg)
+}
+
+// writeEmptyResponse satisfies OTLP/HTTP clients, which expect a (possibly
+// empty) ExportServiceResponse body on success — an empty body with a 200
+// status is a valid empty message in both codecs, so this just sets the
+// content type and status without constructing one. Matches the request's
+// own codec, since a JSON client checking Content-Type on the response would
+// otherwise see protobuf's mime type on an empty body it never asked for.
+func writeEmptyResponse(w http.ResponseWriter, r *http.Request) {
+	if isJSONRequest(r) {
+		w.Header().Set("Content-Type", "application/json")
+	} else {
+		w.Header().Set("Content-Type", "application/x-protobuf")
+	}
 	w.WriteHeader(http.StatusOK)
 }
 
@@ -122,28 +154,121 @@ func metricsFromOTLP(req *collectormetrics.ExportMetricsServiceRequest) []model.
 }
 
 func dataPointsFromMetric(m *metricspb.Metric, resourceLabels map[string]string) []model.Metric {
-	var points []*metricspb.NumberDataPoint
 	switch data := m.GetData().(type) {
 	case *metricspb.Metric_Gauge:
-		points = data.Gauge.GetDataPoints()
+		return numberDataPoints(m.GetName(), data.Gauge.GetDataPoints(), resourceLabels)
 	case *metricspb.Metric_Sum:
-		points = data.Sum.GetDataPoints()
+		return numberDataPoints(m.GetName(), data.Sum.GetDataPoints(), resourceLabels)
+	case *metricspb.Metric_Histogram:
+		return histogramDataPoints(m.GetName(), data.Histogram.GetDataPoints(), resourceLabels)
+	case *metricspb.Metric_ExponentialHistogram:
+		return expHistogramDataPoints(m.GetName(), data.ExponentialHistogram.GetDataPoints(), resourceLabels)
+	case *metricspb.Metric_Summary:
+		return summaryDataPoints(m.GetName(), data.Summary.GetDataPoints(), resourceLabels)
 	default:
-		// Histogram/ExponentialHistogram/Summary: roadmap, see package doc.
 		return nil
 	}
+}
 
+func numberDataPoints(name string, points []*metricspb.NumberDataPoint, resourceLabels map[string]string) []model.Metric {
 	out := make([]model.Metric, 0, len(points))
 	for _, dp := range points {
 		labels := mergeLabels(resourceLabels, attributesToLabels(dp.GetAttributes()))
 		out = append(out, model.Metric{
-			Name:      m.GetName(),
+			Name:      name,
 			Value:     numberDataPointValue(dp),
 			Timestamp: time.Unix(0, int64(dp.GetTimeUnixNano())),
 			Labels:    labels,
 		})
 	}
 	return out
+}
+
+// histogramDataPoints flattens a classic (explicit-bounds) histogram the way
+// Prometheus itself would expose it: <name>_count, <name>_sum, and one
+// <name>_bucket{le="<bound>"} per boundary carrying the CUMULATIVE count up
+// to and including that bound — OTLP's own bucket_counts are per-bucket
+// (the count strictly between the previous and current bound), so this
+// running-sum conversion is what makes `le` mean what a Prometheus-literate
+// reader already expects it to mean.
+func histogramDataPoints(name string, points []*metricspb.HistogramDataPoint, resourceLabels map[string]string) []model.Metric {
+	var out []model.Metric
+	for _, dp := range points {
+		ts := time.Unix(0, int64(dp.GetTimeUnixNano()))
+		labels := mergeLabels(resourceLabels, attributesToLabels(dp.GetAttributes()))
+
+		out = append(out, model.Metric{Name: name + "_count", Value: float64(dp.GetCount()), Timestamp: ts, Labels: labels})
+		if dp.Sum != nil {
+			out = append(out, model.Metric{Name: name + "_sum", Value: dp.GetSum(), Timestamp: ts, Labels: labels})
+		}
+		if dp.Min != nil {
+			out = append(out, model.Metric{Name: name + "_min", Value: dp.GetMin(), Timestamp: ts, Labels: labels})
+		}
+		if dp.Max != nil {
+			out = append(out, model.Metric{Name: name + "_max", Value: dp.GetMax(), Timestamp: ts, Labels: labels})
+		}
+
+		bounds := dp.GetExplicitBounds()
+		var cumulative float64
+		for i, count := range dp.GetBucketCounts() {
+			cumulative += float64(count)
+			if i >= len(bounds) {
+				break // the final, implicit (+Inf) bucket carries no boundary to label with
+			}
+			bucketLabels := mergeLabels(labels, map[string]string{"le": formatBound(bounds[i])})
+			out = append(out, model.Metric{Name: name + "_bucket", Value: cumulative, Timestamp: ts, Labels: bucketLabels})
+		}
+	}
+	return out
+}
+
+// expHistogramDataPoints deliberately does not reconstruct per-bucket
+// series — see the package doc for why — count/sum/min/max are still real,
+// useful data even without full distribution fidelity.
+func expHistogramDataPoints(name string, points []*metricspb.ExponentialHistogramDataPoint, resourceLabels map[string]string) []model.Metric {
+	var out []model.Metric
+	for _, dp := range points {
+		ts := time.Unix(0, int64(dp.GetTimeUnixNano()))
+		labels := mergeLabels(resourceLabels, attributesToLabels(dp.GetAttributes()))
+
+		out = append(out, model.Metric{Name: name + "_count", Value: float64(dp.GetCount()), Timestamp: ts, Labels: labels})
+		if dp.Sum != nil {
+			out = append(out, model.Metric{Name: name + "_sum", Value: dp.GetSum(), Timestamp: ts, Labels: labels})
+		}
+		if dp.Min != nil {
+			out = append(out, model.Metric{Name: name + "_min", Value: dp.GetMin(), Timestamp: ts, Labels: labels})
+		}
+		if dp.Max != nil {
+			out = append(out, model.Metric{Name: name + "_max", Value: dp.GetMax(), Timestamp: ts, Labels: labels})
+		}
+	}
+	return out
+}
+
+// summaryDataPoints flattens to <name>_count, <name>_sum, and one
+// <name>{quantile="<q>"} per reported quantile — the same shape Prometheus
+// client libraries already use for their own summary type.
+func summaryDataPoints(name string, points []*metricspb.SummaryDataPoint, resourceLabels map[string]string) []model.Metric {
+	var out []model.Metric
+	for _, dp := range points {
+		ts := time.Unix(0, int64(dp.GetTimeUnixNano()))
+		labels := mergeLabels(resourceLabels, attributesToLabels(dp.GetAttributes()))
+
+		out = append(out, model.Metric{Name: name + "_count", Value: float64(dp.GetCount()), Timestamp: ts, Labels: labels})
+		out = append(out, model.Metric{Name: name + "_sum", Value: dp.GetSum(), Timestamp: ts, Labels: labels})
+		for _, q := range dp.GetQuantileValues() {
+			qLabels := mergeLabels(labels, map[string]string{"quantile": formatBound(q.GetQuantile())})
+			out = append(out, model.Metric{Name: name, Value: q.GetValue(), Timestamp: ts, Labels: qLabels})
+		}
+	}
+	return out
+}
+
+func formatBound(v float64) string {
+	if math.IsInf(v, 1) {
+		return "+Inf"
+	}
+	return strconv.FormatFloat(v, 'g', -1, 64)
 }
 
 func numberDataPointValue(dp *metricspb.NumberDataPoint) float64 {
