@@ -15,18 +15,11 @@ const FRAMEWORKS = [
 ];
 
 // .focus() + keyboard("{Enter}"), never .click() — jsdom lacks pointer
-// capture (see the `testing` skill). Opening a Radix Popover this way still
-// routinely takes 10-20s under jsdom, and under full-suite/coverage load it
-// can run past the project's default 60s test timeout — the tests that open
-// one get an explicit longer timeout below.
+// capture (see the `testing` skill).
 async function openCombobox() {
   screen.getByRole("button").focus();
   await userEvent.keyboard("{Enter}");
 }
-
-// CI has demonstrated ~102s for one of these (Node 22 job, 2026-09-09) — well
-// past the 90s this was originally set to. Comfortable margin above that.
-const SLOW_TEST_TIMEOUT = 180000;
 
 describe("Combobox", () => {
   it("shows the placeholder text when nothing is selected", () => {
@@ -52,70 +45,46 @@ describe("Combobox", () => {
     expect(screen.getByRole("button", { name: "Framework" })).toHaveTextContent("Remix");
   });
 
-  it(
-    "opens on click and lists the options",
-    async () => {
-      render(<Combobox options={FRAMEWORKS} aria-label="Framework" />);
-      await openCombobox();
-      expect(screen.getByRole("option", { name: "Next.js" })).toBeInTheDocument();
-      expect(screen.getByRole("option", { name: "Remix" })).toBeInTheDocument();
-    },
-    SLOW_TEST_TIMEOUT
-  );
+  it("opens on click and lists the options", async () => {
+    render(<Combobox options={FRAMEWORKS} aria-label="Framework" />);
+    await openCombobox();
+    expect(screen.getByRole("option", { name: "Next.js" })).toBeInTheDocument();
+    expect(screen.getByRole("option", { name: "Remix" })).toBeInTheDocument();
+  });
 
-  it(
-    "calls onValueChange and closes when an option is picked",
-    async () => {
-      const onValueChange = vi.fn();
-      render(
-        <Combobox options={FRAMEWORKS} onValueChange={onValueChange} aria-label="Framework" />
-      );
-      await openCombobox();
-      await userEvent.click(screen.getByRole("option", { name: "Next.js" }));
-      expect(onValueChange).toHaveBeenCalledWith("next");
-      expect(screen.queryByRole("option", { name: "Next.js" })).not.toBeInTheDocument();
-    },
-    SLOW_TEST_TIMEOUT
-  );
+  it("calls onValueChange and closes when an option is picked", async () => {
+    const onValueChange = vi.fn();
+    render(<Combobox options={FRAMEWORKS} onValueChange={onValueChange} aria-label="Framework" />);
+    await openCombobox();
+    await userEvent.click(screen.getByRole("option", { name: "Next.js" }));
+    expect(onValueChange).toHaveBeenCalledWith("next");
+    expect(screen.queryByRole("option", { name: "Next.js" })).not.toBeInTheDocument();
+  });
 
-  it(
-    "filters options as the search input is typed into",
-    async () => {
-      render(<Combobox options={FRAMEWORKS} aria-label="Framework" />);
-      await openCombobox();
-      await userEvent.type(screen.getByRole("combobox"), "rem");
-      expect(screen.getByRole("option", { name: "Remix" })).toBeInTheDocument();
-      expect(screen.queryByRole("option", { name: "Next.js" })).not.toBeInTheDocument();
-    },
-    SLOW_TEST_TIMEOUT
-  );
+  it("filters options as the search input is typed into", async () => {
+    render(<Combobox options={FRAMEWORKS} aria-label="Framework" />);
+    await openCombobox();
+    await userEvent.type(screen.getByRole("combobox"), "rem");
+    expect(screen.getByRole("option", { name: "Remix" })).toBeInTheDocument();
+    expect(screen.queryByRole("option", { name: "Next.js" })).not.toBeInTheDocument();
+  });
 
-  it(
-    "shows the empty message when the filter matches nothing",
-    async () => {
-      render(
-        <Combobox options={FRAMEWORKS} emptyMessage="No framework found." aria-label="Framework" />
-      );
-      await openCombobox();
-      await userEvent.type(screen.getByRole("combobox"), "zzz");
-      expect(screen.getByText("No framework found.")).toBeInTheDocument();
-    },
-    SLOW_TEST_TIMEOUT
-  );
+  it("shows the empty message when the filter matches nothing", async () => {
+    render(
+      <Combobox options={FRAMEWORKS} emptyMessage="No framework found." aria-label="Framework" />
+    );
+    await openCombobox();
+    await userEvent.type(screen.getByRole("combobox"), "zzz");
+    expect(screen.getByText("No framework found.")).toBeInTheDocument();
+  });
 
-  it(
-    "does not allow selecting a disabled option",
-    async () => {
-      const onValueChange = vi.fn();
-      render(
-        <Combobox options={FRAMEWORKS} onValueChange={onValueChange} aria-label="Framework" />
-      );
-      await openCombobox();
-      await userEvent.click(screen.getByRole("option", { name: "Astro" }));
-      expect(onValueChange).not.toHaveBeenCalled();
-    },
-    SLOW_TEST_TIMEOUT
-  );
+  it("does not allow selecting a disabled option", async () => {
+    const onValueChange = vi.fn();
+    render(<Combobox options={FRAMEWORKS} onValueChange={onValueChange} aria-label="Framework" />);
+    await openCombobox();
+    await userEvent.click(screen.getByRole("option", { name: "Astro" }));
+    expect(onValueChange).not.toHaveBeenCalled();
+  });
 
   it("disables the trigger when disabled is set", () => {
     render(<Combobox options={FRAMEWORKS} disabled aria-label="Framework" />);
