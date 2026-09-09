@@ -18,6 +18,12 @@ permissions:
   contents: write
   pull-requests: write
   packages: write
+  actions: write # dispatch the required checks on the version PR (below)
+
+env:
+  # Kept in step with dependabot-automerge.yml's REQUIRED_WORKFLOWS: the
+  # workflows whose jobs are required status checks on `main`.
+  REQUIRED_WORKFLOWS: ci.yml codeql.yml forsight-ci.yml
 
 jobs:
   release:
@@ -46,7 +52,12 @@ jobs:
       # workflow's own GITHUB_TOKEN (same-repo publish needs no separate
       # PAT/secret; see NODE_AUTH_TOKEN below) — and tags + creates a
       # GitHub Release for what it published.
-      - uses: changesets/action@v1
+      # Pinned to the commit of the real upstream v1.9.0 tag (verified with
+      # `gh api repos/changesets/action/tags`), not the mutable `v1` tag —
+      # CodeQL's unpinned-tag check flags third-party Actions. v2 renames the
+      # inputs this step passes, so it is a deliberate migration, not a bump.
+      - uses: changesets/action@a45c4d594aa4e2c509dc14a9f2b3b67ba3780d0d # v1.9.0
+        id: changesets
         with:
           version: npm run version-packages
           publish: npm run release
@@ -55,3 +66,37 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # The action pushes the "Version Packages" PR with GITHUB_TOKEN, which
+      # never triggers workflows, so its required checks would sit at
+      # "expected" forever. Dispatch them explicitly (`workflow_dispatch` is
+      # the documented exception to that guard) and arm native auto-merge:
+      # once green the PR merges itself, this workflow runs again on the merge
+      # commit with no pending changesets, and the `publish` branch above ships
+      # the release. That is continuous release — every changeset that lands
+      # on `main` becomes a version without a human clicking anything (Marc's
+      # standing rule, see CLAUDE.md).
+      - name: Run the required checks on the version PR and arm auto-merge
+        if: steps.changesets.outputs.pullRequestNumber != ''
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PR: ${{ steps.changesets.outputs.pullRequestNumber }}
+          # changesets/action derives its branch from the ref it ran on
+          # (`changeset-release/<branch>`), so derive it the same way rather
+          # than hardcoding `main` — this workflow also has workflow_dispatch.
+          VERSION_BRANCH: changeset-release/${{ github.event.workflow_run.head_branch || github.ref_name }}
+        run: |
+          set -uo pipefail
+          for wf in $REQUIRED_WORKFLOWS; do
+            gh workflow run "$wf" --ref "$VERSION_BRANCH" || echo "::warning::could not dispatch $wf on $VERSION_BRANCH"
+          done
+          if ! gh pr merge --squash --auto "$PR"; then
+            state=$(gh pr view "$PR" --json mergeStateStatus -q .mergeStateStatus || echo UNKNOWN)
+            if [ "$state" = "CLEAN" ]; then
+              gh pr merge --squash "$PR" || echo "::warning::version PR #$PR is CLEAN but would not merge."
+            else
+              echo "::notice::version PR #$PR: auto-merge not armed by this run (state=$state)."
+            fi
+          fi
+          # dependabot-automerge.yml's `refresh` job re-arms this PR on a
+          # schedule too, so a single failure here does not stall the release.

@@ -1,10 +1,20 @@
 version: 2
+# Marc's standing rule (CLAUDE.md, "Dependabot / security / code-quality
+# mandate"): every update Dependabot can propose is applied and merged
+# automatically once CI is green — patch, minor and major alike. So nothing is
+# ignored here except one hard blocker, the cadence is daily rather than
+# weekly, and lockstep package families are grouped so they move together
+# (the class that produced red PRs on 2026-09-09: a Storybook core bump
+# without its addons, a plugin-react bump without Vite). The auto-merge itself
+# is .github/workflows/dependabot-automerge.yml; anything that needs a real
+# migration to go green is picked up by the triage routine described in
+# CLAUDE.md.
 updates:
   - package-ecosystem: "npm"
     directory: "/"
     schedule:
-      interval: "weekly"
-    open-pull-requests-limit: 5
+      interval: "daily"
+    open-pull-requests-limit: 10
     groups:
       radix:
         patterns:
@@ -13,14 +23,70 @@ updates:
         patterns:
           - "@storybook/*"
           - "storybook"
+      vite:
+        patterns:
+          - "vite"
+          - "vitest"
+          - "@vitest/*"
+          - "@vitejs/*"
+      eslint:
+        patterns:
+          - "eslint"
+          - "@eslint/*"
+          - "eslint-*"
+          - "typescript-eslint"
+          - "@typescript-eslint/*"
+      testing-library:
+        patterns:
+          - "@testing-library/*"
+      size-limit:
+        patterns:
+          - "size-limit"
+          - "@size-limit/*"
     ignore:
-      # Major bumps for these need a deliberate migration pass (breaking
-      # config/API changes), not an automated PR — patch/minor still flow through.
-      - dependency-name: "tailwindcss"
+      # The ONE deliberate exception — a hard blocker, not a policy choice:
+      # typescript-eslint declares peer `typescript >=4.8.4 <6.1.0`, so
+      # TypeScript 7 cannot even install next to it (`npm ci` fails with
+      # ERESOLVE; that was PR #4 on 2026-09-09). Remove this entry the moment
+      # typescript-eslint publishes support for TypeScript 7 — the triage
+      # routine re-checks `npm view typescript-eslint peerDependencies` on
+      # every pass and is told to drop it then.
+      - dependency-name: "typescript"
         update-types: ["version-update:semver-major"]
-      - dependency-name: "vite"
-        update-types: ["version-update:semver-major"]
+
+  # The agent's dashboard (private, embedded into the Go binary). A bump here
+  # changes forsight/internal/api/webdist/ — `make build-web` must be re-run
+  # and the refreshed embed committed on the same PR, or the `web` check
+  # fails by design (see forsight-ci.yml).
+  - package-ecosystem: "npm"
+    directory: "/forsight/web"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    groups:
+      vite:
+        patterns:
+          - "vite"
+          - "@vitejs/*"
+      tailwind:
+        patterns:
+          - "tailwindcss"
+          - "@tailwindcss/*"
+      types:
+        patterns:
+          - "@types/*"
+
+  - package-ecosystem: "gomod"
+    directory: "/forsight"
+    schedule:
+      interval: "daily"
+    open-pull-requests-limit: 5
+    groups:
+      go-modules:
+        patterns:
+          - "*"
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
-      interval: "weekly"
+      interval: "daily"

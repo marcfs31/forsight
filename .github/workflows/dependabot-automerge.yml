@@ -1,0 +1,217 @@
+name: Dependabot auto-merge
+
+# Marc's standing rule for this repo (CLAUDE.md, "Dependabot / security /
+# code-quality mandate"): every Dependabot PR is merged automatically as soon
+# as it is genuinely green — patch, minor AND major. GitHub's own required
+# status checks on `main` are the only gate. This workflow never bypasses one;
+# it only (a) arms native auto-merge, (b) adds the changeset a
+# production-dependency bump needs, and (c) keeps stale PRs moving, because
+# Dependabot only rebases on conflicts while `main` requires up-to-date
+# branches, so a PR that is merely BEHIND would otherwise wait forever.
+#
+# What was verified before writing this (2026-09-09, adversarial review):
+# 1. dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 is the
+#    real v3.1.0 tag of the (non-fork) upstream repo —
+#    `gh api repos/dependabot/fetch-metadata/tags`. Its action.yml declares the
+#    outputs used below: package-ecosystem, directory ("/" for the root npm
+#    manifest), dependency-type, dependency-names, updated-dependencies-json.
+# 2. `pull_request_target` is CHOSEN, not required. A `pull_request` run
+#    triggered by Dependabot gets a read-only GITHUB_TOKEN by default, but the
+#    workflow's own `permissions:` key can raise it (GitHub, "Automating
+#    Dependabot with GitHub Actions" uses exactly that). `pull_request_target`
+#    is used because the workflow definition then always comes from the base
+#    branch, never from the PR head. The safety property that matters is
+#    unchanged and holds either way: NOTHING from the PR branch is ever checked
+#    out or executed — every step here is a GitHub API call, and the changeset
+#    is written through the Contents API rather than from a checkout.
+# 3. GITHUB_TOKEN pushes do not create workflow runs, with two exceptions:
+#    `workflow_dispatch`/`repository_dispatch` (which is how this file
+#    re-triggers required checks on a head it moved), and a PR created or
+#    updated by GITHUB_TOKEN, whose `pull_request` runs appear in an
+#    approval-required state. Those parked runs are expected noise on the
+#    changeset commit and on the Changesets version PR — the dispatched runs
+#    are the ones that report the required check names on the head SHA, and
+#    branch protection matches by check-run name whatever event produced it.
+#
+# Guardrails: never `--admin`, never touches branch protection, never widens
+# GITHUB_TOKEN beyond the three scopes below.
+
+on:
+  pull_request_target:
+    types: [opened, reopened, synchronize, ready_for_review]
+  push:
+    branches: [main]
+  schedule:
+    - cron: "37 */6 * * *" # safety net for a PR whose refresh was missed
+  workflow_dispatch:
+
+permissions:
+  contents: write # update-branch; write the changeset via the Contents API
+  pull-requests: write # gh pr merge --auto
+  actions: write # gh workflow run — re-dispatch checks on a moved head
+
+concurrency:
+  group: dependabot-automerge-${{ github.event.pull_request.number || 'refresh' }}
+  cancel-in-progress: false
+
+env:
+  GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+  # No job here checks the repo out, and `gh` resolves the repository from
+  # --repo / GH_REPO / a git remote — never from GITHUB_REPOSITORY. Setting it
+  # here is what makes every bare `gh` call below work.
+  GH_REPO: ${{ github.repository }}
+  # The workflows whose jobs are required status checks on `main`.
+  REQUIRED_WORKFLOWS: ci.yml codeql.yml forsight-ci.yml
+
+jobs:
+  arm:
+    name: Arm auto-merge on a Dependabot PR
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'marcfs31/forsight'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Read Dependabot metadata
+        id: metadata
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+
+      # A bump to a runtime dependency of the published package (npm
+      # `dependencies` of the root package: the radix group, cmdk,
+      # react-day-picker, class-variance-authority, clsx, tailwind-merge,
+      # tailwindcss-animate) ships to consumers, so it needs a changeset or it
+      # would ride along unrecorded in the next release. Root manifest only —
+      # forsight/web is private and never released. `dependency-type` is
+      # fetch-metadata's worst case across a grouped PR (direct:production
+      # wins if ANY member is production), so a mixed group is covered too.
+      - name: Add a changeset for a production-dependency bump
+        id: changeset
+        if: steps.metadata.outputs.package-ecosystem == 'npm' && steps.metadata.outputs.directory == '/' && steps.metadata.outputs.dependency-type == 'direct:production'
+        env:
+          DEPS_JSON: ${{ steps.metadata.outputs.updated-dependencies-json }}
+          DEPENDENCY_NAMES: ${{ steps.metadata.outputs.dependency-names }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          set -euo pipefail
+          path=".changeset/dependabot-pr-${PR_NUMBER}.md"
+          # Idempotent: an earlier run of this job may already have added it.
+          if gh api "repos/${GITHUB_REPOSITORY}/contents/${path}?ref=${HEAD_REF}" --silent 2>/dev/null; then
+            echo "changeset already present on ${HEAD_REF}"
+            exit 0
+          fi
+          # fetch-metadata leaves prevVersion/newVersion empty for the
+          # non-first member of a grouped update, so fall back to "?" rather
+          # than rendering "- `pkg`:  -> ".
+          lines=$(printf '%s' "$DEPS_JSON" | jq -r '
+            def v: if (. // "") == "" then "?" else . end;
+            .[] | "- `" + .dependencyName + "`: " + (.prevVersion | v) + " -> " + (.newVersion | v)')
+          body=$(printf -- '---\n"@marcfs31/forsight": patch\n---\n\nBump %s (production dependency).\n\n%s\n\nAuto-generated by the Dependabot auto-merge workflow: this bump touches\n`dependencies` (not devDependencies/peerDependencies) and would otherwise\nship with no changelog entry once auto-merged.\n' "$DEPENDENCY_NAMES" "$lines")
+          gh api -X PUT "repos/${GITHUB_REPOSITORY}/contents/${path}" \
+            -f message="chore(deps): add changeset for ${DEPENDENCY_NAMES}" \
+            -f branch="${HEAD_REF}" \
+            -f content="$(printf '%s' "$body" | base64 | tr -d '\n')" --silent
+          echo "moved=true" >> "$GITHUB_OUTPUT"
+
+      # That commit was made with GITHUB_TOKEN, so no workflow ran for the new
+      # head — dispatch the required ones ourselves (see header note 3).
+      - name: Re-run the required checks on the new head
+        if: steps.changeset.outputs.moved == 'true'
+        env:
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+        run: |
+          for wf in $REQUIRED_WORKFLOWS; do
+            gh workflow run "$wf" --repo "$GITHUB_REPOSITORY" --ref "$HEAD_REF" \
+              || echo "::warning::could not dispatch $wf on $HEAD_REF"
+          done
+
+      # Native auto-merge: GitHub's required-status-check enforcement gates the
+      # actual merge. `--squash` because squash is the only merge method this
+      # repo allows (allow_merge_commit=false, allow_rebase_merge=false).
+      # `--auto` is rejected outright when the PR is already mergeable ("Pull
+      # request is in clean status"), so that case falls through to a plain
+      # merge — still gated by the same required checks server-side.
+      - name: Arm native auto-merge
+        if: always()
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: |
+          set -uo pipefail
+          if gh pr merge --squash --auto "$PR_URL"; then exit 0; fi
+          state=$(gh pr view "$PR_NUMBER" --json mergeStateStatus -q .mergeStateStatus || echo UNKNOWN)
+          if [ "$state" = "CLEAN" ]; then
+            gh pr merge --squash "$PR_URL" \
+              && echo "#$PR_NUMBER was already mergeable — merged directly." \
+              || echo "::warning::#$PR_NUMBER is CLEAN but neither --auto nor a direct merge succeeded."
+          else
+            echo "::notice::#$PR_NUMBER: auto-merge not armed by this run (state=$state) — most likely already armed."
+          fi
+
+  refresh:
+    name: Keep open bot PRs current
+    if: github.event_name != 'pull_request_target' && github.repository == 'marcfs31/forsight'
+    runs-on: ubuntu-latest
+    steps:
+      # Pure API calls — nothing is checked out. For every open PR from
+      # Dependabot or from the Changesets release bot: arm auto-merge if it is
+      # not armed (or merge it outright if it is already clean), and if `main`
+      # has moved underneath it (BEHIND — the up-to-date rule blocks the
+      # merge), update the branch and re-dispatch the required checks on the
+      # new head. A PR in conflict (DIRTY) is left alone: Dependabot rebases
+      # those itself. The Changesets version PR is included because release.yml
+      # arms it exactly once, and a single swallowed failure there would stall
+      # the whole continuous-release loop.
+      - name: Arm auto-merge and bring stale bot PRs up to date
+        run: |
+          set -uo pipefail
+          prs=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --limit 100 \
+                --json number,headRefName,url,mergeStateStatus,autoMergeRequest,isDraft,author \
+                | jq -c '[.[] | select(.author.login == "app/dependabot" or .author.login == "app/github-actions") | select(.isDraft | not)]')
+          echo "$prs" | jq -r '.[] | "#\(.number) \(.mergeStateStatus) auto-merge=\(.autoMergeRequest != null) \(.headRefName)"'
+          for n in $(echo "$prs" | jq -r '.[].number'); do
+            url=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json url -q .url)
+            ref=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json headRefName -q .headRefName)
+            # mergeStateStatus is computed lazily and answers UNKNOWN until
+            # GitHub has built the test merge commit — poll before branching.
+            state=UNKNOWN
+            for _ in 1 2 3 4 5 6; do
+              state=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json mergeStateStatus -q .mergeStateStatus)
+              [ "$state" != "UNKNOWN" ] && break
+              sleep 5
+            done
+            armed=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json autoMergeRequest -q '.autoMergeRequest != null')
+            echo "#$n state=$state armed=$armed"
+            if [ "$armed" != "true" ]; then
+              if ! gh pr merge --squash --auto "$url"; then
+                if [ "$state" = "CLEAN" ]; then
+                  gh pr merge --squash "$url" \
+                    && echo "#$n was already mergeable — merged directly." \
+                    || echo "::warning::#$n is CLEAN but neither --auto nor a direct merge succeeded."
+                else
+                  echo "::warning::#$n: could not arm auto-merge (state=$state)"
+                fi
+              fi
+            fi
+            if [ "$state" = "BEHIND" ]; then
+              before=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json headRefOid -q .headRefOid)
+              after="$before"
+              if gh api -X PUT "repos/${GITHUB_REPOSITORY}/pulls/${n}/update-branch" --silent; then
+                # update-branch is asynchronous (202): wait for the head to move before dispatching.
+                for _ in $(seq 1 18); do
+                  sleep 5
+                  after=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json headRefOid -q .headRefOid)
+                  [ "$after" != "$before" ] && break
+                done
+                if [ "$after" = "$before" ]; then
+                  echo "::warning::#$n: head did not move after update-branch; not dispatching"
+                  continue
+                fi
+                for wf in $REQUIRED_WORKFLOWS; do
+                  gh workflow run "$wf" --repo "$GITHUB_REPOSITORY" --ref "$ref" || echo "::warning::#$n: could not dispatch $wf"
+                done
+                echo "#$n: updated to ${after} and re-dispatched the required checks"
+              else
+                echo "::notice::#$n: update-branch refused (conflict — Dependabot rebases those itself)"
+              fi
+            fi
+          done
