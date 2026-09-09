@@ -39,7 +39,7 @@ jobs:
       pull-requests: write # open/update the "Version Packages" PR
       packages: write # changeset publish -> GitHub Packages
     outputs:
-      versionPr: ${{ steps.changesets.outputs.pullRequestNumber }}
+      versionPr: ${{ steps.changesets.outputs.pr-number }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -64,18 +64,29 @@ jobs:
       # PAT/secret; see NODE_AUTH_TOKEN below) — and tags + creates a
       # GitHub Release for what it published.
       # Pinned to the commit of the real upstream v1.9.0 tag (verified with
-      # `gh api repos/changesets/action/tags`), not the mutable `v1` tag —
-      # CodeQL's unpinned-tag check flags third-party Actions. v2 renames the
-      # inputs this step passes, so it is a deliberate migration, not a bump.
+      # `gh api repos/changesets/action/tags`), not the mutable `v2` tag —
+      # CodeQL's unpinned-tag check flags third-party Actions.
+      #
+      # v2 renamed every input this step passes and the output the next job
+      # reads. Unknown inputs are ignored rather than rejected, so the v1
+      # names left `publish-script` unset — the action would have quietly
+      # stopped publishing while still looking green. Names verified against
+      # action.yml at this exact SHA:
+      #   version -> version-script, publish -> publish-script,
+      #   commit -> commit-message, title -> pr-title,
+      #   outputs.pullRequestNumber -> outputs.pr-number.
+      # The token is an input now (defaulting to github.token); it is passed
+      # explicitly so the intent is visible. NODE_AUTH_TOKEN stays an env var
+      # — that one is read by npm, not by the action.
       - uses: changesets/action@8488615a623b1b9c987934bb89eae8af6a946ac1 # v2.1.1
         id: changesets
         with:
-          version: npm run version-packages
-          publish: npm run release
-          commit: "chore(release): version packages"
-          title: "chore(release): version packages"
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          version-script: npm run version-packages
+          publish-script: npm run release
+          commit-message: "chore(release): version packages"
+          pr-title: "chore(release): version packages"
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
   # Separate job, so the token that can dispatch workflows is never present in
