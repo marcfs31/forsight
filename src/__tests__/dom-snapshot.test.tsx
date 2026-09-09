@@ -64,6 +64,7 @@ import {
   Slider,
   Sparkline,
   Spinner,
+  Stepper,
   StatCard,
   StatusDot,
   Switch,
@@ -160,6 +161,13 @@ const cases: Record<string, React.ReactElement> = {
   "Progress/68": <Progress value={68} aria-label="Upload" />,
   "Spinner/md": <Spinner label="Loading" />,
   "Skeleton/line": <Skeleton className="h-4 w-32" />,
+  "Stepper/middle-step": (
+    <Stepper
+      label="Setup progress"
+      steps={[{ label: "Account" }, { label: "Team" }, { label: "Billing" }]}
+      currentStep={1}
+    />
+  ),
   "Avatar/initials": <Avatar initials="MF" alt="Marc Fors" />,
   "AvatarGroup/overflow": (
     <AvatarGroup max={2}>

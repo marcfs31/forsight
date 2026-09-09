@@ -111,6 +111,7 @@ export { Slider } from "./components/Slider";
 export { Skeleton } from "./components/Skeleton";
 export { CopyButton, type CopyButtonProps } from "./components/CopyButton";
 export { CodeBlock, type CodeBlockProps } from "./components/CodeBlock";
+export { Stepper, type StepperProps, type StepperStep } from "./components/Stepper";
 export {
   Breadcrumb,
   BreadcrumbList,

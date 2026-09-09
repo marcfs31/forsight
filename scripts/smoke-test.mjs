@@ -136,6 +136,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "Skeleton",
   "CopyButton",
   "CodeBlock",
+  "Stepper",
   "Breadcrumb",
   "Pagination",
   "FilterBar",
