@@ -20,7 +20,9 @@ async function openAddFilter() {
   await userEvent.keyboard("{Enter}");
 }
 
-const SLOW_TEST_TIMEOUT = 90000;
+// CI has demonstrated ~102s for one of these (Node 22 job, 2026-09-09) — well
+// past the 90s this was originally set to. Comfortable margin above that.
+const SLOW_TEST_TIMEOUT = 180000;
 
 describe("FilterBar", () => {
   it("renders a chip per applied filter", () => {
