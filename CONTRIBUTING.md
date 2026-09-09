@@ -27,12 +27,15 @@ npm run size              # bundle-size budget — see the "size-limit" field in
 
 All of these run in CI; failing any of them blocks merge.
 
-**Dependency bumps**: verify against the Node version in `.nvmrc` (20), not
-whatever's globally installed — CI's matrix (20 & 22) exists because dev
-tooling occasionally uses a newer Node API than 20 ships (e.g. `size-limit@13`
-used `fs.promises.glob`, added in Node 22.13, and broke the Node 20 CI job
-even though it worked locally on a newer Node). `nvm use` before testing a
-bump.
+**Dependency bumps**: verify against the Node version in `.nvmrc` (22), not
+whatever's globally installed — CI's matrix (22 & 24) is current LTS plus
+current, and dev tooling does move faster than the oldest version you happen
+to have. `nvm use` before testing a bump.
+
+These are dev-toolchain versions only. The published package's own floor is
+`package.json`'s `engines` (`>=18.18`), and it is deliberately lower: the
+built `dist/` is ES2020 and runs anywhere, so a consumer is never asked to
+upgrade Node because this repo's test runner did.
 
 ## Testing policy
 
