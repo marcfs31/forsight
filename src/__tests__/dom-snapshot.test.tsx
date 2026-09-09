@@ -254,6 +254,17 @@ const cases: Record<string, React.ReactElement> = {
       </TableBody>
     </Table>
   ),
+  "Table/sortable-header": (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead sortDirection="ascending" onSort={() => {}}>
+            Deployed
+          </TableHead>
+        </TableRow>
+      </TableHeader>
+    </Table>
+  ),
   "Calendar/range-selection": (
     <Calendar
       mode="range"

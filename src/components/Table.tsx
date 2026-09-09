@@ -2,9 +2,12 @@ import * as React from "react";
 import { cn } from "../lib/cn";
 
 /**
- * Styled semantic table parts — no sorting/pagination/virtualization logic.
- * For interactive tables, layer a headless library (e.g. TanStack Table)
- * on top and render its rows/cells through these primitives.
+ * Styled semantic table parts — no sorting/pagination/virtualization logic
+ * of their own. For interactive tables, layer a headless library (e.g.
+ * TanStack Table) on top and render its rows/cells through these
+ * primitives; `TableHead`'s `sortDirection`/`onSort` props (below) render
+ * and announce a sortable column's state without doing the sorting
+ * themselves — that decision (and the actual reorder) stays the caller's.
  *
  * On mobile, the table is automatically wrapped in a scrollable container
  * to prevent horizontal overflow.
@@ -52,21 +55,56 @@ export const TableRow = React.forwardRef<
 ));
 TableRow.displayName = "TableRow";
 
-export const TableHead = React.forwardRef<
-  HTMLTableCellElement,
-  React.ThHTMLAttributes<HTMLTableCellElement>
->(({ className, scope = "col", ...props }, ref) => (
-  <th
-    ref={ref}
-    scope={scope}
-    className={cn(
-      "px-4 py-2.5 text-start text-xs font-medium uppercase tracking-wide text-fg-muted",
-      className
-    )}
-    {...props}
-  />
-));
+export interface TableHeadProps extends React.ThHTMLAttributes<HTMLTableCellElement> {
+  /**
+   * Makes this a sortable column: sets `aria-sort` and renders `children`
+   * inside a button with a direction indicator, instead of plain text. Pass
+   * `onSort` alongside it — this component only renders the control and
+   * announces its state; it never sorts rows itself (per this file's own
+   * "no sorting logic" scope note). Omit both props for a plain header.
+   */
+  sortDirection?: "ascending" | "descending" | "none";
+  /** Fires when the header is activated (click, or Enter/Space on the button). */
+  onSort?: () => void;
+}
+
+export const TableHead = React.forwardRef<HTMLTableCellElement, TableHeadProps>(
+  ({ className, scope = "col", sortDirection, onSort, children, ...props }, ref) => (
+    <th
+      ref={ref}
+      scope={scope}
+      aria-sort={sortDirection}
+      className={cn(
+        "px-4 py-2.5 text-start text-xs font-medium uppercase tracking-wide text-fg-muted",
+        className
+      )}
+      {...props}
+    >
+      {sortDirection !== undefined ? (
+        <button
+          type="button"
+          onClick={onSort}
+          className="-m-1 inline-flex items-center gap-1 rounded-sm p-1 uppercase tracking-wide text-fg-muted transition-colors duration-fast hover:text-fg focus-visible:outline-none focus-visible:shadow-focus-ring"
+        >
+          {children}
+          <SortIcon direction={sortDirection} />
+        </button>
+      ) : (
+        children
+      )}
+    </th>
+  )
+);
 TableHead.displayName = "TableHead";
+
+function SortIcon({ direction }: { direction: "ascending" | "descending" | "none" }) {
+  return (
+    <svg aria-hidden="true" viewBox="0 0 12 12" className="h-3 w-3 shrink-0 fill-current">
+      <path d="M6 1.5 9 5.5H3z" className={direction === "ascending" ? "" : "opacity-30"} />
+      <path d="M6 10.5 3 6.5h6z" className={direction === "descending" ? "" : "opacity-30"} />
+    </svg>
+  );
+}
 
 export const TableCell = React.forwardRef<
   HTMLTableCellElement,
