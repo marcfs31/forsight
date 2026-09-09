@@ -1,10 +1,64 @@
 # @marcfs31/fors-observability-design-system
 
+## 2.0.0
+
+### Major Changes
+
+- 10c1ee9: Fork of `@marcfs31/fors-design-system`, published under the new name `@marcfs31/fors-observability-design-system`. Every import path changes accordingly (`@marcfs31/fors-observability-design-system`, `/theme`, `/styles.css`, `/tailwind.css`, `/tailwind-preset`, `/fonts.css`); the base component API and the `--fors-*` token namespace are unchanged, so an app can swap the dependency and keep its markup.
+
+### Minor Changes
+
+- 414a3be: Add `AlertDialog` — a confirmation dialog for destructive or otherwise consequential actions (`@radix-ui/react-alert-dialog`). Unlike `Dialog`, it doesn't dismiss on an outside click and always returns focus to `AlertDialogCancel` on open, so a keyboard or screen-reader user lands on the safe choice first. `AlertDialogAction` defaults to the `danger` `Button` variant and accepts `variant`/`size` overrides for non-destructive confirmations.
+- 414a3be: Add `AlertList` — "what's firing right now": active and recently resolved alerts ranked by recency, complementing `Timeline` (full history) and `StatusDot` (a single point-in-time health read). Severity is always printed as a word via `Badge`, never color alone; a resolved alert dims and gets a "Resolved" badge without hiding what it was. Renders `EmptyState` when there are no alerts, and defaults to a polite live region (opt out via `announce={false}` for a firehose feed).
+
+  Also raises the JS bundle size-limit budget from 92 KB to 100 KB for this component-library-expansion batch (two new Radix deps — `alert-dialog`, `toggle-group` — plus several components composed from existing primitives).
+
+- 414a3be: Add `BoxPlot` — a five-number summary (min/Q1/median/Q3/max) per category, for the latency/duration percentile spread `LineChart`/`BarChart` can't show. Like `LineChart` and unlike `BarChart`, its axis fits the data range rather than a zero baseline. Every box shares the neutral accent color (like `Histogram`/`Sparkline`) since it compares one metric's spread across categories, not several metrics against each other.
+- 414a3be: Add `CalendarHeatmap` — a GitHub-contributions-style year-in-review activity calendar for incident or deploy frequency by day. Unlike `Heatmap` (a density matrix you've already arranged into rows/columns), it takes a flat, unordered list of `{ date, value }` days and buckets them into weeks (columns) and weekdays (rows) itself, then hands that grid to `Heatmap` — so it gets the same real `<table>`, five-step intensity scale, and legend. A date with no entry renders as an untracked (empty) cell, distinct from a tracked day whose count is zero.
+- 414a3be: Add an `annotations` prop to `LineChart` and `BarChart` — SLO-threshold (`value`) or deploy-marker (`label`) reference lines drawn over the plot, in a `neutral`/`accent`/`warning`/`danger` tone. Every annotation's text is folded into the plot's visually hidden description, so a threshold or marker is never sighted-only information. The shared `ChartAnnotation` type and its tone-to-class mapping (`ANNOTATION_TONE_CLASSES`) are exported for building a custom plot on `ChartFrame` with the same annotation styling.
+
+  (Note: this landed on `LineChart`/`BarChart` rather than `ChartFrame` itself — `ChartFrame` has no scale or category knowledge to place a reference line against, so the annotation geometry has to live where the scale does.)
+
+  Also adds the `"warning (as text) on bg"` and `"danger (as text) on bg"` pairings to the token contrast test suite, covering the annotation labels' text color drawn directly on the plot background.
+
+- 414a3be: Add `ComboChart` — bars and a line sharing one x-axis on independent scales (request volume + p99 latency, the APM-dashboard pattern), built on the same `ChartFrame`/`niceScale`/`barPath`/`linePath` geometry as `BarChart`/`LineChart`. Bar series always share a zero-baselined left axis; line series always share a right axis fit to their own data range; the visually hidden description calls out which series reads on which axis.
+
+  Also exports `splitAtGaps` (the `null`-gap-splitting helper `LineChart` already used internally, now shared with `ComboChart`'s line series) alongside the rest of the chart math — no behavior change to `LineChart` itself.
+
+- 414a3be: Add `Combobox` — a searchable, filterable single-select for lists too long to scan un-filtered, composed from the existing `Popover` + `Command` primitives (no new dependency). Pass `options`, `value`/`onValueChange`, and an `aria-label` for the trigger's accessible name (it replaces the visible placeholder/value text for assistive tech, so word it as the field's purpose rather than a repeat of the placeholder).
+- 414a3be: Add `Drawer` — an edge-anchored panel for row detail, filters, or focused editing next to the content it relates to, built on the same `@radix-ui/react-dialog` primitive as `Dialog`. `DrawerContent` takes a logical `side` (`"start"` | `"end"`, default `"end"`) that flips the physical edge automatically under `dir="rtl"`, the same technique already used by `Sidebar`'s mobile drawer.
+- 414a3be: Add `EmptyState` — placeholder content for a table, list, or search result with nothing to show (icon, title, description, action slot). Renders `role="status"` by default so a screen reader user is told the section resolved to empty; override via the `role` prop for a static (non-dynamic) empty section.
+- 414a3be: Add `ErrorBudget` — an SLO burn-down bar showing how much of an error budget is spent, read as "how much is left." Unlike `Gauge` (a bounded metric with a caller-judged `tone`), the status here (`healthy`/`at-risk`/`critical`) derives automatically from `warningAt`/`dangerAt` thresholds, since "72% of your error budget is gone" means roughly the same thing in any context. The status word is always printed via `Badge`, never carried by color alone, and the whole thing is exposed as an ARIA `meter`.
+- 414a3be: Add `FilterBar` — a faceted filter row for an observability dashboard header (service/env/status/whatever facets the data supports). Applied facets render as removable chips; "Add filter" opens a searchable, grouped list of everything not already applied, built on the same `Popover` + `Command` pairing `Combobox` uses. `filters` is controlled — the component owns only the chip/add-menu chrome, and the caller decides what applying a filter actually does.
+- 414a3be: Add `Histogram` — distribution of one metric across ordered ranges (request-duration buckets, payload-size buckets), built on the same `ChartFrame`/`niceScale`/`barPath` geometry as `BarChart`. Bars sit edge to edge (a hairline gap) since ranges are continuous, unlike `BarChart`'s discrete, gapped categories, and it uses the neutral accent color (like `Sparkline`/`Gauge`) since there's only ever one metric to show.
+- 414a3be: Add `JSONViewer` — a collapsible tree for structured data (log fields, trace/span attributes, request/response payloads). Every visible node is real text content, and collapsing a node removes its children from the DOM rather than hiding them, so assistive tech never lands on content the sighted view has hidden. It's a set of nested disclosure buttons (Tab + Enter/Space), not a full WAI-ARIA `tree` widget.
+
+  Also adds the `"accent (as text) on bg"` pairing to the token contrast test suite, covering the node-toggle hover state's background.
+
+- 414a3be: Add `Kbd` — a single keyboard key/shortcut token rendered as a native `<kbd>`, for use inside `CommandItem`, `Tooltip`, or anywhere a shortcut hint is shown. Compose several side by side for a multi-key shortcut (e.g. `⌘` + `K`).
+- 414a3be: Add `ToggleGroup` / `ToggleGroupItem` — a segmented set of pressed-button options (view-mode switches, chart-type toggles, density controls), built on `@radix-ui/react-toggle-group`. `type="single"` exposes `role="radiogroup"`/`role="radio"` (same roles as `RadioGroup`, styled as a connected button row); `type="multiple"` exposes `role="toolbar"` with independently `aria-pressed` buttons. Arrow/Home/End move a roving focus between items; Space/Enter or a click selects.
+- 55a5909: Two new component families for dashboards, and the tokens behind them.
+
+  **Data visualization** — `LineChart` (lines or a single area, with gaps for missing samples), `BarChart` (grouped or stacked, zero-baselined), `Sparkline`, `BarList`, `DonutChart`, `Heatmap`, `Gauge`, plus `ChartFrame` / `ChartLegend` / `ChartTooltip` for building a plot this package doesn't ship. Everything is drawn as SVG from exported geometry helpers (`niceScale`, `linePath`, `areaPath`, `barPath`, `arcPath`, `project`, `polar`, `formatCompact`, `formatDuration`, `formatPercent`, `seriesFill`/`seriesStroke`/`seriesBg`) — no charting dependency is added.
+
+  **Observability** — `StatCard`, `Delta`, `StatusDot`, `UptimeBar`, `LogStream`, `Timeline`, `TraceWaterfall`, `TimeRange`.
+
+  **Tokens** — eight categorical chart-series slots, `--fors-viz-1` … `--fors-viz-8`, per theme, mapped into both Tailwind entries as `fill-viz-*` / `stroke-viz-*` / `bg-viz-*`. The slot order is the colorblind-safety mechanism (adjacent pairs clear the CVD and normal-vision separation floors in both themes) and is pinned, along with the 3:1 non-text contrast bar, by `src/tokens/__tests__/contrast.test.ts`.
+
+  Accessibility notes worth knowing before using these: every plot also renders its data as a visually hidden table (`Heatmap` and `TraceWaterfall` _are_ real tables); the hover readout is reachable by keyboard (Arrow/Home/End, Escape to dismiss) and announced through a polite live region; and identity is never carried by color alone — legends, status words, delta arrows and printed values do that work.
+
+- 10c1ee9: Ready the package for use as a dependency in Tailwind apps:
+
+  - New `@marcfs31/fors-observability-design-system/tailwind.css` export — a Tailwind v4 `@theme` mapping so a consumer's own markup can use the token utilities (`bg-accent`, `text-fg-muted`, `rounded-md`, …).
+  - New `@marcfs31/fors-observability-design-system/tailwind-preset` export — the same mapping as a Tailwind v3 preset (this repo's own config now consumes it). `tailwindcss` is declared as an optional peer.
+  - `sideEffects` now lists the shipped `.css` files instead of `false`, so bundlers that honor the flag literally never tree-shake `import "@marcfs31/fors-observability-design-system/styles.css"`.
+  - `./package.json` is exported for tooling that reads package metadata.
+  - New `npm run test:consumer` (also a CI job): packs the tarball, installs it into a Next.js 16 / React 19 / Tailwind v4 fixture app and builds it, verifying the RSC `"use client"` boundary, the stylesheet surviving the bundler, and the `tailwind.css` mapping.
+
 > Forked from [`@marcfs31/fors-design-system`](https://github.com/marcfs31/fors-design-system) at
 > v1.4.1. Entries below that release are inherited history and name the old package; every version
 > from 2.0.0 on is this package. The fork adds the data-visualization and observability component
 > families and the `--fors-viz-*` series tokens — see the pending changesets.
-
 
 ## 1.4.1
 

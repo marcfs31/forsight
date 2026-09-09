@@ -1,6 +1,6 @@
 {
   "name": "@marcfs31/fors-observability-design-system",
-  "version": "1.4.1",
+  "version": "2.0.0",
   "private": false,
   "description": "Fors Corporation observability design system — brand tokens, React components, and data-visualization + observability primitives.",
   "author": "Fors Corporation <developer@marcfors.com>",
