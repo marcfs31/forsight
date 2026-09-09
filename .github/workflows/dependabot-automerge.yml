@@ -140,8 +140,16 @@ jobs:
       # commit is authored by dependabot[bot] AND that its GPG signature is
       # verified — and fails the step otherwise. Don't arm past that verdict,
       # and don't arm a production bump whose changeset never got written.
+      # The one carve-out from "everything auto-merges": a MAJOR bump of a
+      # GitHub Action. Learned the hard way — changesets/action 1.9.0 -> 2.1.1
+      # auto-merged green on 2026-09-09 and silently broke the release
+      # pipeline, because v2 renamed every input release.yml passes and
+      # unknown inputs are ignored rather than rejected. No status check can
+      # catch that: the release path only runs after the merge. Actions
+      # patch/minor still auto-merge, and so does every major in every other
+      # ecosystem. To auto-merge Action majors too, delete this one condition.
       - name: Arm native auto-merge
-        if: ${{ !cancelled() && steps.metadata.outcome == 'success' && steps.changeset.outcome != 'failure' }}
+        if: ${{ !cancelled() && steps.metadata.outcome == 'success' && steps.changeset.outcome != 'failure' && !(steps.metadata.outputs.package-ecosystem == 'github_actions' && steps.metadata.outputs.update-type == 'version-update:semver-major') }}
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -199,6 +207,20 @@ jobs:
             done
             armed=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json autoMergeRequest -q '.autoMergeRequest != null')
             echo "#$n state=$state armed=$armed"
+            # Same carve-out as the `arm` job: never arm a major bump of a
+            # GitHub Action (the PR title is the only signal available here).
+            case "$ref" in
+              */github_actions/*)
+                if gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json title -q .title | grep -qE 'from ([0-9]+)[^ ]* to ([0-9]+)' ; then
+                  from=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json title -q .title | sed -E 's/.* from ([0-9]+).* to ([0-9]+).*/\1/')
+                  to=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json title -q .title | sed -E 's/.* from ([0-9]+).* to ([0-9]+).*/\2/')
+                  if [ -n "$from" ] && [ -n "$to" ] && [ "$from" != "$to" ]; then
+                    echo "::notice::#$n: major GitHub Action bump ($from -> $to) — left for a human, see dependabot-automerge.yml"
+                    continue
+                  fi
+                fi
+                ;;
+            esac
             if [ "$armed" != "true" ]; then
               if ! gh pr merge --squash --auto "$url"; then
                 if [ "$state" = "CLEAN" ]; then
