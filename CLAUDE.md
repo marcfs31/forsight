@@ -98,24 +98,22 @@ explicitly says to stop.
   checks; the `web` job is the embed-drift gate described above. Both real
   jobs fail closed: if `changes` itself fails they run anyway, because a
   skipped job satisfies branch protection while an absent one blocks it.
-- **What the required checks actually are.** As of 2026-09-09 branch
-  protection on `main` requires exactly seven contexts, all of them exercising
-  the root npm package: `verify (Node 20)`, `verify (Node 22)`, `audit (npm
-audit, high+)`, `consumer (…)`, `storybook (…)`, `Analyze (actions)`,
-  `Analyze (javascript-typescript)`. Read the live list with `gh api
+- **What the required checks actually are.** As of 2026-09-10 branch
+  protection on `main` requires nine contexts: `verify (Node 20)`, `verify
+(Node 22)`, `audit (npm audit, high+)`, `consumer (…)`, `storybook (…)`,
+  `Analyze (actions)`, `Analyze (javascript-typescript)`, `go (vet, lint,
+test, build)` and `web (dashboard build, and it matches what's embedded)`.
+  Read the live list with `gh api
 repos/marcfs31/forsight/branches/main/protection/required_status_checks`
   rather than trusting this paragraph.
-- **Two gaps that follow, and what closes them.** (1) `go (vet, lint, test,
-build)` and `web (dashboard build, and it matches what's embedded)` are NOT
-  yet required, so a Go-module or dashboard bump can auto-merge without its
-  own code being verified. They become eligible once the `paths:`-filter
-  removal in `forsight-ci.yml` is on `main`; adding them is the first
-  follow-up. (2) The two "Analyze (…)" checks prove the CodeQL scan ran, not
-  that it was clean — `github/codeql-action/analyze` does not fail on a
-  finding, and the check that reports findings ("Code scanning results /
-  CodeQL") is not required either. Until it is, a bump that introduces an
-  alert merges green and the alert is fixed after the fact by the triage
-  routine.
+- **The gap that remains.** The two "Analyze (…)" checks prove the CodeQL
+  scan ran, not that it was clean — `github/codeql-action/analyze` does not
+  fail on a finding, and the check that reports findings ("Code scanning
+  results / CodeQL") is not required. So a bump that introduces an alert can
+  merge green, and the alert is fixed after the fact by the triage routine.
+  Making that check required is the remaining hardening step; it was left
+  alone because it only reports from `pull_request` analyses, so requiring it
+  needs care not to deadlock PRs that re-run their checks by dispatch.
 - The `forsight-dependabot-triage` scheduled task (every 3 hours,
   `~/.claude/scheduled-tasks/forsight-dependabot-triage/SKILL.md`) is what
   handles everything a GitHub Action cannot: a red Dependabot PR that needs a
