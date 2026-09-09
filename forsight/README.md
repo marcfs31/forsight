@@ -13,6 +13,16 @@ observability platform.
 - **OpenTelemetry ingestion** — a standard OTLP/HTTP receiver
   (`/v1/metrics`, `/v1/traces`) so any app instrumented with an OTel SDK can
   point its exporter at forsight with no forsight-specific integration.
+  Gauge, Sum, Histogram, ExponentialHistogram and Summary, over protobuf or
+  JSON bodies.
+- **Prometheus scraping** — point `--scrape` at any exposition endpoint
+  (`node_exporter`, a `/metrics` handler in your own app) and it is polled on
+  the same interval as everything else. Counters, gauges, histograms and
+  summaries all become forsight metrics, labelled with a `job` you choose.
+- **StatsD / DogStatsD** — `--statsd-addr :8125` opens a UDP receiver for the
+  other near-universal metrics protocol. Counters and timers flush and reset
+  each tick, gauges persist their last value, and DogStatsD `|#tag:value`
+  tags become labels.
 - **Kubernetes** — the [DaemonSet manifest](deploy/k8s/daemonset.yaml) runs
   this exact binary on every node, reusing the same host/Docker collectors
   (see the manifest's own comments for how and why).
@@ -57,9 +67,14 @@ project's planning notes for the full comparison.
 forsight run [flags]
     --addr string                address to serve on (default ":8080")
     --retention duration         how long the in-memory store retains data (default 1h)
-    --collect-interval duration  how often host/Docker collectors poll (default 10s)
+    --collect-interval duration  how often pull-based collectors poll (default 10s)
     --disable-docker             skip the Docker collector even if a daemon is reachable
     --disable-otlp               don't mount the OTLP ingest endpoints
+    --scrape string              Prometheus exposition endpoint to scrape, repeatable;
+                                 optionally prefixed with a job name
+                                 (--scrape node=http://localhost:9100/metrics)
+    --statsd-addr string         listen for StatsD/DogStatsD over UDP on this address
+                                 (e.g. :8125); empty disables it
 
 forsight version
 ```
@@ -89,7 +104,10 @@ forsight/
     collector/              the Collector interface + a scheduling Registry
       host/                 gopsutil — CPU/memory/disk/network/uptime
       docker/                Docker API — per-container CPU/memory
-      otlp/                  OTLP/HTTP receiver — metrics (Gauge/Sum) + traces
+      otlp/                  OTLP/HTTP receiver — metrics (all five types,
+                             protobuf or JSON) + traces
+      promscrape/            Prometheus exposition-format scraper
+      statsd/                StatsD/DogStatsD UDP receiver
     store/                  Store interface + an in-memory, retention-bounded impl
     api/                    HTTP server: query API, OTLP mount, embedded dashboard
   web/                      the dashboard — a small React app on the design system
@@ -164,6 +182,3 @@ code compiles.
   filters, not anything PromQL-equivalent.
 - **Automated releases.** `make release` is manual; no CI job cuts and
   publishes a GitHub Release on tag push yet.
-- **OTLP Histogram/ExponentialHistogram/Summary metric types**, and
-  OTLP/JSON request bodies (only protobuf, the default for every OTel SDK's
-  HTTP exporter, is handled) — see `internal/collector/otlp`'s package doc.
