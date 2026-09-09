@@ -14,11 +14,12 @@ concurrency:
   group: release
   cancel-in-progress: false
 
-permissions:
-  contents: write
-  pull-requests: write
-  packages: write
-  actions: write # dispatch the required checks on the version PR (below)
+# Declared per job. The `release` job executes build and lifecycle scripts from
+# every transitive dependency, so it must not hold a scope it doesn't need —
+# `actions: write` in particular lives in the separate `arm-version-pr` job
+# below, which runs no dependency code at all. Actions has no per-step
+# permission scoping, which is why this is a job split and not a step.
+permissions: {}
 
 env:
   # Kept in step with dependabot-automerge.yml's REQUIRED_WORKFLOWS: the
@@ -27,8 +28,18 @@ env:
 
 jobs:
   release:
-    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
+    # The ref guard matters on the workflow_dispatch path: without it a
+    # dispatch on any branch would check that branch out and run the full
+    # publish from its tree. The workflow_run path is already filtered to main
+    # by `branches:` above.
+    if: ${{ (github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main') || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # push the version commit/tag; create the GitHub Release
+      pull-requests: write # open/update the "Version Packages" PR
+      packages: write # changeset publish -> GitHub Packages
+    outputs:
+      versionPr: ${{ steps.changesets.outputs.pullRequestNumber }}
     steps:
       - uses: actions/checkout@v7
         with:
@@ -67,23 +78,32 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      # The action pushes the "Version Packages" PR with GITHUB_TOKEN, which
-      # never triggers workflows, so its required checks would sit at
-      # "expected" forever. Dispatch them explicitly (`workflow_dispatch` is
-      # the documented exception to that guard) and arm native auto-merge:
-      # once green the PR merges itself, this workflow runs again on the merge
-      # commit with no pending changesets, and the `publish` branch above ships
-      # the release. That is continuous release — every changeset that lands
-      # on `main` becomes a version without a human clicking anything (Marc's
-      # standing rule, see CLAUDE.md).
+  # Separate job, so the token that can dispatch workflows is never present in
+  # the job that runs dependency code. The action pushes the "Version Packages"
+  # PR with GITHUB_TOKEN, which creates no workflow runs, so its required
+  # checks would sit at "expected" forever. Dispatch them explicitly
+  # (`workflow_dispatch` is the documented exception) and arm native
+  # auto-merge: once green the PR merges itself, Release runs again on the
+  # merge commit with no pending changesets, and the publish path above ships
+  # the release. That is continuous release — every changeset that lands on
+  # `main` becomes a version without a human clicking anything (Marc's standing
+  # rule, see CLAUDE.md).
+  arm-version-pr:
+    needs: release
+    if: ${{ needs.release.outputs.versionPr != '' }}
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write # gh pr merge --auto
+      actions: write # gh workflow run
+    steps:
       - name: Run the required checks on the version PR and arm auto-merge
-        if: steps.changesets.outputs.pullRequestNumber != ''
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          PR: ${{ steps.changesets.outputs.pullRequestNumber }}
+          GH_REPO: ${{ github.repository }}
+          PR: ${{ needs.release.outputs.versionPr }}
           # changesets/action derives its branch from the ref it ran on
           # (`changeset-release/<branch>`), so derive it the same way rather
-          # than hardcoding `main` — this workflow also has workflow_dispatch.
+          # than hardcoding `main`.
           VERSION_BRANCH: changeset-release/${{ github.event.workflow_run.head_branch || github.ref_name }}
         run: |
           set -uo pipefail

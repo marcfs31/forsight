@@ -45,10 +45,10 @@ on:
     - cron: "37 */6 * * *" # safety net for a PR whose refresh was missed
   workflow_dispatch:
 
-permissions:
-  contents: write # update-branch; write the changeset via the Contents API
-  pull-requests: write # gh pr merge --auto
-  actions: write # gh workflow run — re-dispatch checks on a moved head
+# Declared per job below rather than here, so neither job holds a scope the
+# other needs. Repository default_workflow_permissions is `read`, so nothing
+# is inherited by accident.
+permissions: {}
 
 concurrency:
   group: dependabot-automerge-${{ github.event.pull_request.number || 'refresh' }}
@@ -66,8 +66,14 @@ env:
 jobs:
   arm:
     name: Arm auto-merge on a Dependabot PR
-    if: github.event_name == 'pull_request_target' && github.event.pull_request.user.login == 'dependabot[bot]' && github.repository == 'marcfs31/forsight'
+    # `base.ref == main` matters: main is the only protected branch, so a bot PR
+    # targeting anything else would be merged with no required checks at all.
+    if: github.event_name == 'pull_request_target' && github.event.pull_request.user.login == 'dependabot[bot]' && github.event.pull_request.base.ref == 'main' && github.repository == 'marcfs31/forsight'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # write the changeset via the Contents API
+      pull-requests: write # gh pr merge --auto
+      actions: write # gh workflow run — re-dispatch checks on a moved head
     steps:
       - name: Read Dependabot metadata
         id: metadata
@@ -130,8 +136,12 @@ jobs:
       # `--auto` is rejected outright when the PR is already mergeable ("Pull
       # request is in clean status"), so that case falls through to a plain
       # merge — still gated by the same required checks server-side.
+      # fetch-metadata verifies more than this job's `if:` does — that the first
+      # commit is authored by dependabot[bot] AND that its GPG signature is
+      # verified — and fails the step otherwise. Don't arm past that verdict,
+      # and don't arm a production bump whose changeset never got written.
       - name: Arm native auto-merge
-        if: always()
+        if: ${{ !cancelled() && steps.metadata.outcome == 'success' && steps.changeset.outcome != 'failure' }}
         env:
           PR_URL: ${{ github.event.pull_request.html_url }}
           PR_NUMBER: ${{ github.event.pull_request.number }}
@@ -151,6 +161,10 @@ jobs:
     name: Keep open bot PRs current
     if: github.event_name != 'pull_request_target' && github.repository == 'marcfs31/forsight'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write # update-branch
+      pull-requests: write # gh pr merge --auto
+      actions: write # gh workflow run — re-dispatch checks on a moved head
     steps:
       # Pure API calls — nothing is checked out. For every open PR from
       # Dependabot or from the Changesets release bot: arm auto-merge if it is
@@ -165,8 +179,12 @@ jobs:
         run: |
           set -uo pipefail
           prs=$(gh pr list --repo "$GITHUB_REPOSITORY" --state open --limit 100 \
-                --json number,headRefName,url,mergeStateStatus,autoMergeRequest,isDraft,author \
-                | jq -c '[.[] | select(.author.login == "app/dependabot" or .author.login == "app/github-actions") | select(.isDraft | not)]')
+                --json number,headRefName,url,mergeStateStatus,autoMergeRequest,isDraft,author,baseRefName \
+                | jq -c '[.[]
+                    | select(.baseRefName == "main")
+                    | select(.isDraft | not)
+                    | select(.author.login == "app/dependabot"
+                             or (.author.login == "app/github-actions" and (.headRefName | startswith("changeset-release/"))))]')
           echo "$prs" | jq -r '.[] | "#\(.number) \(.mergeStateStatus) auto-merge=\(.autoMergeRequest != null) \(.headRefName)"'
           for n in $(echo "$prs" | jq -r '.[].number'); do
             url=$(gh pr view "$n" --repo "$GITHUB_REPOSITORY" --json url -q .url)

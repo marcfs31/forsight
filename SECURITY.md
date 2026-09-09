@@ -14,11 +14,11 @@ Everything below is enforced by GitHub, not by convention; the full policy (and 
 | ------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Secret scanning + push protection     | Repository settings (a pushed credential is rejected before it lands)                                                                                                                           |
 | Private vulnerability reporting       | "Security → Report a vulnerability" on this repository                                                                                                                                          |
-| Dependabot alerts + security updates  | Repository settings; version updates daily via `.github/dependabot.yml`, auto-merged when green                                                                                                 |
+| Dependabot alerts + security updates  | Repository settings; version updates daily via `.github/dependabot.yml` behind a publish cooldown, auto-merged when green                                                                       |
 | `npm audit --audit-level=high` in CI  | `.github/workflows/ci.yml` — a required check on `main`                                                                                                                                         |
 | CodeQL (`security-and-quality` suite) | `.github/workflows/codeql.yml` — on every PR, on `main`, weekly; both "Analyze" jobs are required checks (they prove the scan ran; findings are fixed at the source per [CLAUDE.md](CLAUDE.md)) |
 | Least-privilege `GITHUB_TOKEN`        | Every workflow declares an explicit `permissions:` block                                                                                                                                        |
-| Branch protection on `main`           | All CI, agent CI + CodeQL checks required and up to date, linear history, no force-push, admins included                                                                                        |
+| Branch protection on `main`           | CI + CodeQL checks required and up to date, linear history, no force-push, admins included (the exact context list, and the two gaps in it, are in [CLAUDE.md](CLAUDE.md))                      |
 
 ## Dependencies
 

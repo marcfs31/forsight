@@ -15,6 +15,14 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 10
+    cooldown:
+      # Nothing is merged the day it is published. `npm audit`/Dependabot
+      # alerts only catch advisories that already exist, so a freshly
+      # published malicious version has none — this window is what closes
+      # that gap without a human in the loop. Everything still merges
+      # automatically, just a few days later.
+      default-days: 3
+      semver-major-days: 7
     groups:
       radix:
         patterns:
@@ -63,6 +71,14 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 5
+    cooldown:
+      # Nothing is merged the day it is published. `npm audit`/Dependabot
+      # alerts only catch advisories that already exist, so a freshly
+      # published malicious version has none — this window is what closes
+      # that gap without a human in the loop. Everything still merges
+      # automatically, just a few days later.
+      default-days: 3
+      semver-major-days: 7
     groups:
       vite:
         patterns:
@@ -81,12 +97,30 @@ updates:
     schedule:
       interval: "daily"
     open-pull-requests-limit: 5
+    cooldown:
+      # Nothing is merged the day it is published. `npm audit`/Dependabot
+      # alerts only catch advisories that already exist, so a freshly
+      # published malicious version has none — this window is what closes
+      # that gap without a human in the loop. Everything still merges
+      # automatically, just a few days later.
+      default-days: 3
+      semver-major-days: 7
     groups:
       go-modules:
         patterns:
           - "*"
 
+  # Actions are the highest-consequence ecosystem here: a bump rewrites a
+  # `uses:` SHA, and `release.yml` executes those Actions with a token that can
+  # publish. They still auto-merge (Marc's rule), but with the longest cooldown
+  # in the file, so a compromised upstream release has days to be disclosed and
+  # yanked before it can land unattended. To take Actions out of auto-merge
+  # entirely, add `github-actions` to the ecosystem check in
+  # dependabot-automerge.yml's `arm` job — one condition, nothing else changes.
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "daily"
+    cooldown:
+      default-days: 7
+      semver-major-days: 7
