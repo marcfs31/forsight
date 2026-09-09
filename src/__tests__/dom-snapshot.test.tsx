@@ -270,6 +270,12 @@ const cases: Record<string, React.ReactElement> = {
       mode="range"
       selected={{ from: new Date(2026, 8, 8), to: new Date(2026, 8, 11) }}
       defaultMonth={new Date(2026, 8, 1)}
+      // Pinned: react-day-picker puts a `today` modifier on the current date,
+      // so without this the rendered markup — and therefore this snapshot —
+      // changes at every midnight. The pinned day sits inside the selected
+      // range on purpose, so the today + range_middle combination stays
+      // covered rather than being sidestepped.
+      today={new Date(2026, 8, 9)}
     />
   ),
   "Separator/horizontal": <Separator />,
