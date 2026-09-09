@@ -1,0 +1,73 @@
+name: botobs CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "botobs/**"
+      - ".github/workflows/botobs-ci.yml"
+  pull_request:
+    paths:
+      - "botobs/**"
+      - ".github/workflows/botobs-ci.yml"
+
+# Never writes to the repo — pin the token to read-only, same as ci.yml.
+permissions:
+  contents: read
+
+jobs:
+  go:
+    name: go (vet, lint, test, build)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: botobs/go.mod
+      - run: go vet ./...
+        working-directory: botobs
+      # Pinned to a commit SHA, not the mutable "v9" tag — CodeQL's
+      # unpinned-tag check flags third-party Actions specifically (the
+      # first-party actions/* and github/* steps elsewhere in this repo's
+      # workflows aren't flagged the same way); a tag can be moved to point
+      # at different code after the fact, a SHA can't.
+      - uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
+        with:
+          working-directory: botobs
+      - run: go test ./...
+        working-directory: botobs
+      # Uses whatever is currently checked into internal/api/webdist/ (the
+      # fallback page unless a prior "web" job step refreshed it) — this
+      # step's whole point is proving `go build` never needs Node, so it
+      # deliberately does not build botobs/web first.
+      - run: go build ./...
+        working-directory: botobs
+
+  web:
+    name: web (dashboard build, and it matches what's embedded)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+      # botobs/web depends on the design system via a local `file:` reference
+      # (see botobs/web/package.json) — it needs a real dist/ to resolve, not
+      # just the source.
+      - run: npm ci
+      - run: npm run build
+      - run: npm ci
+        working-directory: botobs/web
+      - run: npm run build
+        working-directory: botobs/web
+      # Vite's output is content-hashed, so an unchanged source tree
+      # rebuilds byte-for-byte identical — if this diff is non-empty,
+      # someone changed botobs/web (or the design system) without running
+      # `make build-web` and committing the refreshed embed, which is
+      # exactly the drift internal/api/dashboard.go's doc comment warns
+      # against (see also CONTRIBUTING.md's "Snapshots are reviewed, not
+      # rubber-stamped" — this is that same discipline for a generated
+      # embed instead of a test snapshot).
+      - name: Diff the fresh build against internal/api/webdist/
+        run: diff -rq botobs/web/dist botobs/internal/api/webdist
