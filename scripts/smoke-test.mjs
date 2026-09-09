@@ -134,6 +134,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "Accordion",
   "Slider",
   "Skeleton",
+  "CopyButton",
   "Breadcrumb",
   "Pagination",
   "FilterBar",

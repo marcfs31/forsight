@@ -32,6 +32,7 @@ import {
   Collapsible,
   CollapsibleContent,
   CollapsibleTrigger,
+  CopyButton,
   Delta,
   DonutChart,
   EmptyState,
@@ -250,6 +251,7 @@ const cases: Record<string, React.ReactElement> = {
       <Kbd>K</Kbd>
     </span>
   ),
+  "CopyButton/idle": <CopyButton value="hello world" />,
   "Collapsible/closed": (
     <Collapsible>
       <CollapsibleTrigger>Show more</CollapsibleTrigger>

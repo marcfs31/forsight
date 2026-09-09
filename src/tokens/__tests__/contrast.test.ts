@@ -67,6 +67,8 @@ function pairsFor(p: ForsPalette): Array<[string, string, string]> {
 
     ["success-fg on success", p.successFg, p.success],
     ["success (as text) on success-subtle", p.success, p.successSubtle],
+    // CopyButton's copied-state icon draws text-success directly on bg.
+    ["success (as text) on bg", p.success, p.bg],
 
     ["warning-fg on warning", p.warningFg, p.warning],
     ["warning (as text) on warning-subtle", p.warning, p.warningSubtle],

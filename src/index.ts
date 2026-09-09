@@ -109,6 +109,7 @@ export {
 } from "./components/Accordion";
 export { Slider } from "./components/Slider";
 export { Skeleton } from "./components/Skeleton";
+export { CopyButton, type CopyButtonProps } from "./components/CopyButton";
 export {
   Breadcrumb,
   BreadcrumbList,
