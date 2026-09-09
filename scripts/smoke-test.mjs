@@ -163,6 +163,7 @@ const EXPECTED_COMPONENT_EXPORTS = [
   "LineChart",
   "BarChart",
   "BarList",
+  "Funnel",
   "Sparkline",
   "DonutChart",
   "Heatmap",

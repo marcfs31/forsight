@@ -187,6 +187,7 @@ export {
 export { LineChart, type LineChartProps, type ChartSeries } from "./components/LineChart";
 export { BarChart, type BarChartProps } from "./components/BarChart";
 export { BarList, type BarListProps, type BarListItem } from "./components/BarList";
+export { Funnel, type FunnelProps, type FunnelStage } from "./components/Funnel";
 export { Sparkline, type SparklineProps } from "./components/Sparkline";
 export { DonutChart, type DonutChartProps, type DonutSlice } from "./components/DonutChart";
 export { Heatmap, type HeatmapProps, type HeatmapRow } from "./components/Heatmap";

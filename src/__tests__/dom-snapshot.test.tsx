@@ -39,6 +39,7 @@ import {
   DonutChart,
   EmptyState,
   ErrorBudget,
+  Funnel,
   Gauge,
   Heading,
   Heatmap,
@@ -330,6 +331,15 @@ const cases: Record<string, React.ReactElement> = {
       items={[
         { label: "/api/checkout", value: 1240 },
         { label: "/api/search", value: 620 },
+      ]}
+    />
+  ),
+  "Funnel/narrowing-stages": (
+    <Funnel
+      stages={[
+        { label: "Visited pricing page", value: 1000 },
+        { label: "Started signup", value: 400 },
+        { label: "Became a paying customer", value: 100 },
       ]}
     />
   ),
