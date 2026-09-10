@@ -41,7 +41,7 @@ export interface SidebarContextValue {
    * usual `DialogPrimitive.Trigger` focus-return (which needs that
    * ancestry) can't apply here — this ref is the substitute.
    */
-  mobileTriggerRef: React.RefObject<HTMLButtonElement>;
+  mobileTriggerRef: React.RefObject<HTMLButtonElement | null>;
 }
 
 const SidebarContext = React.createContext<SidebarContextValue | null>(null);

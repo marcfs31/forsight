@@ -47,7 +47,7 @@ export const CopyButton = React.forwardRef<HTMLButtonElement, CopyButtonProps>(
     ref
   ) => {
     const [copied, setCopied] = React.useState(false);
-    const timeoutRef = React.useRef<ReturnType<typeof setTimeout>>();
+    const timeoutRef = React.useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
     React.useEffect(() => () => clearTimeout(timeoutRef.current), []);
 
