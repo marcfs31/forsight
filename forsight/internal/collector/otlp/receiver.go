@@ -81,7 +81,11 @@ func (h *Handler) handleMetrics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	metrics := metricsFromOTLP(&req)
+	metrics, truncated := metricsFromOTLP(&req)
+	if truncated {
+		http.Error(w, "payload flattens to more than the per-request metric limit", http.StatusRequestEntityTooLarge)
+		return
+	}
 	if err := h.metrics.WriteMetrics(r.Context(), metrics); err != nil {
 		http.Error(w, "failed to store metrics", http.StatusInternalServerError)
 		return
@@ -140,17 +144,24 @@ func writeEmptyResponse(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusOK)
 }
 
-func metricsFromOTLP(req *collectormetrics.ExportMetricsServiceRequest) []model.Metric {
+// metricsFromOTLP flattens a request, stopping at maxMetricsPerRequest. The
+// bool reports whether it stopped early, so the handler can reject the
+// request outright rather than silently storing a truncated prefix — half of
+// somebody's histogram is worse than a clear 413.
+func metricsFromOTLP(req *collectormetrics.ExportMetricsServiceRequest) ([]model.Metric, bool) {
 	var out []model.Metric
 	for _, rm := range req.GetResourceMetrics() {
 		resourceLabels := resourceAttributes(rm.GetResource())
 		for _, sm := range rm.GetScopeMetrics() {
 			for _, m := range sm.GetMetrics() {
 				out = append(out, dataPointsFromMetric(m, resourceLabels)...)
+				if len(out) > maxMetricsPerRequest {
+					return out[:maxMetricsPerRequest], true
+				}
 			}
 		}
 	}
-	return out
+	return out, false
 }
 
 func dataPointsFromMetric(m *metricspb.Metric, resourceLabels map[string]string) []model.Metric {
@@ -194,7 +205,7 @@ func numberDataPoints(name string, points []*metricspb.NumberDataPoint, resource
 func histogramDataPoints(name string, points []*metricspb.HistogramDataPoint, resourceLabels map[string]string) []model.Metric {
 	var out []model.Metric
 	for _, dp := range points {
-		ts := time.Unix(0, int64(dp.GetTimeUnixNano()))
+		ts := pointTime(dp.GetTimeUnixNano(), time.Now())
 		labels := mergeLabels(resourceLabels, attributesToLabels(dp.GetAttributes()))
 
 		out = append(out, model.Metric{Name: name + "_count", Value: float64(dp.GetCount()), Timestamp: ts, Labels: labels})
@@ -215,6 +226,9 @@ func histogramDataPoints(name string, points []*metricspb.HistogramDataPoint, re
 			if i >= len(bounds) {
 				break // the final, implicit (+Inf) bucket carries no boundary to label with
 			}
+			if i >= maxBucketsPerPoint {
+				break // see maxBucketsPerPoint: the fan-out is the attack surface
+			}
 			bucketLabels := mergeLabels(labels, map[string]string{"le": formatBound(bounds[i])})
 			out = append(out, model.Metric{Name: name + "_bucket", Value: cumulative, Timestamp: ts, Labels: bucketLabels})
 		}
@@ -228,7 +242,7 @@ func histogramDataPoints(name string, points []*metricspb.HistogramDataPoint, re
 func expHistogramDataPoints(name string, points []*metricspb.ExponentialHistogramDataPoint, resourceLabels map[string]string) []model.Metric {
 	var out []model.Metric
 	for _, dp := range points {
-		ts := time.Unix(0, int64(dp.GetTimeUnixNano()))
+		ts := pointTime(dp.GetTimeUnixNano(), time.Now())
 		labels := mergeLabels(resourceLabels, attributesToLabels(dp.GetAttributes()))
 
 		out = append(out, model.Metric{Name: name + "_count", Value: float64(dp.GetCount()), Timestamp: ts, Labels: labels})
@@ -251,17 +265,57 @@ func expHistogramDataPoints(name string, points []*metricspb.ExponentialHistogra
 func summaryDataPoints(name string, points []*metricspb.SummaryDataPoint, resourceLabels map[string]string) []model.Metric {
 	var out []model.Metric
 	for _, dp := range points {
-		ts := time.Unix(0, int64(dp.GetTimeUnixNano()))
+		ts := pointTime(dp.GetTimeUnixNano(), time.Now())
 		labels := mergeLabels(resourceLabels, attributesToLabels(dp.GetAttributes()))
 
 		out = append(out, model.Metric{Name: name + "_count", Value: float64(dp.GetCount()), Timestamp: ts, Labels: labels})
 		out = append(out, model.Metric{Name: name + "_sum", Value: dp.GetSum(), Timestamp: ts, Labels: labels})
-		for _, q := range dp.GetQuantileValues() {
+		for i, q := range dp.GetQuantileValues() {
+			if i >= maxQuantilesPerPoint {
+				break // same fan-out concern as histogram buckets
+			}
 			qLabels := mergeLabels(labels, map[string]string{"quantile": formatBound(q.GetQuantile())})
 			out = append(out, model.Metric{Name: name, Value: q.GetValue(), Timestamp: ts, Labels: qLabels})
 		}
 	}
 	return out
+}
+
+// Ingest bounds. These exist because every number below is chosen by whoever
+// sends the request: an OTLP histogram declares its own bucket count, and the
+// receiver flattens one metric per bucket. Without a cap, a single request
+// inside the body-size limit expands into millions of metrics — the body is
+// compact because bucket bounds are small, while each produced metric carries
+// a freshly copied label map. Capping the body is not a fix for that; capping
+// what the body is allowed to *produce* is.
+const (
+	// maxBucketsPerPoint bounds explicit histogram buckets flattened per data
+	// point. Prometheus histograms in practice have tens of buckets; 1024 is
+	// far above any real instrument and far below anything dangerous.
+	maxBucketsPerPoint = 1024
+	// maxQuantilesPerPoint bounds a summary's reported quantiles per data
+	// point, which flatten the same way.
+	maxQuantilesPerPoint = 128
+	// maxMetricsPerRequest bounds the total flattened output of one request.
+	maxMetricsPerRequest = 200_000
+	// maxFutureSkew is how far ahead of now an ingested timestamp may be
+	// before it is clamped. A timestamp past the retention horizon would
+	// otherwise never be pruned, making a point immortal and pinning the
+	// dashboard's "latest value" to it forever.
+	maxFutureSkew = 5 * time.Minute
+)
+
+// pointTime converts a wire timestamp, defending against both a uint64 that
+// does not fit in an int64 and a timestamp chosen to outlive retention.
+func pointTime(nanos uint64, now time.Time) time.Time {
+	if nanos > math.MaxInt64 {
+		return now
+	}
+	ts := time.Unix(0, int64(nanos))
+	if ts.After(now.Add(maxFutureSkew)) {
+		return now
+	}
+	return ts
 }
 
 func formatBound(v float64) string {
