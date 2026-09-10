@@ -109,3 +109,71 @@ func TestMemoryStore_Spans(t *testing.T) {
 		t.Fatalf("QuerySpans with service filter = %+v, want exactly the payments span", got)
 	}
 }
+
+func TestMemoryStore_ElementCapBoundsGrowth(t *testing.T) {
+	// Age pruning alone cannot bound this store, because ingested timestamps
+	// come off the wire: a writer choosing a far-future timestamp is never
+	// pruned. The element cap is what makes memory a function of configuration
+	// rather than of what somebody sends.
+	s := NewMemoryStore(time.Hour)
+	s.SetMaxElements(100)
+
+	future := time.Now().Add(24 * time.Hour)
+	for i := 0; i < 10; i++ {
+		batch := make([]model.Metric, 50)
+		for j := range batch {
+			batch[j] = model.Metric{Name: "m", Value: float64(i*50 + j), Timestamp: future}
+		}
+		if err := s.WriteMetrics(context.Background(), batch); err != nil {
+			t.Fatalf("WriteMetrics: %v", err)
+		}
+	}
+
+	got, err := s.QueryMetrics(context.Background(), MetricQuery{Name: "m"})
+	if err != nil {
+		t.Fatalf("QueryMetrics: %v", err)
+	}
+	if len(got) != 100 {
+		t.Fatalf("stored %d metrics, want the cap of 100 — 500 future-dated points were written", len(got))
+	}
+	// The newest are the ones kept: the last write was values 450..499.
+	if got[len(got)-1].Value != 499 {
+		t.Errorf("newest retained value = %v, want 499 (the cap must drop the oldest, not the newest)", got[len(got)-1].Value)
+	}
+}
+
+func TestMemoryStore_SetMaxElementsRejectsUnbounded(t *testing.T) {
+	s := NewMemoryStore(time.Hour)
+	s.SetMaxElements(0) // must fall back to the default, never mean "no limit"
+	batch := make([]model.Metric, 10)
+	for i := range batch {
+		batch[i] = model.Metric{Name: "m", Timestamp: time.Now()}
+	}
+	if err := s.WriteMetrics(context.Background(), batch); err != nil {
+		t.Fatalf("WriteMetrics: %v", err)
+	}
+	got, _ := s.QueryMetrics(context.Background(), MetricQuery{Name: "m"})
+	if len(got) != 10 {
+		t.Fatalf("got %d, want 10 — a zero cap must restore the default, not discard data", len(got))
+	}
+}
+
+func TestMemoryStore_SpanElementCap(t *testing.T) {
+	s := NewMemoryStore(time.Hour)
+	s.SetMaxElements(20)
+	future := time.Now().Add(24 * time.Hour)
+	spans := make([]model.Span, 100)
+	for i := range spans {
+		spans[i] = model.Span{TraceID: "t", SpanID: "s", Service: "svc", Start: future}
+	}
+	if err := s.WriteSpans(context.Background(), spans); err != nil {
+		t.Fatalf("WriteSpans: %v", err)
+	}
+	got, err := s.QuerySpans(context.Background(), SpanQuery{Service: "svc"})
+	if err != nil {
+		t.Fatalf("QuerySpans: %v", err)
+	}
+	if len(got) != 20 {
+		t.Fatalf("stored %d spans, want the cap of 20", len(got))
+	}
+}
