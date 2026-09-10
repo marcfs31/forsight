@@ -27,6 +27,14 @@ npm run size              # bundle-size budget — see the "size-limit" field in
 
 All of these run in CI; failing any of them blocks merge.
 
+**Regenerate `package-lock.json` with the NEWEST npm in the CI matrix** (Node
+24, npm 12) — never the oldest. The two are not symmetric: a lockfile written
+by npm 12 is accepted by npm 10, but a lockfile written by npm 10 can be
+rejected outright by npm 12 (`npm ci` exits `EUSAGE`, "not in sync", before a
+single check runs). Nested `overrides` are where this bites, because the two
+versions resolve them differently. `nvm use 24` before `npm install` when a
+change touches dependencies.
+
 **Dependency bumps**: verify against the Node version in `.nvmrc` (22), not
 whatever's globally installed — CI's matrix (22 & 24) is current LTS plus
 current, and dev tooling does move faster than the oldest version you happen
