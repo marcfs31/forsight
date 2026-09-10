@@ -3,9 +3,11 @@ package otlp
 import (
 	"bytes"
 	"context"
+	"math"
 	"net/http"
 	"net/http/httptest"
 	"testing"
+	"time"
 
 	"google.golang.org/protobuf/proto"
 
@@ -404,5 +406,120 @@ func TestHandleMetrics_RejectsInvalidJSONBody(t *testing.T) {
 
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("status = %d, want 400", rec.Code)
+	}
+}
+
+// histogramRequest builds one OTLP request carrying a single histogram data
+// point with the given number of explicit bounds — the shape that made a
+// small body expand into millions of metrics.
+func histogramRequest(buckets int) *collectormetrics.ExportMetricsServiceRequest {
+	bounds := make([]float64, buckets)
+	counts := make([]uint64, buckets+1)
+	for i := range bounds {
+		bounds[i] = float64(i)
+		counts[i] = 1
+	}
+	return &collectormetrics.ExportMetricsServiceRequest{
+		ResourceMetrics: []*metricspb.ResourceMetrics{{
+			ScopeMetrics: []*metricspb.ScopeMetrics{{
+				Metrics: []*metricspb.Metric{{
+					Name: "http_duration",
+					Data: &metricspb.Metric_Histogram{Histogram: &metricspb.Histogram{
+						DataPoints: []*metricspb.HistogramDataPoint{{
+							TimeUnixNano:   uint64(time.Now().UnixNano()),
+							Count:          uint64(buckets),
+							ExplicitBounds: bounds,
+							BucketCounts:   counts,
+						}},
+					}},
+				}},
+			}},
+		}},
+	}
+}
+
+func TestHistogramBucketFanOutIsBounded(t *testing.T) {
+	// 200,000 bounds is a ~3MB body, well inside the 32MiB read limit, and
+	// used to flatten to 200,001 metrics each carrying its own label map.
+	metrics, truncated := metricsFromOTLP(histogramRequest(200_000))
+	if truncated {
+		t.Fatalf("one data point should not trip the per-request cap; the per-point cap should have contained it first")
+	}
+	// _count plus the capped buckets. Sum/min/max are absent on this fixture.
+	if want := 1 + maxBucketsPerPoint; len(metrics) != want {
+		t.Fatalf("flattened to %d metrics, want %d (1 count + %d capped buckets)", len(metrics), want, maxBucketsPerPoint)
+	}
+}
+
+func TestPerRequestMetricCapRejectsRatherThanTruncates(t *testing.T) {
+	// Many data points, each individually under the per-point cap, still add
+	// up. Storing a truncated prefix would silently corrupt somebody's data,
+	// so the handler must refuse the request instead.
+	points := make([]*metricspb.HistogramDataPoint, 0, 400)
+	bounds := make([]float64, maxBucketsPerPoint)
+	counts := make([]uint64, maxBucketsPerPoint+1)
+	for i := range bounds {
+		bounds[i] = float64(i)
+		counts[i] = 1
+	}
+	for i := 0; i < 400; i++ {
+		points = append(points, &metricspb.HistogramDataPoint{
+			TimeUnixNano:   uint64(time.Now().UnixNano()),
+			ExplicitBounds: bounds,
+			BucketCounts:   counts,
+		})
+	}
+	req := &collectormetrics.ExportMetricsServiceRequest{
+		ResourceMetrics: []*metricspb.ResourceMetrics{{
+			ScopeMetrics: []*metricspb.ScopeMetrics{{
+				Metrics: []*metricspb.Metric{{
+					Name: "http_duration",
+					Data: &metricspb.Metric_Histogram{Histogram: &metricspb.Histogram{DataPoints: points}},
+				}},
+			}},
+		}},
+	}
+	metrics, truncated := metricsFromOTLP(req)
+	if !truncated {
+		t.Fatalf("flattened %d metrics without reporting truncation", len(metrics))
+	}
+	if len(metrics) != maxMetricsPerRequest {
+		t.Errorf("returned %d metrics, want exactly the cap %d", len(metrics), maxMetricsPerRequest)
+	}
+
+	body, err := proto.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	sink := &fakeSink{}
+	rec := httptest.NewRecorder()
+	httpReq := httptest.NewRequest(http.MethodPost, "/v1/metrics", bytes.NewReader(body))
+	httpReq.Header.Set("Content-Type", "application/x-protobuf")
+	NewHandler(sink, sink).handleMetrics(rec, httpReq)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusRequestEntityTooLarge)
+	}
+	if len(sink.metrics) != 0 {
+		t.Errorf("stored %d metrics from a rejected request, want 0 — a partial write is the thing this prevents", len(sink.metrics))
+	}
+}
+
+func TestFutureTimestampsAreClamped(t *testing.T) {
+	// A timestamp past the retention horizon would never be pruned, making the
+	// point immortal and pinning the dashboard's latest value to it.
+	now := time.Now()
+	far := uint64(now.Add(72 * time.Hour).UnixNano())
+	if got := pointTime(far, now); got.After(now.Add(maxFutureSkew)) {
+		t.Errorf("pointTime kept a far-future timestamp %v; want it clamped to about %v", got, now)
+	}
+	// A uint64 too large for int64 must not wrap to a negative time.
+	if got := pointTime(math.MaxUint64, now); got.Before(now.Add(-time.Second)) {
+		t.Errorf("pointTime(MaxUint64) = %v, want ~now rather than a wrapped negative", got)
+	}
+	// A normal timestamp is untouched.
+	past := now.Add(-30 * time.Second)
+	if got := pointTime(uint64(past.UnixNano()), now); !got.Equal(past) {
+		t.Errorf("pointTime altered an ordinary timestamp: %v != %v", got, past)
 	}
 }
