@@ -156,7 +156,7 @@
     "@vitest/coverage-v8": "^4.1.11",
     "autoprefixer": "^10.4.20",
     "axe-playwright": "^2.0.3",
-    "concurrently": "^9.0.1",
+    "concurrently": "^10.0.5",
     "eslint": "^9.11.1",
     "eslint-config-prettier": "^9.1.0",
     "eslint-plugin-react-hooks": "^5.0.0",
