@@ -90,6 +90,9 @@ const preview: Preview = {
       return React.createElement(Story);
     },
   ],
+  // Storybook 9 removed `docs.autodocs` from main.ts; the preview-level
+  // `autodocs` tag is its replacement, so every story keeps its Docs page.
+  tags: ["autodocs"],
 };
 
 export default preview;

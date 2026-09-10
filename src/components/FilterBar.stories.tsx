@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, within, waitFor } from "@storybook/test";
+import { expect, userEvent, within, waitFor } from "storybook/test";
 import { FilterBar, type FilterBarFacet, type FilterBarOption } from "./FilterBar";
 
 const OPTIONS: FilterBarOption[] = [

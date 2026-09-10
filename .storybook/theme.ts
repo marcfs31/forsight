@@ -1,4 +1,4 @@
-import { create, type ThemeVars } from "@storybook/theming";
+import { create, type ThemeVars } from "storybook/theming";
 
 /**
  * Storybook's own chrome (sidebar, toolbar, Docs pages) is themed separately
