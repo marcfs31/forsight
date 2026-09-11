@@ -42,6 +42,8 @@ type runOptions struct {
 	scrapeTargets     []string
 	statsdAddr        string
 	logFiles          []string
+	storeBackend      string
+	dataDir           string
 }
 
 func newRunCmd() *cobra.Command {
@@ -58,7 +60,7 @@ func newRunCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opts.authToken, "auth-token", "",
 		"require Authorization: Bearer <token> on every route except GET /healthz; "+
 			"also read from FORSIGHT_AUTH_TOKEN when the flag is empty (auth is off by default)")
-	cmd.Flags().DurationVar(&opts.retention, "retention", time.Hour, "how long the in-memory store retains data")
+	cmd.Flags().DurationVar(&opts.retention, "retention", time.Hour, "how long the store retains data, memory or Badger alike")
 	cmd.Flags().DurationVar(&opts.collectInterval, "collect-interval", 10*time.Second, "how often the host/Docker collectors poll")
 	cmd.Flags().BoolVar(&opts.disableDocker, "disable-docker", false, "skip the Docker collector even if a daemon is reachable")
 	cmd.Flags().BoolVar(&opts.disableOTLP, "disable-otlp", false, "don't mount the OTLP ingest endpoints")
@@ -72,6 +74,12 @@ func newRunCmd() *cobra.Command {
 		"listen for StatsD/DogStatsD metrics over UDP (default :8125 so a bare install receives them; --disable-statsd turns it off)")
 	cmd.Flags().StringArrayVar(&opts.logFiles, "log-file", nil,
 		"path of a log file to tail into the store (repeatable); severity is inferred from the line")
+	cmd.Flags().StringVar(&opts.storeBackend, "store", "memory",
+		`storage backend: "memory" (default; fast, resets on every restart) or `+
+			`"badger" (persists to --data-dir, survives a restart)`)
+	cmd.Flags().StringVar(&opts.dataDir, "data-dir", "./forsight-data",
+		`directory for the Badger database when --store=badger (ignored otherwise); `+
+			"created if it doesn't exist")
 
 	return cmd
 }
@@ -80,8 +88,24 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Scrape targets are pull-based like host/Docker, so the registry's own
+	// ticker drives them — one collector for all targets, not one each.
+	// Validated up front, before the store (possibly a Badger database) is
+	// opened, so a bad --scrape value fails fast with nothing to clean up.
+	targets, err := parseScrapeTargets(opts.scrapeTargets)
+	if err != nil {
+		return err
+	}
+
 	eng := forseer.NewEngine()
-	st := observingStore{Store: store.NewMemoryStore(opts.retention), eng: eng}
+	backingStore, badgerStore, err := newBackingStore(opts)
+	if err != nil {
+		return err
+	}
+	if badgerStore != nil {
+		logger.Info("using the Badger persistent store", "dir", opts.dataDir, "retention", opts.retention)
+	}
+	st := observingStore{Store: backingStore, eng: eng}
 
 	collectors := []collector.Collector{hostcollector.New()}
 	if !opts.disableProc {
@@ -95,12 +119,6 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 		}
 	}
 
-	// Scrape targets are pull-based like host/Docker, so the registry's own
-	// ticker drives them — one collector for all targets, not one each.
-	targets, err := parseScrapeTargets(opts.scrapeTargets)
-	if err != nil {
-		return err
-	}
 	if !opts.disableAutoscrape {
 		found := promscrape.DiscoverLocal(ctx, targets)
 		for _, t := range found {
@@ -175,10 +193,48 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 		logger.Info("shutting down")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		return httpServer.Shutdown(shutdownCtx)
+		shutdownErr := httpServer.Shutdown(shutdownCtx)
+		return errors.Join(shutdownErr, closeBadgerStore(badgerStore, logger))
 	case err := <-serveErr:
-		return err
+		return errors.Join(err, closeBadgerStore(badgerStore, logger))
 	}
+}
+
+// newBackingStore builds the Store the agent writes to and queries,
+// selected by --store. It also returns the concrete *store.BadgerStore when
+// that backend was chosen (nil otherwise), so run's shutdown path can call
+// Close on it directly — Store itself has no Close method, since MemoryStore
+// has nothing to close.
+func newBackingStore(opts *runOptions) (backing store.Store, badgerStore *store.BadgerStore, err error) {
+	switch opts.storeBackend {
+	case "", "memory":
+		return store.NewMemoryStore(opts.retention), nil, nil
+	case "badger":
+		bs, err := store.NewBadgerStore(opts.dataDir, opts.retention)
+		if err != nil {
+			return nil, nil, fmt.Errorf("open Badger store: %w", err)
+		}
+		return bs, bs, nil
+	default:
+		return nil, nil, fmt.Errorf(`--store %q: want "memory" or "badger"`, opts.storeBackend)
+	}
+}
+
+// closeBadgerStore closes bs if it's non-nil (opts.storeBackend != "badger"
+// leaves it nil, so this is always safe to call unconditionally on both
+// shutdown paths below). Called from two places rather than a bare
+// top-level defer so a hard failure of the HTTP server's own shutdown
+// doesn't skip it, and so the same explicit path handles both the graceful
+// (ctx.Done) and the listener-failed (serveErr) cases identically.
+func closeBadgerStore(bs *store.BadgerStore, logger *slog.Logger) error {
+	if bs == nil {
+		return nil
+	}
+	if err := bs.Close(); err != nil {
+		logger.Error("closing Badger store", "error", err)
+		return fmt.Errorf("close Badger store: %w", err)
+	}
+	return nil
 }
 
 // resolveAuthToken prefers the --auth-token flag; when that is empty it falls

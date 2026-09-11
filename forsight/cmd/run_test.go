@@ -1,8 +1,76 @@
 package cmd
 
 import (
+	"log/slog"
 	"testing"
+	"time"
+
+	"github.com/marcfs31/forsight/forsight/internal/store"
 )
+
+func discardLogger() *slog.Logger {
+	return slog.New(slog.DiscardHandler)
+}
+
+func TestNewBackingStore(t *testing.T) {
+	t.Run("defaults to memory", func(t *testing.T) {
+		backing, badgerStore, err := newBackingStore(&runOptions{storeBackend: "", retention: time.Hour})
+		if err != nil {
+			t.Fatalf("newBackingStore: %v", err)
+		}
+		if badgerStore != nil {
+			t.Errorf("badgerStore = %v, want nil for an unset --store", badgerStore)
+		}
+		if _, ok := backing.(*store.MemoryStore); !ok {
+			t.Errorf("backing = %T, want *store.MemoryStore", backing)
+		}
+	})
+
+	t.Run(`"memory" is explicit too`, func(t *testing.T) {
+		backing, badgerStore, err := newBackingStore(&runOptions{storeBackend: "memory", retention: time.Hour})
+		if err != nil {
+			t.Fatalf("newBackingStore: %v", err)
+		}
+		if badgerStore != nil {
+			t.Errorf("badgerStore = %v, want nil for --store=memory", badgerStore)
+		}
+		if _, ok := backing.(*store.MemoryStore); !ok {
+			t.Errorf("backing = %T, want *store.MemoryStore", backing)
+		}
+	})
+
+	t.Run(`"badger" opens a database at --data-dir and returns it for the shutdown path too`, func(t *testing.T) {
+		dir := t.TempDir()
+		backing, badgerStore, err := newBackingStore(&runOptions{storeBackend: "badger", dataDir: dir, retention: time.Hour})
+		if err != nil {
+			t.Fatalf("newBackingStore: %v", err)
+		}
+		t.Cleanup(func() {
+			if err := closeBadgerStore(badgerStore, discardLogger()); err != nil {
+				t.Errorf("closeBadgerStore: %v", err)
+			}
+		})
+		if badgerStore == nil {
+			t.Fatal("badgerStore = nil, want the opened *store.BadgerStore for --store=badger")
+		}
+		if backing != store.Store(badgerStore) {
+			t.Errorf("backing and badgerStore must be the same value: backing=%v badgerStore=%v", backing, badgerStore)
+		}
+	})
+
+	t.Run("rejects an unknown backend", func(t *testing.T) {
+		_, _, err := newBackingStore(&runOptions{storeBackend: "postgres", retention: time.Hour})
+		if err == nil {
+			t.Fatal(`newBackingStore(storeBackend: "postgres") = nil error, want one`)
+		}
+	})
+}
+
+func TestCloseBadgerStore_NilIsNoop(t *testing.T) {
+	if err := closeBadgerStore(nil, discardLogger()); err != nil {
+		t.Errorf("closeBadgerStore(nil, ...) = %v, want nil", err)
+	}
+}
 
 func TestResolveAuthToken(t *testing.T) {
 	t.Setenv("FORSIGHT_AUTH_TOKEN", "from-env")

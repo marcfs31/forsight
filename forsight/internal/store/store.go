@@ -1,7 +1,9 @@
 // Package store defines the Store interface forsight's API queries and its
-// collectors/receivers write to, plus a MemoryStore implementation. A
-// Badger-backed persistent implementation (Store is the seam for it) is
-// tracked in forsight/README.md's roadmap, not built yet.
+// collectors/receivers write to, plus two implementations: MemoryStore (the
+// default — in-process, resets on restart) and BadgerStore (opt-in via
+// `forsight run --store badger`, persists to disk). Both satisfy identical
+// query semantics — time-range + exact-label match, retention-based
+// pruning — so either can back the same Store-typed caller.
 package store
 
 import (
