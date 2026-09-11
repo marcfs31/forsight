@@ -219,7 +219,7 @@ rebase, never force-push. Work in a throwaway worktree, not the interactive
 session's own checkout. Resolve by keeping the INTENT of both sides, not by
 preferring one — two independent PRs adding two different CLI flags to the
 same `runOptions` struct both stay; two independent PRs each inventing the
-*same* missing test harness (same file, same purpose, different wording) get
+_same_ missing test harness (same file, same purpose, different wording) get
 merged into one file with every real test case from both, not one side
 picked over the other. Then run the full verification bar above for
 whatever the conflict actually touched (Go gate, frontend gate, or both) —
@@ -258,6 +258,6 @@ change. Watch for a "two copies of React" hook error if you then also run
 module resolution can prefer the linked package's own nested
 `node_modules/react` over the hoisted one; symlinking the linked package's
 `react`/`react-dom` to `forsight/web`'s own copies (not deleting them, ESM
-resolution needs *something* there) fixes it. This whole workaround belongs
+resolution needs _something_ there) fixes it. This whole workaround belongs
 in tooling (a documented Makefile/CONTRIBUTING.md fallback), not repeated
 ad hoc each time — flagged here until someone does that.
