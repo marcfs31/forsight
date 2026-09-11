@@ -11,10 +11,10 @@ observability platform.
   from the local Docker daemon if one is reachable; simply doesn't register
   if not (a laptop with no Docker running still works fine).
 - **OpenTelemetry ingestion** — a standard OTLP/HTTP receiver
-  (`/v1/metrics`, `/v1/traces`) so any app instrumented with an OTel SDK can
-  point its exporter at forsight with no forsight-specific integration.
-  Gauge, Sum, Histogram, ExponentialHistogram and Summary, over protobuf or
-  JSON bodies.
+  (`/v1/metrics`, `/v1/traces`, `/v1/logs`) so any app instrumented with an
+  OTel SDK can point its exporter at forsight with no forsight-specific
+  integration. Gauge, Sum, Histogram, ExponentialHistogram and Summary, plus
+  log records, over protobuf or JSON bodies.
 - **Prometheus scraping** — point `--scrape` at any exposition endpoint
   (`node_exporter`, a `/metrics` handler in your own app) and it is polled on
   the same interval as everything else. Counters, gauges, histograms and
@@ -87,8 +87,10 @@ forsight version
 | `/healthz`                               | GET    | `{"status":"ok"}`                                          |
 | `/api/v1/metrics?name=&since=&label.<k>=<v>` | GET | Query stored metrics (all filters optional)             |
 | `/api/v1/traces?service=&traceId=&since=`    | GET | Query stored spans                                        |
-| `/v1/metrics`                            | POST   | OTLP/HTTP metrics ingest (protobuf body)                  |
-| `/v1/traces`                             | POST   | OTLP/HTTP traces ingest (protobuf body)                   |
+| `/api/v1/logs?since=&source=&severity=`       | GET | Query stored log entries                                  |
+| `/v1/metrics`                            | POST   | OTLP/HTTP metrics ingest (protobuf or JSON body)          |
+| `/v1/traces`                             | POST   | OTLP/HTTP traces ingest (protobuf or JSON body)           |
+| `/v1/logs`                               | POST   | OTLP/HTTP logs ingest (protobuf or JSON body)             |
 
 Point any OpenTelemetry SDK's OTLP/HTTP exporter at `http://<host>:8080` and
 it works unmodified — those are the standard OTLP paths every SDK already
@@ -104,8 +106,8 @@ forsight/
     collector/              the Collector interface + a scheduling Registry
       host/                 gopsutil — CPU/memory/disk/network/uptime
       docker/                Docker API — per-container CPU/memory
-      otlp/                  OTLP/HTTP receiver — metrics (all five types,
-                             protobuf or JSON) + traces
+      otlp/                  OTLP/HTTP receiver — metrics (all five types),
+                             traces, and logs (protobuf or JSON)
       promscrape/            Prometheus exposition-format scraper
       statsd/                StatsD/DogStatsD UDP receiver
     store/                  Store interface + an in-memory, retention-bounded impl
@@ -159,7 +161,7 @@ versioned artifacts) and asset naming (`forsight_<os>_<arch>.tar.gz`).
 ## Scope: what's real vs. what's roadmap
 
 **Built and verified working:** everything listed at the top of this file —
-host metrics, Docker container metrics, OTLP metrics+traces ingestion,
+host metrics, Docker container metrics, OTLP metrics+traces+logs ingestion,
 Kubernetes via the DaemonSet manifest, embedded in-memory storage, and a real
 dashboard. Verified by hand: ran the binary, watched real host and Docker
 metrics flow through `/api/v1/metrics`, sent a real OTLP protobuf payload and
@@ -169,10 +171,9 @@ code compiles.
 
 **Deliberately not built yet, flagged rather than silently skipped:**
 
-- **Log tailing/parsing.** `model.LogEntry` exists so the store/API shapes
-  are already settled, but there's no collector producing it — file-tail +
-  pattern extraction deserves its own careful design rather than being
-  bolted on here.
+- **Log file tailing/parsing.** OTLP log ingest (`POST /v1/logs`) and the
+  query/dashboard surface are built; reading and parsing log *files* on disk
+  (tail + pattern extraction) still deserves its own careful design.
 - **Persistent storage.** The store is in-memory only, bounded by
   `--retention` (default 1h) — restart the process and history is gone. A
   `store.Store`-implementing Badger-backed store is the natural next step;

@@ -11,9 +11,11 @@ import (
 
 	"google.golang.org/protobuf/proto"
 
+	collectorlogs "go.opentelemetry.io/proto/otlp/collector/logs/v1"
 	collectormetrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	collectortrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
+	logspb "go.opentelemetry.io/proto/otlp/logs/v1"
 	metricspb "go.opentelemetry.io/proto/otlp/metrics/v1"
 	resourcepb "go.opentelemetry.io/proto/otlp/resource/v1"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -24,6 +26,7 @@ import (
 type fakeSink struct {
 	metrics []model.Metric
 	spans   []model.Span
+	logs    []model.LogEntry
 }
 
 func (f *fakeSink) WriteMetrics(_ context.Context, m []model.Metric) error {
@@ -36,6 +39,11 @@ func (f *fakeSink) WriteSpans(_ context.Context, s []model.Span) error {
 	return nil
 }
 
+func (f *fakeSink) WriteLogs(_ context.Context, logs []model.LogEntry) error {
+	f.logs = append(f.logs, logs...)
+	return nil
+}
+
 func stringAttr(key, value string) *commonpb.KeyValue {
 	return &commonpb.KeyValue{
 		Key:   key,
@@ -45,7 +53,7 @@ func stringAttr(key, value string) *commonpb.KeyValue {
 
 func TestHandleMetrics_GaugeAndSum(t *testing.T) {
 	sink := &fakeSink{}
-	h := NewHandler(sink, sink)
+	h := NewHandler(sink, sink, sink)
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -123,7 +131,7 @@ func TestHandleMetrics_GaugeAndSum(t *testing.T) {
 
 func TestHandleTraces_MapsSpanFields(t *testing.T) {
 	sink := &fakeSink{}
-	h := NewHandler(sink, sink)
+	h := NewHandler(sink, sink, sink)
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -179,7 +187,7 @@ func TestHandleTraces_MapsSpanFields(t *testing.T) {
 
 func TestHandleMetrics_RejectsInvalidBody(t *testing.T) {
 	sink := &fakeSink{}
-	h := NewHandler(sink, sink)
+	h := NewHandler(sink, sink, sink)
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -196,7 +204,7 @@ func float64Ptr(v float64) *float64 { return &v }
 
 func TestHandleMetrics_HistogramCumulativeBuckets(t *testing.T) {
 	sink := &fakeSink{}
-	h := NewHandler(sink, sink)
+	h := NewHandler(sink, sink, sink)
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -261,7 +269,7 @@ func TestHandleMetrics_HistogramCumulativeBuckets(t *testing.T) {
 
 func TestHandleMetrics_ExponentialHistogramSkipsBucketReconstruction(t *testing.T) {
 	sink := &fakeSink{}
-	h := NewHandler(sink, sink)
+	h := NewHandler(sink, sink, sink)
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -300,7 +308,7 @@ func TestHandleMetrics_ExponentialHistogramSkipsBucketReconstruction(t *testing.
 
 func TestHandleMetrics_SummaryQuantiles(t *testing.T) {
 	sink := &fakeSink{}
-	h := NewHandler(sink, sink)
+	h := NewHandler(sink, sink, sink)
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -356,7 +364,7 @@ func TestHandleMetrics_SummaryQuantiles(t *testing.T) {
 
 func TestHandleMetrics_AcceptsOTLPJSON(t *testing.T) {
 	sink := &fakeSink{}
-	h := NewHandler(sink, sink)
+	h := NewHandler(sink, sink, sink)
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -395,7 +403,7 @@ func TestHandleMetrics_AcceptsOTLPJSON(t *testing.T) {
 
 func TestHandleMetrics_RejectsInvalidJSONBody(t *testing.T) {
 	sink := &fakeSink{}
-	h := NewHandler(sink, sink)
+	h := NewHandler(sink, sink, sink)
 	mux := http.NewServeMux()
 	h.Register(mux)
 
@@ -495,7 +503,7 @@ func TestPerRequestMetricCapRejectsRatherThanTruncates(t *testing.T) {
 	rec := httptest.NewRecorder()
 	httpReq := httptest.NewRequest(http.MethodPost, "/v1/metrics", bytes.NewReader(body))
 	httpReq.Header.Set("Content-Type", "application/x-protobuf")
-	NewHandler(sink, sink).handleMetrics(rec, httpReq)
+	NewHandler(sink, sink, sink).handleMetrics(rec, httpReq)
 
 	if rec.Code != http.StatusRequestEntityTooLarge {
 		t.Errorf("status = %d, want %d", rec.Code, http.StatusRequestEntityTooLarge)
@@ -521,5 +529,214 @@ func TestFutureTimestampsAreClamped(t *testing.T) {
 	past := now.Add(-30 * time.Second)
 	if got := pointTime(uint64(past.UnixNano()), now); !got.Equal(past) {
 		t.Errorf("pointTime altered an ordinary timestamp: %v != %v", got, past)
+	}
+}
+
+func TestHandleLogs_MapsLogFields(t *testing.T) {
+	sink := &fakeSink{}
+	h := NewHandler(sink, sink, sink)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := &collectorlogs.ExportLogsServiceRequest{
+		ResourceLogs: []*logspb.ResourceLogs{
+			{
+				Resource: &resourcepb.Resource{
+					Attributes: []*commonpb.KeyValue{stringAttr("service.name", "checkout-api")},
+				},
+				ScopeLogs: []*logspb.ScopeLogs{
+					{
+						LogRecords: []*logspb.LogRecord{
+							{
+								TimeUnixNano:   1_700_000_000_000_000_000,
+								SeverityNumber: logspb.SeverityNumber_SEVERITY_NUMBER_ERROR,
+								SeverityText:   "ERROR",
+								Body:           &commonpb.AnyValue{Value: &commonpb.AnyValue_StringValue{StringValue: "payment failed"}},
+								Attributes:     []*commonpb.KeyValue{stringAttr("order.id", "42")},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+	body, err := proto.Marshal(req)
+	if err != nil {
+		t.Fatalf("proto.Marshal: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	httpReq := httptest.NewRequest(http.MethodPost, "/v1/logs", bytes.NewReader(body))
+	mux.ServeHTTP(rec, httpReq)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	if len(sink.logs) != 1 {
+		t.Fatalf("got %d logs, want 1", len(sink.logs))
+	}
+	got := sink.logs[0]
+	if got.Message != "payment failed" || got.Source != "checkout-api" || got.Severity != model.LogSeverityError {
+		t.Errorf("log = %+v, want message=payment failed source=checkout-api severity=error", got)
+	}
+	if got.Labels["order.id"] != "42" {
+		t.Errorf("labels = %+v, want order.id=42", got.Labels)
+	}
+	wantTS := time.Unix(0, 1_700_000_000_000_000_000)
+	if !got.Timestamp.Equal(wantTS) {
+		t.Errorf("timestamp = %v, want %v", got.Timestamp, wantTS)
+	}
+}
+
+func TestHandleLogs_FallsBackToLoggerName(t *testing.T) {
+	sink := &fakeSink{}
+	h := NewHandler(sink, sink, sink)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	req := &collectorlogs.ExportLogsServiceRequest{
+		ResourceLogs: []*logspb.ResourceLogs{{
+			ScopeLogs: []*logspb.ScopeLogs{{
+				Scope: &commonpb.InstrumentationScope{Name: "app.logger"},
+				LogRecords: []*logspb.LogRecord{{
+					TimeUnixNano:   1_700_000_000_000_000_000,
+					SeverityNumber: logspb.SeverityNumber_SEVERITY_NUMBER_WARN,
+					Body:           &commonpb.AnyValue{Value: &commonpb.AnyValue_StringValue{StringValue: "slow query"}},
+				}},
+			}},
+		}},
+	}
+	body, err := proto.Marshal(req)
+	if err != nil {
+		t.Fatalf("proto.Marshal: %v", err)
+	}
+
+	rec := httptest.NewRecorder()
+	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/logs", bytes.NewReader(body)))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	if len(sink.logs) != 1 {
+		t.Fatalf("got %d logs, want 1", len(sink.logs))
+	}
+	got := sink.logs[0]
+	if got.Source != "app.logger" || got.Severity != model.LogSeverityWarn {
+		t.Errorf("log = %+v, want source=app.logger severity=warn", got)
+	}
+}
+
+func TestHandleLogs_AcceptsOTLPJSON(t *testing.T) {
+	sink := &fakeSink{}
+	h := NewHandler(sink, sink, sink)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	jsonBody := []byte(`{
+		"resourceLogs": [{
+			"resource": {"attributes": [{"key": "service.name", "value": {"stringValue": "json-logger"}}]},
+			"scopeLogs": [{
+				"logRecords": [{
+					"timeUnixNano": "1700000000000000000",
+					"severityNumber": 9,
+					"severityText": "INFO",
+					"body": {"stringValue": "hello from json"}
+				}]
+			}]
+		}]
+	}`)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/logs", bytes.NewReader(jsonBody))
+	req.Header.Set("Content-Type", "application/json")
+	mux.ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	if ct := rec.Header().Get("Content-Type"); ct != "application/json" {
+		t.Errorf("response Content-Type = %q, want application/json", ct)
+	}
+	if len(sink.logs) != 1 {
+		t.Fatalf("got %d logs, want 1", len(sink.logs))
+	}
+	got := sink.logs[0]
+	if got.Message != "hello from json" || got.Source != "json-logger" || got.Severity != model.LogSeverityInfo {
+		t.Errorf("log = %+v, want message=hello from json source=json-logger severity=info", got)
+	}
+}
+
+func TestHandleLogs_RejectsInvalidBody(t *testing.T) {
+	sink := &fakeSink{}
+	h := NewHandler(sink, sink, sink)
+	mux := http.NewServeMux()
+	h.Register(mux)
+
+	rec := httptest.NewRecorder()
+	httpReq := httptest.NewRequest(http.MethodPost, "/v1/logs", bytes.NewReader([]byte("not protobuf")))
+	mux.ServeHTTP(rec, httpReq)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", rec.Code)
+	}
+}
+
+func TestPerRequestLogCapRejectsRatherThanTruncates(t *testing.T) {
+	records := make([]*logspb.LogRecord, 0, maxLogsPerRequest+1)
+	for i := 0; i < maxLogsPerRequest+1; i++ {
+		records = append(records, &logspb.LogRecord{
+			TimeUnixNano: uint64(time.Now().UnixNano()),
+			Body:         &commonpb.AnyValue{Value: &commonpb.AnyValue_StringValue{StringValue: "x"}},
+		})
+	}
+	req := &collectorlogs.ExportLogsServiceRequest{
+		ResourceLogs: []*logspb.ResourceLogs{{
+			ScopeLogs: []*logspb.ScopeLogs{{LogRecords: records}},
+		}},
+	}
+	logs, truncated := logsFromOTLP(req)
+	if !truncated {
+		t.Fatalf("flattened %d logs without reporting truncation", len(logs))
+	}
+	if len(logs) != maxLogsPerRequest {
+		t.Errorf("returned %d logs, want exactly the cap %d", len(logs), maxLogsPerRequest)
+	}
+
+	body, err := proto.Marshal(req)
+	if err != nil {
+		t.Fatalf("marshal: %v", err)
+	}
+	sink := &fakeSink{}
+	rec := httptest.NewRecorder()
+	httpReq := httptest.NewRequest(http.MethodPost, "/v1/logs", bytes.NewReader(body))
+	httpReq.Header.Set("Content-Type", "application/x-protobuf")
+	NewHandler(sink, sink, sink).handleLogs(rec, httpReq)
+
+	if rec.Code != http.StatusRequestEntityTooLarge {
+		t.Errorf("status = %d, want %d", rec.Code, http.StatusRequestEntityTooLarge)
+	}
+	if len(sink.logs) != 0 {
+		t.Errorf("stored %d logs from a rejected request, want 0", len(sink.logs))
+	}
+}
+
+func TestLogSeverityMapping(t *testing.T) {
+	cases := []struct {
+		num  logspb.SeverityNumber
+		text string
+		want model.LogSeverity
+	}{
+		{logspb.SeverityNumber_SEVERITY_NUMBER_DEBUG, "", model.LogSeverityDebug},
+		{logspb.SeverityNumber_SEVERITY_NUMBER_INFO, "", model.LogSeverityInfo},
+		{logspb.SeverityNumber_SEVERITY_NUMBER_WARN, "", model.LogSeverityWarn},
+		{logspb.SeverityNumber_SEVERITY_NUMBER_ERROR, "", model.LogSeverityError},
+		{logspb.SeverityNumber_SEVERITY_NUMBER_FATAL, "", model.LogSeverityError},
+		{0, "warning", model.LogSeverityWarn},
+		{0, "FATAL", model.LogSeverityError},
+		{0, "", model.LogSeverityInfo},
+	}
+	for _, tc := range cases {
+		if got := logSeverity(tc.num, tc.text); got != tc.want {
+			t.Errorf("logSeverity(%v, %q) = %q, want %q", tc.num, tc.text, got, tc.want)
+		}
 	}
 }

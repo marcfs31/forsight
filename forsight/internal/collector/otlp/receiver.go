@@ -15,6 +15,11 @@
 // the complexity for what's usually an already-approximate distribution;
 // `_count`/`_sum` alone is real, useful data, just not full fidelity.
 //
+// Traces and logs are accepted on the standard `/v1/traces` and `/v1/logs`
+// paths. Log severity numbers/text map onto model.LogSeverity; the body
+// becomes Message; resource `service.name` (falling back to the
+// instrumentation scope / logger name) becomes Source.
+//
 // Both OTLP/protobuf (the default for every OTel SDK's HTTP exporter) and
 // OTLP/JSON bodies are accepted, selected by the request's Content-Type.
 package otlp
@@ -32,9 +37,11 @@ import (
 	"google.golang.org/protobuf/encoding/protojson"
 	"google.golang.org/protobuf/proto"
 
+	collectorlogs "go.opentelemetry.io/proto/otlp/collector/logs/v1"
 	collectormetrics "go.opentelemetry.io/proto/otlp/collector/metrics/v1"
 	collectortrace "go.opentelemetry.io/proto/otlp/collector/trace/v1"
 	commonpb "go.opentelemetry.io/proto/otlp/common/v1"
+	logspb "go.opentelemetry.io/proto/otlp/logs/v1"
 	metricspb "go.opentelemetry.io/proto/otlp/metrics/v1"
 	resourcepb "go.opentelemetry.io/proto/otlp/resource/v1"
 	tracepb "go.opentelemetry.io/proto/otlp/trace/v1"
@@ -42,9 +49,9 @@ import (
 	"github.com/marcfs31/forsight/forsight/internal/model"
 )
 
-// MetricSink and SpanSink are the write sides of store.Store — declared here
-// (not imported from store) so this package doesn't need to know about the
-// rest of the storage interface, only what it writes.
+// MetricSink, SpanSink and LogSink are the write sides of store.Store —
+// declared here (not imported from store) so this package doesn't need to
+// know about the rest of the storage interface, only what it writes.
 type MetricSink interface {
 	WriteMetrics(ctx context.Context, metrics []model.Metric) error
 }
@@ -53,20 +60,26 @@ type SpanSink interface {
 	WriteSpans(ctx context.Context, spans []model.Span) error
 }
 
-// Handler serves the OTLP/HTTP metrics and traces endpoints.
+type LogSink interface {
+	WriteLogs(ctx context.Context, logs []model.LogEntry) error
+}
+
+// Handler serves the OTLP/HTTP metrics, traces and logs endpoints.
 type Handler struct {
 	metrics MetricSink
 	spans   SpanSink
+	logs    LogSink
 }
 
-func NewHandler(metrics MetricSink, spans SpanSink) *Handler {
-	return &Handler{metrics: metrics, spans: spans}
+func NewHandler(metrics MetricSink, spans SpanSink, logs LogSink) *Handler {
+	return &Handler{metrics: metrics, spans: spans, logs: logs}
 }
 
 // Register mounts the standard OTLP/HTTP paths on mux.
 func (h *Handler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /v1/metrics", h.handleMetrics)
 	mux.HandleFunc("POST /v1/traces", h.handleTraces)
+	mux.HandleFunc("POST /v1/logs", h.handleLogs)
 }
 
 func (h *Handler) handleMetrics(w http.ResponseWriter, r *http.Request) {
@@ -108,6 +121,30 @@ func (h *Handler) handleTraces(w http.ResponseWriter, r *http.Request) {
 	spans := spansFromOTLP(&req)
 	if err := h.spans.WriteSpans(r.Context(), spans); err != nil {
 		http.Error(w, "failed to store spans", http.StatusInternalServerError)
+		return
+	}
+	writeEmptyResponse(w, r)
+}
+
+func (h *Handler) handleLogs(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(io.LimitReader(r.Body, 32<<20))
+	if err != nil {
+		http.Error(w, "failed to read body", http.StatusBadRequest)
+		return
+	}
+	var req collectorlogs.ExportLogsServiceRequest
+	if err := unmarshalOTLP(r, body, &req); err != nil {
+		http.Error(w, "invalid OTLP logs payload: "+err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	logs, truncated := logsFromOTLP(&req)
+	if truncated {
+		http.Error(w, "payload contains more than the per-request log limit", http.StatusRequestEntityTooLarge)
+		return
+	}
+	if err := h.logs.WriteLogs(r.Context(), logs); err != nil {
+		http.Error(w, "failed to store logs", http.StatusInternalServerError)
 		return
 	}
 	writeEmptyResponse(w, r)
@@ -298,6 +335,10 @@ const (
 	maxQuantilesPerPoint = 128
 	// maxMetricsPerRequest bounds the total flattened output of one request.
 	maxMetricsPerRequest = 200_000
+	// maxLogsPerRequest bounds how many log records one request may carry —
+	// same order as the metrics cap, so a single POST cannot pin unbounded
+	// memory before the store's own element cap runs.
+	maxLogsPerRequest = 200_000
 	// maxFutureSkew is how far ahead of now an ingested timestamp may be
 	// before it is clamped. A timestamp past the retention horizon would
 	// otherwise never be pruned, making a point immortal and pinning the
@@ -347,6 +388,89 @@ func spansFromOTLP(req *collectortrace.ExportTraceServiceRequest) []model.Span {
 		}
 	}
 	return out
+}
+
+// logsFromOTLP flattens a request, stopping at maxLogsPerRequest. The bool
+// reports whether it stopped early so the handler can reject rather than
+// silently store a truncated prefix — same contract as metricsFromOTLP.
+func logsFromOTLP(req *collectorlogs.ExportLogsServiceRequest) ([]model.LogEntry, bool) {
+	now := time.Now()
+	var out []model.LogEntry
+	for _, rl := range req.GetResourceLogs() {
+		service := serviceName(rl.GetResource())
+		for _, sl := range rl.GetScopeLogs() {
+			// Prefer resource service.name; fall back to the instrumentation
+			// scope name (the logger) when the resource has no service.
+			source := service
+			if service == "unknown_service" {
+				if scope := sl.GetScope(); scope != nil && scope.GetName() != "" {
+					source = scope.GetName()
+				}
+			}
+			for _, lr := range sl.GetLogRecords() {
+				out = append(out, logFromOTLP(lr, source, now))
+				if len(out) > maxLogsPerRequest {
+					return out[:maxLogsPerRequest], true
+				}
+			}
+		}
+	}
+	return out, false
+}
+
+func logFromOTLP(lr *logspb.LogRecord, source string, now time.Time) model.LogEntry {
+	nanos := lr.GetTimeUnixNano()
+	if nanos == 0 {
+		nanos = lr.GetObservedTimeUnixNano()
+	}
+	return model.LogEntry{
+		Timestamp: pointTime(nanos, now),
+		Severity:  logSeverity(lr.GetSeverityNumber(), lr.GetSeverityText()),
+		Source:    source,
+		Message:   logBodyMessage(lr.GetBody()),
+		Labels:    attributesToLabels(lr.GetAttributes()),
+	}
+}
+
+func logBodyMessage(body *commonpb.AnyValue) string {
+	if body == nil {
+		return ""
+	}
+	if s, ok := stringifyAnyValue(body); ok {
+		return s
+	}
+	return ""
+}
+
+// logSeverity maps OTLP severity number/text onto forsight's coarse four
+// levels. Number wins when set; text is a case-insensitive fallback; missing
+// both defaults to info (the least surprising level for an untagged line).
+func logSeverity(num logspb.SeverityNumber, text string) model.LogSeverity {
+	switch {
+	case num >= logspb.SeverityNumber_SEVERITY_NUMBER_FATAL:
+		return model.LogSeverityError
+	case num >= logspb.SeverityNumber_SEVERITY_NUMBER_ERROR:
+		return model.LogSeverityError
+	case num >= logspb.SeverityNumber_SEVERITY_NUMBER_WARN:
+		return model.LogSeverityWarn
+	case num >= logspb.SeverityNumber_SEVERITY_NUMBER_INFO:
+		return model.LogSeverityInfo
+	case num >= logspb.SeverityNumber_SEVERITY_NUMBER_TRACE:
+		return model.LogSeverityDebug
+	}
+
+	switch strings.ToLower(strings.TrimSpace(text)) {
+	case "trace", "debug":
+		return model.LogSeverityDebug
+	case "info", "information":
+		return model.LogSeverityInfo
+	case "warn", "warning":
+		return model.LogSeverityWarn
+	case "error", "fatal", "critical", "panic":
+		return model.LogSeverityError
+	default:
+		return model.LogSeverityInfo
+	}
 }
 
 func spanFromOTLP(s *tracepb.Span, service string) model.Span {

@@ -42,6 +42,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /healthz", s.handleHealthz)
 	mux.HandleFunc("GET /api/v1/metrics", s.handleMetrics)
 	mux.HandleFunc("GET /api/v1/traces", s.handleTraces)
+	mux.HandleFunc("GET /api/v1/logs", s.handleLogs)
 
 	if s.otlp != nil {
 		s.otlp.Register(mux)

@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import {
   Heading,
   Text,
@@ -15,8 +16,10 @@ import {
   TableHead,
   TableCell,
   EmptyState,
+  LogStream,
+  type LogEntry as StreamLogEntry,
 } from "@marcfs31/forsight";
-import { useMetrics, historyFor, latestValue, containerRows } from "./api";
+import { useMetrics, useLogs, historyFor, latestValue, containerRows, type LogEntry } from "./api";
 
 const timeLabelFormat = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
@@ -28,8 +31,21 @@ function formatPercent(v: number | undefined): string {
   return v === undefined ? "—" : `${v.toFixed(1)}`;
 }
 
+function toStreamEntries(logs: LogEntry[]): StreamLogEntry[] {
+  return [...logs]
+    .sort((a, b) => a.timestamp.localeCompare(b.timestamp))
+    .map((entry, i) => ({
+      id: `${entry.timestamp}-${entry.source}-${i}`,
+      timestamp: timeLabelFormat.format(new Date(entry.timestamp)),
+      level: entry.severity,
+      source: entry.source,
+      message: entry.message,
+    }));
+}
+
 export default function App() {
   const metrics = useMetrics(5000);
+  const logs = useLogs(5000);
 
   const cpuHistory = historyFor(metrics, "host.cpu.percent");
   const cpuLabels = cpuHistory.map((m) => timeLabelFormat.format(new Date(m.timestamp)));
@@ -38,8 +54,13 @@ export default function App() {
   const memory = latestValue(metrics, "host.memory.percent");
   const disk = latestValue(metrics, "host.disk.percent");
   const containers = containerRows(metrics);
+  const streamEntries = useMemo(() => toStreamEntries(logs), [logs]);
+  const errorCount = useMemo(
+    () => logs.filter((entry) => entry.severity === "error").length,
+    [logs]
+  );
 
-  const connected = metrics.length > 0;
+  const connected = metrics.length > 0 || logs.length > 0;
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-6">
@@ -95,6 +116,7 @@ export default function App() {
             />
           ) : (
             <Table>
+              <caption className="sr-only">Running containers with CPU and memory usage</caption>
               <TableHeader>
                 <TableRow>
                   <TableHead>Container</TableHead>
@@ -114,6 +136,27 @@ export default function App() {
                 ))}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Logs</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-3">
+          <p className="sr-only" aria-live="polite" aria-atomic="true">
+            {errorCount === 0
+              ? "No error logs in the current window."
+              : `${errorCount} error log${errorCount === 1 ? "" : "s"} in the current window.`}
+          </p>
+          {streamEntries.length === 0 ? (
+            <EmptyState
+              title="No logs yet"
+              description="POST OTLP logs to /v1/logs and they will appear here."
+            />
+          ) : (
+            <LogStream label="Ingested logs" entries={streamEntries} maxHeight={360} />
           )}
         </CardContent>
       </Card>
