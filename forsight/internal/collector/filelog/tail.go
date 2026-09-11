@@ -298,6 +298,13 @@ func knownSeverity(severity string) (model.LogSeverity, bool) {
 	}
 }
 
+// FallbackSeverity is the substring rule: the answer this package gives when
+// no model is ready. It is exported because Forseer grades itself against it
+// on the same stream, and a benchmark nobody can name is not a benchmark.
+func FallbackSeverity(line string) model.LogSeverity {
+	return severityOf(line)
+}
+
 func severityOf(line string) model.LogSeverity {
 	lower := strings.ToLower(line)
 	switch {

@@ -70,6 +70,15 @@ func (e *Engine) ObserveLogs(lines []LogLine) {
 	}
 }
 
+// WithSeverityFallback tells the severity model which rule it is replacing,
+// so both can be scored on the same stream and the model is used only while
+// it is actually ahead. Without it the model still works and still gates on
+// sample count; it just cannot report the comparison.
+func (e *Engine) WithSeverityFallback(fallback func(message string) string) *Engine {
+	e.severity.withFallback(fallback)
+	return e
+}
+
 // ClassifySeverity answers for a log line that arrived without a level.
 // The bool is false whenever the caller should keep its own fallback: the
 // model has not seen enough of this deployment yet, or it is not confident

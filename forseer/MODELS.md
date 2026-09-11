@@ -17,11 +17,13 @@ time of day, not the trace it belongs to — just the text. A model that looks
 at something it did not declare is a bug, and the list is what makes that
 checkable.
 
-**A readiness gate and a named fallback.** Until a model has seen enough of
-this deployment, it says so and the caller uses the fallback instead. A cold
-model never degrades the product, and an operator who reads the card always
-knows which answer they are getting. A model with no fallback cannot be
-gated, so naming one is part of the contract.
+**A readiness gate and a named fallback.** A model is used only while it is
+beating the thing it replaces, and the fallback is scored on exactly the same
+examples so that is a measurement rather than a hope. A cold model never
+degrades the product, a model that falls behind stands itself down with
+nobody watching, and an operator who reads the card always knows which answer
+they are getting. A model with no fallback cannot be gated, so naming one is
+part of the contract.
 
 **A measured score.** Where the stream supplies its own labels, the model
 predicts each example *before* training on it and keeps the running hit rate.
@@ -61,6 +63,10 @@ Practical consequences, and they are constraints not preferences:
 
 ### Log severity
 
+Also the first to carry the fallback comparison: the substring rule is scored
+on the same stream, in the same window, and the model is used only while it
+is at least a point ahead.
+
 **Job.** Give a log line that arrived without a level the level this
 deployment would have given it.
 
@@ -81,8 +87,12 @@ which would only teach it the substring rule back.
 Numbers are dropped: a request id or a duration is unique per line, so it
 teaches nothing and would fill every bucket with noise.
 
-**Measured on a demo stream**, 390 labelled lines, 98.2% prequential
-accuracy, against the substring rule on the same five lines:
+**Measured on a demo stream**, 390 labelled lines: 98.2% prequential accuracy
+against the substring rule's 22.9% on the same 389 examples. That gap is
+flattering — the demo corpus is built from the rule's blind spots on purpose,
+so treat it as a demonstration that the comparison works, not as a number any
+real deployment will see. What matters is that the agent measures it rather
+than claims it. On the same five lines:
 
 | Line | Substring rule | Model |
 | --- | --- | --- |
@@ -100,24 +110,7 @@ Ordered by what each one is worth against what it costs. Every row keeps the
 rules above: declared inputs, a readiness gate, a named fallback, and an
 existing Forsight component to land on.
 
-### 1. Grade the fallback too, and stand down when beaten
-
-The severity model gates on "have I seen enough", which is a proxy. The real
-question is whether it is beating the rule it replaced, and that is
-measurable for free: the fallback can be scored on the same labelled stream,
-with the same prequential method, at the cost of one extra call per example.
-
-Then the gate becomes honest — use the model only while it is actually
-winning — and drift stops being a thing anyone has to watch for. A model that
-degrades because the application changed its logging stands itself down.
-The card grows one field, `Beats`, and the operator can see the margin.
-
-This is the highest-value item on the list and the cheapest. It also
-generalises: every model below inherits it.
-
-*Reads: what it already reads. Fallback: itself. Component: the models view.*
-
-### 2. Per-series alert thresholds
+### 1. Per-series alert thresholds
 
 **Job.** Decide how far out of line a series has to go before it is worth
 telling someone.
@@ -133,7 +126,7 @@ day") rather than a sigma count nobody can reason about.
 the readiness gate is a minimum sample count. Reads: the z-score history of
 one series. Fallback: 3σ/5σ. Component: **AlertList**.*
 
-### 3. Is this log cluster worth paging
+### 2. Is this log cluster worth paging
 
 **Job.** Rank Drain-lite clusters by whether a burst of this template has
 ever coincided with something that mattered.
@@ -147,7 +140,7 @@ labels come from the agent's own insight stream.
 *Reads: cluster severity mix, burst shape, co-occurring insights. Fallback:
 the current volume ratio. Component: **BarList**.*
 
-### 4. Error-budget forecast
+### 3. Error-budget forecast
 
 Already on the roadmap in the README, and it belongs here. `Engine.Budget()`
 reads the current burn; the forecast projects it. Holt linear with the level
@@ -162,7 +155,7 @@ precision is not.
 one is genuinely measurable. Reads: the error/total ratio over time.
 Fallback: current burn with no projection. Component: **ErrorBudget**.*
 
-### 5. Per-endpoint latency shape
+### 4. Per-endpoint latency shape
 
 **Job.** Decide what slow means for one endpoint.
 
@@ -175,7 +168,7 @@ own p99" is a sentence an on-call can act on.
 *Reads: durations for one (service, span name). Fallback: the current
 z-score. Component: **TraceWaterfall**.*
 
-### 6. Persist what has been learned
+### 5. Persist what has been learned
 
 A model that resets on restart has to re-earn its readiness every deploy,
 which on a frequently-restarted agent means it is never ready. The state is
@@ -188,13 +181,13 @@ data directory belongs to the operator, never to this repo.
 
 *Applies to every model.*
 
-### 7. A models view in the dashboard
+### 6. A models view in the dashboard
 
 The cards are already served. A view that shows what each model does, whether
 it is ready, and what it is scoring — on **Table**, with **ErrorBudget**'s
 meter for the accuracy — turns "the agent learned something" from a claim
-into something an operator can audit. This is also where item 1's margin
-against the fallback belongs.
+into something an operator can audit, with the margin against the fallback
+the number that actually justifies the model.
 
 *Component: **Table** + **Card**, both already in the design system.*
 

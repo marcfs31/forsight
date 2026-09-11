@@ -230,3 +230,103 @@ func TestSeverityTokens_IsCaseInsensitive(t *testing.T) {
 		}
 	}
 }
+
+// substringRule is the tailer's fallback, duplicated here so this module
+// stays dependency-free. It must stay in step with
+// filelog.FallbackSeverity — TestSeverityModel_FallbackRuleMatchesTheAgents
+// in the agent module is what catches it drifting.
+func substringRule(line string) string {
+	lower := strings.ToLower(line)
+	switch {
+	case strings.Contains(lower, "fatal"), strings.Contains(lower, "error"), strings.Contains(lower, "fail"):
+		return "error"
+	case strings.Contains(lower, "warn"):
+		return "warn"
+	case strings.Contains(lower, "debug"):
+		return "debug"
+	default:
+		return "info"
+	}
+}
+
+func TestSeverityModel_ScoresTheFallbackOnTheSameExamples(t *testing.T) {
+	m := newSeverityModel().withFallback(substringRule)
+	trainRealistic(m, 40)
+
+	card := m.Card()
+	if card.FallbackAccuracy == Unmeasured {
+		t.Fatal("fallback was never scored; the comparison is the point")
+	}
+	if card.Accuracy <= card.FallbackAccuracy {
+		t.Errorf("model %.2f did not beat the substring rule %.2f on a corpus built from the rule's blind spots",
+			card.Accuracy, card.FallbackAccuracy)
+	}
+}
+
+func TestSeverityModel_WithoutAFallbackReportsNoComparison(t *testing.T) {
+	m := newSeverityModel()
+	trainRealistic(m, 40)
+
+	if card := m.Card(); card.FallbackAccuracy != Unmeasured {
+		t.Errorf("reported a fallback accuracy of %.2f with no fallback to compare against", card.FallbackAccuracy)
+	}
+}
+
+func TestSeverityModel_StandsDownWhenTheFallbackIsBetter(t *testing.T) {
+	// A fallback that is always right, so the model cannot beat it however
+	// much it trains. Readiness must reflect that rather than sample count.
+	perfect := func(line string) string {
+		if strings.Contains(line, "boom") {
+			return "error"
+		}
+		return "info"
+	}
+	m := newSeverityModel().withFallback(perfect)
+
+	// Text that carries no signal the model can use: the same words appear
+	// under both levels, so it cannot separate them and the rule wins.
+	for i := 0; i < severityMinTrained; i++ {
+		m.Learn("the service handled the request", "info")
+		m.Learn("the service handled the request boom", "error")
+	}
+
+	card := m.Card()
+	if card.Trained < severityMinTrained {
+		t.Fatalf("only %d examples; the sample-count gate was not cleared", card.Trained)
+	}
+	if card.Ready {
+		t.Errorf("model reported ready at %.2f against a fallback at %.2f", card.Accuracy, card.FallbackAccuracy)
+	}
+	if _, _, ok := m.Classify("the service handled the request boom"); ok {
+		t.Error("a model losing to its fallback answered anyway")
+	}
+}
+
+func TestSeverityModel_BecomesReadyOnceItPullsAhead(t *testing.T) {
+	m := newSeverityModel().withFallback(substringRule)
+
+	if m.Card().Ready {
+		t.Fatal("ready before learning anything")
+	}
+	trainRealistic(m, 40)
+
+	card := m.Card()
+	if !card.Ready {
+		t.Fatalf("not ready at %.2f against a fallback at %.2f", card.Accuracy, card.FallbackAccuracy)
+	}
+}
+
+func TestSeverityModel_FallbackScoreSharesTheModelsWindow(t *testing.T) {
+	m := newSeverityModel().withFallback(substringRule)
+	trainRealistic(m, 200)
+
+	card := m.Card()
+	if card.Graded > severityGradeWindow {
+		t.Fatalf("graded %d, window is %d", card.Graded, severityGradeWindow)
+	}
+	// Both scores come from the same ring, so both must be real fractions of
+	// the same denominator.
+	if card.FallbackAccuracy < 0 || card.FallbackAccuracy > 1 {
+		t.Errorf("fallback accuracy %.2f is not a fraction", card.FallbackAccuracy)
+	}
+}

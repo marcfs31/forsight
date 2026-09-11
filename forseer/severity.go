@@ -54,6 +54,11 @@ const (
 	// caller uses the fallback, even when Ready. An unsure model is worth
 	// less than a dumb rule that is at least predictable.
 	severityMinConfidence = 0.60
+	// The model must be this far ahead of the fallback before it is used.
+	// Equal is not good enough: a rule an operator can predict is worth
+	// something on its own, and a margin keeps the two from trading places
+	// on noise every time the window turns over.
+	severityWinMargin = 0.01
 	// Laplace smoothing, so a token never seen for a class does not zero the
 	// whole product.
 	severityAlpha = 0.5
@@ -81,13 +86,34 @@ type severityModel struct {
 	gradePos int
 	graded   int
 	hits     int
+
+	// The fallback is graded on exactly the same examples, in the same
+	// window. Readiness then means "I am beating the thing I replace",
+	// which is the question that actually matters — "I have seen enough"
+	// was only ever a proxy for it. It also makes drift self-correcting: a
+	// model that degrades because the application changed how it logs falls
+	// behind the rule and stands itself down, with nobody watching.
+	fallback      func(string) string
+	fallbackHits  int
+	fallbackGrade []bool
 }
 
 func newSeverityModel() *severityModel {
 	return &severityModel{
-		classes: make(map[string]*severityClass, 4),
-		grades:  make([]bool, severityGradeWindow),
+		classes:       make(map[string]*severityClass, 4),
+		grades:        make([]bool, severityGradeWindow),
+		fallbackGrade: make([]bool, severityGradeWindow),
 	}
+}
+
+// withFallback gives the model the rule it is competing against, so both can
+// be scored on the same stream. Without one the model still works; it just
+// gates on sample count alone and reports the comparison as unmeasured.
+func (m *severityModel) withFallback(fallback func(string) string) *severityModel {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.fallback = fallback
+	return m
 }
 
 // Learn trains on one line whose severity the source actually declared.
@@ -105,9 +131,14 @@ func (m *severityModel) Learn(message, severity string) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	// Predict before training, so the grade is on unseen data.
+	// Predict before training, so the grade is on unseen data. The fallback
+	// is scored on the same example so the two numbers are comparable.
 	if predicted, _, ok := m.classifyLocked(tokens); ok {
-		m.gradeLocked(predicted == severity)
+		fallbackHit := false
+		if m.fallback != nil {
+			fallbackHit = strings.EqualFold(m.fallback(message), severity)
+		}
+		m.gradeLocked(predicted == severity, fallbackHit)
 	}
 
 	class := m.classes[severity]
@@ -189,11 +220,14 @@ func (m *severityModel) classifyLocked(tokens []uint32) (string, float64, bool) 
 	return scores[0].severity, 1 / sum, true
 }
 
-func (m *severityModel) gradeLocked(hit bool) {
+func (m *severityModel) gradeLocked(hit, fallbackHit bool) {
 	if m.graded == len(m.grades) {
-		// Window is full: the entry about to be overwritten leaves the score.
+		// Window is full: the entries about to be overwritten leave the score.
 		if m.grades[m.gradePos] {
 			m.hits--
+		}
+		if m.fallbackGrade[m.gradePos] {
+			m.fallbackHits--
 		}
 	} else {
 		m.graded++
@@ -202,7 +236,24 @@ func (m *severityModel) gradeLocked(hit bool) {
 	if hit {
 		m.hits++
 	}
+	m.fallbackGrade[m.gradePos] = fallbackHit
+	if fallbackHit {
+		m.fallbackHits++
+	}
 	m.gradePos = (m.gradePos + 1) % len(m.grades)
+}
+
+// accuracyLocked reports the two scores over the current window, each
+// Unmeasured until there is something to report.
+func (m *severityModel) accuracyLocked() (model, fallback float64) {
+	if m.graded == 0 {
+		return Unmeasured, Unmeasured
+	}
+	model = float64(m.hits) / float64(m.graded)
+	if m.fallback == nil {
+		return model, Unmeasured
+	}
+	return model, float64(m.fallbackHits) / float64(m.graded)
 }
 
 func (m *severityModel) readyLocked() bool {
@@ -215,26 +266,33 @@ func (m *severityModel) readyLocked() bool {
 			classes++
 		}
 	}
-	return classes >= severityMinClasses
+	if classes < severityMinClasses {
+		return false
+	}
+	// With a fallback to compare against, "enough examples" is not the
+	// question — "better than the rule I replace" is.
+	model, fallback := m.accuracyLocked()
+	if fallback == Unmeasured {
+		return true
+	}
+	return model >= fallback+severityWinMargin
 }
 
 // Card implements Model.
 func (m *severityModel) Card() Card {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	accuracy := Unmeasured
-	if m.graded > 0 {
-		accuracy = float64(m.hits) / float64(m.graded)
-	}
+	accuracy, fallbackAccuracy := m.accuracyLocked()
 	return Card{
-		Name:     "log severity",
-		Job:      "Give a log line that arrived without a level the level this deployment would have given it.",
-		Reads:    []string{"log message text"},
-		Fallback: "four-substring match on error/warn/debug",
-		Ready:    m.readyLocked(),
-		Trained:  m.trained,
-		Accuracy: accuracy,
-		Graded:   m.graded,
+		Name:             "log severity",
+		Job:              "Give a log line that arrived without a level the level this deployment would have given it.",
+		Reads:            []string{"log message text"},
+		Fallback:         "four-substring match on error/warn/debug",
+		Ready:            m.readyLocked(),
+		Trained:          m.trained,
+		Accuracy:         accuracy,
+		FallbackAccuracy: fallbackAccuracy,
+		Graded:           m.graded,
 	}
 }
 

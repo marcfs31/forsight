@@ -53,7 +53,12 @@ type Card struct {
 	// each scored before the model trained on that example. Negative means
 	// the job has no labels to grade against, not that the model is bad.
 	Accuracy float64 `json:"accuracy"`
-	// Graded is how many predictions Accuracy is computed over.
+	// FallbackAccuracy is Fallback's score over the same window, on the same
+	// examples. It is what makes Accuracy mean something: a model at 82% is
+	// worth having against a rule at 60% and worth removing against a rule
+	// at 90%. Unmeasured when the model has no fallback to compare against.
+	FallbackAccuracy float64 `json:"fallbackAccuracy"`
+	// Graded is how many predictions the two accuracies are computed over.
 	Graded int `json:"graded"`
 }
 
