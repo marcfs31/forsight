@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -42,6 +43,7 @@ type runOptions struct {
 	scrapeTargets     []string
 	statsdAddr        string
 	logFiles          []string
+	errorSLO          float64
 }
 
 func newRunCmd() *cobra.Command {
@@ -72,6 +74,9 @@ func newRunCmd() *cobra.Command {
 		"listen for StatsD/DogStatsD metrics over UDP (default :8125 so a bare install receives them; --disable-statsd turns it off)")
 	cmd.Flags().StringArrayVar(&opts.logFiles, "log-file", nil,
 		"path of a log file to tail into the store (repeatable); severity is inferred from the line")
+	cmd.Flags().Float64Var(&opts.errorSLO, "error-slo", 0,
+		"target error-log rate for Forseer's error budget, e.g. 0.01 for 1% (default 1%); "+
+			"also read from FORSIGHT_ERROR_SLO when unset")
 
 	return cmd
 }
@@ -81,6 +86,9 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 	defer stop()
 
 	eng := forseer.NewEngine()
+	if slo := resolveErrorSLO(opts.errorSLO); slo > 0 {
+		eng.SetErrorSLO(slo)
+	}
 	st := observingStore{Store: store.NewMemoryStore(opts.retention), eng: eng}
 
 	collectors := []collector.Collector{hostcollector.New()}
@@ -227,6 +235,22 @@ func resolveAuthToken(flagValue string) string {
 		return flagValue
 	}
 	return os.Getenv("FORSIGHT_AUTH_TOKEN")
+}
+
+// resolveErrorSLO prefers the --error-slo flag; when that is unset (the flag
+// defaults to 0, since 0% error tolerance is not a meaningful SLO) it falls
+// back to FORSIGHT_ERROR_SLO. A non-positive result means the engine keeps
+// its own built-in default (see forseer.defaultErrorSLO).
+func resolveErrorSLO(flagValue float64) float64 {
+	if flagValue > 0 {
+		return flagValue
+	}
+	if raw := os.Getenv("FORSIGHT_ERROR_SLO"); raw != "" {
+		if v, err := strconv.ParseFloat(raw, 64); err == nil {
+			return v
+		}
+	}
+	return 0
 }
 
 // isLoopbackListenAddr reports whether addr is explicitly bound to a loopback

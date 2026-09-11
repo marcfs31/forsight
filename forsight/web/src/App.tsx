@@ -72,6 +72,11 @@ function formatRss(bytes: number | undefined): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function formatSLO(slo: number | undefined): string | undefined {
+  if (slo === undefined) return undefined;
+  return `${Math.round(slo * 10000) / 100}% SLO`;
+}
+
 function formatInsightTime(iso: string): string {
   const d = new Date(iso);
   if (Number.isNaN(d.getTime())) return iso;
@@ -256,6 +261,8 @@ export default function App() {
 
   const connected = metrics.length > 0 || logs.length > 0;
   const status = statusFromInsights(connected, insights);
+  const sloLabel = formatSLO(budget.slo);
+  const budgetLabel = sloLabel ? `${budget.label || "Error-log budget"} · ${sloLabel}` : budget.label || "Error-log budget";
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-6">
@@ -315,9 +322,15 @@ export default function App() {
           <CardTitle>Forseer</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {summary.enabled && summary.summary ? <Text>{summary.summary}</Text> : null}
+          {summary.enabled ? (
+            summary.summary ? <Text>{summary.summary}</Text> : null
+          ) : (
+            <Text tone="muted" size="sm">
+              AI narrative disabled — set XAI_API_KEY to enable
+            </Text>
+          )}
           <ErrorBudget
-            label={budget.label || "Error-log budget"}
+            label={budgetLabel}
             consumed={budget.consumed}
             caption={budget.caption}
             warningAt={budget.warningAt}
@@ -350,7 +363,14 @@ export default function App() {
             items={alertItems}
             emptyMessage="Forseer watches every metric, log template, and span against its own baseline. Spikes, regime shifts, log bursts, and slow traces show up here."
           />
-          {timelineItems.length > 0 ? <Timeline items={timelineItems} /> : null}
+          {timelineItems.length > 0 ? (
+            <Timeline items={timelineItems} />
+          ) : (
+            <EmptyState
+              title="No timeline events yet"
+              description="Forseer insights are stitched into a timeline here as they occur."
+            />
+          )}
         </CardContent>
       </Card>
 
