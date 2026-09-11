@@ -124,12 +124,13 @@ jobs:
           registry-url: https://npm.pkg.github.com
           scope: "@marcfs31"
       # forsight/web depends on the published @marcfs31/forsight from GitHub
-      # Packages (see forsight/web/package.json) — no root build needed.
-      # `npm install` (not `npm ci`) until a packages:read token can
-      # regenerate package-lock.json; the committed lockfile still records
-      # the old file:../.. resolution. GITHUB_TOKEN + packages:read is
-      # enough for the registry fetch on this job.
-      - run: npm install
+      # Packages. The committed lockfile still records file:../.. (no local
+      # packages:read token to regenerate it), so delete it and resolve the
+      # caret pin from the registry. GITHUB_TOKEN + packages:read is enough
+      # for same-repo GitHub Packages.
+      - run: |
+          rm -f package-lock.json
+          npm install --no-fund --no-audit
         working-directory: forsight/web
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
