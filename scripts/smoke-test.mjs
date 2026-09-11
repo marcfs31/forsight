@@ -238,6 +238,78 @@ check("tailwind.css and tailwind-preset expose the same color utilities", () => 
   return true;
 });
 
+// Named-import tree-shaking: a consumer `import { Button }` must not pull the
+// entire barrel. Before the PURE/displayName fix this sat near the full
+// dist/index.js size-limit budget; after, it must land dramatically below.
+check("named-import tree-shaking keeps Button far below the full barrel", () => {
+  const esbuild = require("esbuild");
+  const { brotliCompressSync } = require("node:zlib");
+  const { mkdtempSync, writeFileSync: write, rmSync } = require("node:fs");
+  const { tmpdir } = require("node:os");
+  const { join } = require("node:path");
+  const dir = mkdtempSync(join(tmpdir(), "forsight-treeshake-"));
+  try {
+    const entry = join(dir, "entry.mjs");
+    write(
+      entry,
+      `import { Button } from ${JSON.stringify(path.resolve(distIndex))};\nconsole.log(Button);\n`
+    );
+    const result = esbuild.buildSync({
+      entryPoints: [entry],
+      bundle: true,
+      write: false,
+      format: "esm",
+      platform: "browser",
+      external: ["react", "react-dom"],
+      logLevel: "silent",
+      treeShaking: true,
+      minify: true,
+    });
+    const buf = result.outputFiles[0].contents;
+    const brotli = brotliCompressSync(buf).length;
+    const fullBrotli = brotliCompressSync(readFileSync(distIndex)).length;
+    // Hard ceiling: must be well under half the full barrel and under 25 KB.
+    // Pre-fix was ~75–110 KB brotli for this same import.
+    if (brotli >= fullBrotli * 0.5) {
+      throw new Error(`Button import brotli ${brotli} is not << full barrel ${fullBrotli}`);
+    }
+    if (brotli > 25_000) {
+      throw new Error(`Button import brotli ${brotli} exceeds 25 KB ceiling`);
+    }
+    const text = new TextDecoder().decode(buf);
+    for (const leaked of ["AlertDialog", "BarChart", "CalendarHeatmap", "CommandInput"]) {
+      if (text.includes(leaked)) {
+        throw new Error(`tree-shaken Button bundle still contains ${leaked}`);
+      }
+    }
+    console.log(
+      `    (Button named-import brotli: ${brotli} B; full index.js brotli: ${fullBrotli} B)`
+    );
+    return true;
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+check("dist keeps named forwardRef render functions for DevTools", () => {
+  const js = readFileSync(distIndex, "utf8");
+  if ((js.match(/\.displayName\s*=/g) || []).length > 0) {
+    throw new Error("dist/index.js still contains displayName assignments");
+  }
+  // esbuild renames `function Button` → `function Button2` when the outer
+  // binding is also `var Button` in the bundled scope. The suffix still
+  // beats Anonymous for React DevTools (it reads render.name).
+  for (const name of ["Button", "Spinner", "Badge", "Card", "Input"]) {
+    if (!new RegExp(`function ${name}\\d*\\(`).test(js)) {
+      throw new Error(`dist/index.js missing named function ${name}`);
+    }
+  }
+  if (!(js.match(/\/\* @__PURE__ \*\/ (?:React\d*\.)?forwardRef/g) || []).length) {
+    throw new Error("dist/index.js missing @__PURE__ forwardRef annotations");
+  }
+  return true;
+});
+
 console.log("");
 if (failures > 0) {
   console.error(`${failures} smoke-test check(s) failed.`);
