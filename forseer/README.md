@@ -32,6 +32,8 @@ exists for that shape of answer. Forseer never invents a new widget.
 | Kind | Method | Why it is ML/stats, not a threshold | Dashboard component |
 | --- | --- | --- | --- |
 | `log severity` | Multinomial naive Bayes over hashed tokens, trained online on the levels OTLP declares | A tailed line carries no level; the four-substring rule it replaces reads "no errors reported" as an error and "panic:" as info. See [MODELS.md](MODELS.md) | **LogStream** |
+| `alert thresholds` | Robbins-Monro stochastic approximation of a per-series quantile | One shared 3σ pages constantly on a noisy series and never fires on a smooth one, because sigma only means "rare" for a distribution metrics do not have | **AlertList** |
+| `budget forecast` | Holt's linear method, projected to 100% with a band from the trend's own uncertainty | "60% consumed" is a fact about the past; when it runs out is the actionable question | **ErrorBudget** |
 | `anomaly` | Welford online mean/variance, 3σ / 5σ | The baseline is the series itself, not a hardcoded CPU% | **AlertList** (severity vocabulary is identical) |
 | `changepoint` | CUSUM on the same z-scores | Catches a *shift* that a single spike detector misses (disk filling, leak) | **Timeline** |
 | `log_burst` | Drain-lite templates (UUID/IP/number → `<*>`) + short-window volume | Turns a firehose into "this pattern just exploded" | **BarList** (ranked templates) + **LogStream** (raw lines) |
@@ -75,8 +77,11 @@ the table below).
 
 | Idea | Method | Component |
 | --- | --- | --- |
-| Error-budget forecast | linear / Holt projection of error-log rate vs an SLO, on top of the current-burn read `Engine.Budget()` already does | **ErrorBudget** |
 | Multivariate outlier | Isolation Forest in `python/`, scores POSTed back | **AlertList** |
+
+The error-budget forecast is **built** — see [MODELS.md](MODELS.md). So are
+per-series alert thresholds and the log-severity classifier; the rest of the
+model roadmap lives there too.
 
 Do not put model weights or API keys in this repo. Python jobs that need
 numpy/a trainer stay under `python/` and read `/api/v1/*`; they do not
