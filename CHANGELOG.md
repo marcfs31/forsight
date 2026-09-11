@@ -1,5 +1,72 @@
 # @marcfs31/fors-observability-design-system
 
+## 4.0.0
+
+### Major Changes
+
+- 3184b1e: Compile the design system with Tailwind CSS v4.
+
+  This package's own build (`dist/styles.css`, Storybook) now runs Tailwind 4.3
+  via `@tailwindcss/cli` / `@tailwindcss/postcss`. Lightning CSS in that
+  pipeline replaces Autoprefixer. The shipped stylesheet still omits Preflight
+  and still makes no network calls.
+
+  **If you consume `@marcfs31/forsight/styles.css` (the precompiled
+  stylesheet):** keep importing it. No Tailwind upgrade is required to use the
+  components. The generated CSS now uses v4 features (`@property`,
+  `color-mix()`), so it targets Safari 16.4+, Chrome 111+, and Firefox 128+.
+
+  **If you consume `@marcfs31/forsight/tailwind-preset` on Tailwind v3:** that
+  export is unchanged — it is still a v3 JS preset (`presets: [forsightPreset]`
+  in `tailwind.config`). Stay on Tailwind 3.4. The optional `tailwindcss` peer
+  range remains `>=3.4`. Token class names (`bg-ink-*`, `text-fg*`,
+  `bg-accent*`, `rounded-*`, `shadow-*`, `duration-fast` / `duration-base`) are
+  the same.
+
+  **If you consume `@marcfs31/forsight/tailwind.css` on Tailwind v4:** keep
+  `@import "@marcfs31/forsight/tailwind.css"` after `@import "tailwindcss"`. The
+  `@theme` mapping now also emits accordion/collapsible keyframes and
+  `duration-fast` / `duration-base` `@utility` rules, matching the v3 preset.
+
+  **If you compile this repo from source:** install Tailwind 4 together with
+  `@tailwindcss/cli` and `@tailwindcss/postcss`. `tailwindcss` v4 no longer
+  ships a CLI binary or a PostCSS plugin.
+
+### Patch Changes
+
+- 0388e8b: Give the `Combobox`, `MultiSelect` and `FilterBar` popovers an accessible name.
+
+  All three compose a Radix popover internally, which renders as `role="dialog"`.
+  None named it, so screen readers announced an unnamed dialog when the control
+  opened — axe's `aria-dialog-name`. The inner `Command` listbox was already
+  named in each, which is why this went unnoticed: the interactive part read
+  correctly, the wrapper around it did not.
+
+  The dialog now mirrors whatever names the trigger. For `Combobox` and
+  `MultiSelect` that is `aria-labelledby` when the consumer passes one (so the
+  name tracks the referenced element's text), otherwise the trigger's
+  `aria-label`, otherwise the `placeholder`, which always has a value. Nothing
+  changes for consumers who already pass `aria-label` — the dialog simply
+  inherits that name instead of having none. `FilterBar`'s popover is internal
+  and single-purpose, so it takes the trigger's own visible name, "Add filter".
+
+  This was caught by moving the Storybook accessibility gate to
+  `@storybook/addon-vitest`. The previous test runner scoped axe to
+  `#storybook-root`, and Radix renders these popovers into a portal on
+  `document.body` — outside that root — so no overlay content was ever checked.
+
+- 904f3d1: Widen `SidebarContextValue.mobileTriggerRef` to `React.RefObject<HTMLButtonElement | null>`.
+
+  The dev toolchain moves to React 19, whose `useRef<T>(null)` is typed
+  `RefObject<T | null>`, so the context's declared type had to match. This is a
+  type-only widening: nothing changes at runtime, and nothing breaks for
+  consumers on React 18, where `RefObject<T>.current` was already `T | null`.
+
+  The library's `react`/`react-dom` peer range is unchanged (`>=18`) — React 18
+  and 19 are both still supported.
+
+- 1084bdc: Enable named-import tree-shaking of the component barrel via a tsup esbuild plugin that marks `forwardRef`/`memo`/`cva` as `@__PURE__`, strips `displayName` assignments from the compiled output (source keeps them for DevTools during development), and names the render function passed to `forwardRef`.
+
 ## 3.0.0
 
 ### Major Changes
