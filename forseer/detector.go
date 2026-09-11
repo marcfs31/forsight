@@ -60,7 +60,7 @@ func (d *Detector) Observe(points []Point) {
 }
 
 func (d *Detector) observeOneLocked(p Point, now time.Time) {
-	key := seriesKey(p.Name, p.Labels)
+	key := seasonalKey(p.Name, p.Labels, now.Hour())
 	s := d.series[key]
 	if s == nil {
 		if len(d.series) >= maxSeries {
@@ -175,6 +175,17 @@ func sortInsights(out []Insight) {
 		}
 		return out[i].Time.After(out[j].Time)
 	})
+}
+
+// seasonalKey keeps a separate rolling baseline per hour of day for low-
+// cardinality series (host.*, docker.*, scraped jobs). Process series stay
+// global — hour-suffixing them would blow the 512-series cap.
+func seasonalKey(name string, labels map[string]string, hour int) string {
+	base := seriesKey(name, labels)
+	if strings.HasPrefix(name, "process.") {
+		return base
+	}
+	return fmt.Sprintf("%s|h=%02d", base, hour)
 }
 
 func seriesKey(name string, labels map[string]string) string {

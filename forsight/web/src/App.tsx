@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   Heading,
   Text,
@@ -20,12 +20,21 @@ import {
   AlertList,
   Timeline,
   BarList,
+  ErrorBudget,
+  FilterBar,
+  Heatmap,
+  TraceWaterfall,
+  Input,
+  Button,
   type LogEntry as StreamLogEntry,
   type AlertListItem,
   type AlertSeverity,
   type TimelineItem,
   type TimelineTone,
   type ServiceStatus,
+  type FilterBarFacet,
+  type FilterBarOption,
+  type TraceSpan,
 } from "@marcfs31/forsight";
 import {
   useMetrics,
@@ -33,12 +42,18 @@ import {
   useInsights,
   useClusters,
   useSummary,
+  useTraces,
+  useBudget,
+  useTimeline,
+  queryForseer,
   historyFor,
   latestValue,
   containerRows,
   processRows,
   type LogEntry,
   type ForseerInsight,
+  type ForseerEvent,
+  type Span,
 } from "./api";
 
 const timeLabelFormat = new Intl.DateTimeFormat(undefined, {
@@ -97,14 +112,88 @@ function toneFor(severity: string): TimelineTone {
   return "accent";
 }
 
-function toTimelineItems(insights: ForseerInsight[]): TimelineItem[] {
-  return insights.map((ins) => ({
-    id: `tl-${ins.id}`,
-    time: formatInsightTime(ins.time),
-    title: ins.title,
-    description: ins.kind,
-    tone: toneFor(ins.severity),
+function toTimelineItems(events: ForseerEvent[]): TimelineItem[] {
+  return events.map((ev) => ({
+    id: ev.id,
+    time: formatInsightTime(ev.time),
+    title: ev.title,
+    description: ev.description,
+    tone: (ev.tone as TimelineTone) || toneFor("info"),
   }));
+}
+
+function matchesFilters(entry: LogEntry, filters: FilterBarFacet[]): boolean {
+  return filters.every((f) => {
+    if (f.key === "status") return entry.severity === f.value;
+    if (f.key === "source") return entry.source.toLowerCase().includes(f.value.toLowerCase());
+    return true;
+  });
+}
+
+function errorHeatmap(logs: LogEntry[]): { columns: string[]; rows: { label: string; values: Array<number | null> }[] } {
+  const columns = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, "0"));
+  const sources = [...new Set(logs.map((l) => l.source || "unknown"))].sort();
+  const rows = sources.map((source) => {
+    const values = columns.map((hour) => {
+      const n = logs.filter((l) => {
+        if ((l.source || "unknown") !== source || l.severity !== "error") return false;
+        const d = new Date(l.timestamp);
+        return !Number.isNaN(d.getTime()) && String(d.getHours()).padStart(2, "0") === hour;
+      }).length;
+      return n === 0 ? null : n;
+    });
+    return { label: source, values };
+  });
+  return { columns, rows: rows.filter((row) => row.values.some((v) => v !== null)) };
+}
+
+function toWaterfall(spans: Span[]): TraceSpan[] {
+  if (spans.length === 0) return [];
+  const starts = spans.map((s) => new Date(s.start).getTime());
+  const origin = Math.min(...starts);
+  const byParent = new Map<string, number>();
+  const depthOf = (span: Span, seen: Set<string>): number => {
+    if (!span.parentId) return 0;
+    if (seen.has(span.spanId)) return 0;
+    seen.add(span.spanId);
+    const parent = spans.find((s) => s.spanId === span.parentId);
+    if (!parent) return 1;
+    const cached = byParent.get(span.spanId);
+    if (cached !== undefined) return cached;
+    const d = 1 + depthOf(parent, seen);
+    byParent.set(span.spanId, d);
+    return d;
+  };
+  return spans.map((s, i) => ({
+    id: s.spanId || String(i),
+    name: s.name,
+    service: s.service,
+    start: Math.max(0, new Date(s.start).getTime() - origin),
+    duration: s.duration > 1e6 ? s.duration / 1e6 : s.duration,
+    depth: depthOf(s, new Set()),
+    status: s.status === "error" ? "error" : undefined,
+  }));
+}
+
+function pickTrace(spans: Span[], insights: ForseerInsight[]): Span[] {
+  const related = insights.find((ins) => ins.kind === "slow_span")?.related ?? [];
+  const traceId = related.find((r) => spans.some((s) => s.traceId === r));
+  if (traceId) return spans.filter((s) => s.traceId === traceId);
+  const byTrace = new Map<string, Span[]>();
+  for (const s of spans) {
+    const list = byTrace.get(s.traceId) ?? [];
+    list.push(s);
+    byTrace.set(s.traceId, list);
+  }
+  let best: Span[] = [];
+  for (const group of byTrace.values()) {
+    const hasError = group.some((s) => s.status === "error");
+    const dur = group.reduce((n, s) => n + s.duration, 0);
+    const bestDur = best.reduce((n, s) => n + s.duration, 0);
+    const bestErr = best.some((s) => s.status === "error");
+    if ((hasError && !bestErr) || (hasError === bestErr && dur > bestDur)) best = group;
+  }
+  return best;
 }
 
 function statusFromInsights(connected: boolean, insights: ForseerInsight[]): ServiceStatus {
@@ -117,9 +206,14 @@ function statusFromInsights(connected: boolean, insights: ForseerInsight[]): Ser
 export default function App() {
   const metrics = useMetrics(5000);
   const logs = useLogs(5000);
+  const traces = useTraces(5000);
   const insights = useInsights(5000);
   const clusters = useClusters(5000);
   const summary = useSummary(30000);
+  const budget = useBudget(5000);
+  const story = useTimeline(5000);
+  const [query, setQuery] = useState("");
+  const [filters, setFilters] = useState<FilterBarFacet[]>([]);
 
   const cpuHistory = historyFor(metrics, "host.cpu.percent");
   const cpuLabels = cpuHistory.map((m) => timeLabelFormat.format(new Date(m.timestamp)));
@@ -129,13 +223,28 @@ export default function App() {
   const disk = latestValue(metrics, "host.disk.percent");
   const containers = containerRows(metrics);
   const processes = processRows(metrics).slice(0, 15);
-  const streamEntries = useMemo(() => toStreamEntries(logs), [logs]);
+  const filteredLogs = useMemo(() => logs.filter((l) => matchesFilters(l, filters)), [logs, filters]);
+  const streamEntries = useMemo(() => toStreamEntries(filteredLogs), [filteredLogs]);
   const errorCount = useMemo(
-    () => logs.filter((entry) => entry.severity === "error").length,
-    [logs]
+    () => filteredLogs.filter((entry) => entry.severity === "error").length,
+    [filteredLogs]
   );
   const alertItems = useMemo(() => toAlertItems(insights), [insights]);
-  const timelineItems = useMemo(() => toTimelineItems(insights), [insights]);
+  const timelineItems = useMemo(() => toTimelineItems(story), [story]);
+  const heatmap = useMemo(() => errorHeatmap(logs), [logs]);
+  const waterfall = useMemo(() => toWaterfall(pickTrace(traces, insights)), [traces, insights]);
+  const filterOptions: FilterBarOption[] = useMemo(() => {
+    const sources = [...new Set(logs.map((l) => l.source).filter(Boolean))];
+    const opts: FilterBarOption[] = [
+      { facetKey: "status", facetLabel: "Status", value: "error", label: "error" },
+      { facetKey: "status", facetLabel: "Status", value: "warn", label: "warn" },
+      { facetKey: "status", facetLabel: "Status", value: "info", label: "info" },
+    ];
+    for (const src of sources) {
+      opts.push({ facetKey: "source", facetLabel: "Source", value: src, label: src });
+    }
+    return opts;
+  }, [logs]);
   const clusterBars = useMemo(
     () =>
       clusters.slice(0, 8).map((c) => ({
@@ -207,6 +316,35 @@ export default function App() {
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
           {summary.enabled && summary.summary ? <Text>{summary.summary}</Text> : null}
+          <ErrorBudget
+            label={budget.label || "Error-log budget"}
+            consumed={budget.consumed}
+            caption={budget.caption}
+            warningAt={budget.warningAt}
+            dangerAt={budget.dangerAt}
+          />
+          <form
+            className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void queryForseer(query).then(setFilters);
+            }}
+          >
+            <Input
+              className="min-w-0 flex-1"
+              aria-label="Ask Forseer"
+              hint="Maps a phrase onto FilterBar facets, e.g. error logs from checkout"
+              value={query}
+              onChange={(event) => setQuery(event.target.value)}
+            />
+            <Button type="submit">Apply</Button>
+          </form>
+          <FilterBar
+            label="Log filters"
+            filters={filters}
+            onFiltersChange={setFilters}
+            options={filterOptions}
+          />
           <AlertList
             label="Forseer insights"
             items={alertItems}
@@ -323,6 +461,35 @@ export default function App() {
             />
           ) : (
             <LogStream label="Ingested logs" entries={streamEntries} maxHeight={360} />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Error logs by hour</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {heatmap.rows.length === 0 ? (
+            <EmptyState title="No error logs" description="Sources show up here once error lines land." />
+          ) : (
+            <Heatmap label="Error logs by source and hour" columns={heatmap.columns} rows={heatmap.rows} />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Slowest trace</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {waterfall.length === 0 ? (
+            <EmptyState
+              title="No traces yet"
+              description="POST OTLP traces to /v1/traces. Forseer marks the critical path on slow or error spans."
+            />
+          ) : (
+            <TraceWaterfall label="Related trace" spans={waterfall} />
           )}
         </CardContent>
       </Card>

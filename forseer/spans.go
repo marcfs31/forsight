@@ -8,11 +8,13 @@ import (
 )
 
 const maxSpanSeries = 256
+const maxTraces = 64
 
 type spanWatch struct {
 	mu     sync.Mutex
 	series map[string]*rolling
 	open   map[string]Insight
+	traces map[string][]SpanSample
 	now    func() time.Time
 }
 
@@ -20,6 +22,7 @@ func newSpanWatch() *spanWatch {
 	return &spanWatch{
 		series: make(map[string]*rolling),
 		open:   make(map[string]Insight),
+		traces: make(map[string][]SpanSample),
 		now:    time.Now,
 	}
 }
@@ -37,8 +40,25 @@ func (w *spanWatch) Observe(spans []SpanSample) {
 		}
 	}
 	for _, sp := range spans {
+		if sp.TraceID != "" {
+			tr := w.traces[sp.TraceID]
+			tr = append(tr, sp)
+			w.traces[sp.TraceID] = tr
+			if len(w.traces) > maxTraces {
+				w.evictOldestTraceLocked()
+			}
+		}
 		w.observeOneLocked(sp, now)
 	}
+}
+
+func (w *spanWatch) evictOldestTraceLocked() {
+	var oldest string
+	for id := range w.traces {
+		oldest = id
+		break
+	}
+	delete(w.traces, oldest)
 }
 
 func (w *spanWatch) observeOneLocked(sp SpanSample, now time.Time) {
@@ -80,6 +100,9 @@ func (w *spanWatch) observeOneLocked(sp SpanSample, now time.Time) {
 	related := []string{sp.Name}
 	if sp.TraceID != "" {
 		related = append(related, sp.TraceID)
+		if path := CriticalPath(w.traces[sp.TraceID]); len(path) > 0 {
+			related = append(related, path...)
+		}
 	}
 	w.open[key] = Insight{
 		ID:          "span:" + key,

@@ -187,6 +187,22 @@ func TestHandleForseerSummary_DisabledWithoutKey(t *testing.T) {
 	}
 }
 
+func TestHandleForseerQuery_ParsesPhrase(t *testing.T) {
+	s := NewServer(store.NewMemoryStore(time.Hour), nil, nil, nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/forseer/query?q=error+logs+from+checkout", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var got []map[string]string
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 {
+		t.Fatalf("got %+v", got)
+	}
+}
+
 func TestHandleForseerClusters_EmptyWithoutEngine(t *testing.T) {
 	s := NewServer(store.NewMemoryStore(time.Hour), nil, nil, nil)
 	rec := httptest.NewRecorder()

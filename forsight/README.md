@@ -81,6 +81,7 @@ forsight run [flags]
                                  optionally prefixed with a job name
                                  (--scrape node=http://localhost:9100/metrics)
     --statsd-addr string         StatsD/DogStatsD UDP listen address (default :8125)
+    --log-file string            log file to tail into the store (repeatable)
 
 forsight version
 ```
@@ -96,6 +97,9 @@ forsight version
 | `/api/v1/logs?since=&source=&severity=`       | GET | Query stored log entries                                  |
 | `/api/v1/forseer/insights`                   | GET | Current Forseer findings (always on, no API key)          |
 | `/api/v1/forseer/clusters`                   | GET | Drain-style log templates                                 |
+| `/api/v1/forseer/budget`                     | GET | Error-log burn against a 1% SLO (ErrorBudget)             |
+| `/api/v1/forseer/timeline`                   | GET | Stitched incident events (Timeline)                       |
+| `/api/v1/forseer/query?q=`                   | GET | Phrase → FilterBar facets                                 |
 | `/api/v1/forseer/summary`                    | GET | Grok paragraph when `XAI_API_KEY` is set; else disabled   |
 | `/v1/metrics`                            | POST   | OTLP/HTTP metrics ingest (protobuf or JSON body)          |
 | `/v1/traces`                             | POST   | OTLP/HTTP traces ingest (protobuf or JSON body)           |
@@ -121,6 +125,7 @@ forsight/
                              traces, and logs (protobuf or JSON)
       promscrape/            Prometheus exposition-format scraper + local discover
       statsd/                StatsD/DogStatsD UDP receiver
+      filelog/               tail --log-file paths into LogEntry
     store/                  Store interface + an in-memory, retention-bounded impl
     api/                    HTTP server: query API, OTLP mount, embedded dashboard
   web/                      the dashboard — a small React app on the design system

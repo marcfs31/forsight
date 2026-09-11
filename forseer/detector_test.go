@@ -77,6 +77,19 @@ func TestDetector_EmitsChangepointOnSustainedShift(t *testing.T) {
 	}
 }
 
+func TestSeasonalKey_HourSplitsHostNotProcess(t *testing.T) {
+	day := seasonalKey("host.cpu.percent", nil, 15)
+	night := seasonalKey("host.cpu.percent", nil, 3)
+	if day == night {
+		t.Fatal("hour of day should split host series")
+	}
+	a := seasonalKey("process.cpu.percent", map[string]string{"pid": "7"}, 3)
+	b := seasonalKey("process.cpu.percent", map[string]string{"pid": "7"}, 15)
+	if a != b {
+		t.Fatal("process series should not be hour-split")
+	}
+}
+
 func TestSeriesKey_IncludesSortedLabels(t *testing.T) {
 	a := seriesKey("docker.cpu.percent", map[string]string{"container_name": "web", "container_id": "abc"})
 	b := seriesKey("docker.cpu.percent", map[string]string{"container_id": "abc", "container_name": "web"})

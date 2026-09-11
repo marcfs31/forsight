@@ -130,6 +130,26 @@ func (s *Server) handleForseerClusters(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, s.forseer.Clusters())
 }
 
+func (s *Server) handleForseerBudget(w http.ResponseWriter, _ *http.Request) {
+	if s.forseer == nil {
+		writeJSON(w, http.StatusOK, forseer.Budget{Label: "Error-log budget", SLO: 0.01, WarningAt: 70, DangerAt: 90})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.forseer.Budget())
+}
+
+func (s *Server) handleForseerTimeline(w http.ResponseWriter, _ *http.Request) {
+	if s.forseer == nil {
+		writeJSON(w, http.StatusOK, []forseer.Event{})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.forseer.Story())
+}
+
+func (s *Server) handleForseerQuery(w http.ResponseWriter, r *http.Request) {
+	writeJSON(w, http.StatusOK, forseer.ParseQuery(r.URL.Query().Get("q")))
+}
+
 func (s *Server) handleForseerSummary(w http.ResponseWriter, r *http.Request) {
 	key := forseer.APIKeyFromEnv()
 	if key == "" {

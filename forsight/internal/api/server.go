@@ -53,6 +53,9 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/logs", s.handleLogs)
 	mux.HandleFunc("GET /api/v1/forseer/insights", s.handleForseerInsights)
 	mux.HandleFunc("GET /api/v1/forseer/clusters", s.handleForseerClusters)
+	mux.HandleFunc("GET /api/v1/forseer/budget", s.handleForseerBudget)
+	mux.HandleFunc("GET /api/v1/forseer/timeline", s.handleForseerTimeline)
+	mux.HandleFunc("GET /api/v1/forseer/query", s.handleForseerQuery)
 	mux.HandleFunc("GET /api/v1/forseer/summary", s.handleForseerSummary)
 
 	if s.otlp != nil {

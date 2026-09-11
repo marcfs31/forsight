@@ -28,6 +28,8 @@ type logMiner struct {
 	clusters map[string]*liveCluster
 	open     map[string]Insight
 	now      func() time.Time
+	total    int
+	errors   int
 }
 
 type liveCluster struct {
@@ -71,8 +73,10 @@ func (m *logMiner) observeOneLocked(line LogLine, now time.Time) {
 		m.clusters[id] = c
 	}
 	c.Count++
+	m.total++
 	if line.Severity == "error" || line.Severity == "fatal" {
 		c.ErrorCount++
+		m.errors++
 	}
 	c.LastSeen = line.Timestamp
 	if c.LastSeen.IsZero() {
@@ -148,6 +152,12 @@ func (m *logMiner) Insights() []Insight {
 	}
 	sortInsights(out)
 	return out
+}
+
+func (m *logMiner) counts() (errors, total int) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.errors, m.total
 }
 
 func (m *logMiner) Clusters() []Cluster {

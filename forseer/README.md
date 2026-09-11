@@ -17,6 +17,9 @@ API key. Optional Grok narrative uses SpaceXAI (`XAI_API_KEY`).
 | --- | --- | --- |
 | `GET /api/v1/forseer/insights` | no | Open findings, critical first |
 | `GET /api/v1/forseer/clusters` | no | Drain-style log templates |
+| `GET /api/v1/forseer/budget` | no | Error-log burn vs a 1% SLO |
+| `GET /api/v1/forseer/timeline` | no | Stitched incident events |
+| `GET /api/v1/forseer/query?q=` | no | Phrase → FilterBar facets |
 | `GET /api/v1/forseer/summary` | `XAI_API_KEY` | Grok paragraph; otherwise `{"enabled":false}` |
 
 ## Detectors that ship, and the component they drive
@@ -32,6 +35,11 @@ exists for that shape of answer. Forseer never invents a new widget.
 | `slow_span` | Per `(service, span name)` duration z-score | "This endpoint is slow *for itself*", not vs a global 200ms SLO | **TraceWaterfall** (related trace id) |
 | `culprit` | Join a `host.cpu` anomaly with `process.cpu.percent` | Answers *which process* when the host is hot | **Table** (process rows) |
 | Grok narrative | SpaceXAI `grok-4.5` | Stitches the above into four sentences an on-call can read | **Card** + **Text** |
+| error-log budget | error/total vs 1% SLO | **ErrorBudget** |
+| incident stitch | insights + related critical path | **Timeline** |
+| NL filter | phrase → facets (`error logs from checkout`) | **FilterBar** |
+| hour-of-day baseline | separate z-score per hour for host/docker series | **AlertList** (same findings, less night/day false fire) |
+| critical path | walk error leaf to root | **TraceWaterfall** via `related` |
 
 `Insight.severity` is `critical` / `warning` / `info` on purpose: those are
 `AlertListItem.severity` values. `Insight.kind` is how the dashboard picks

@@ -236,16 +236,16 @@ Three rules:
 
 Forseer does not add components. It scores the agent's stream and lands each finding on a component that already exists. The Storybook **Forseer** section is that mapping, including a full incident composition.
 
-| Kind                | Detector                                             | Component               |
-| ------------------- | ---------------------------------------------------- | ----------------------- |
-| `anomaly`           | Welford rolling z-score (3σ / 5σ)                    | `AlertList`             |
-| `changepoint`       | CUSUM on the same z-scores                           | `Timeline`              |
-| `log_burst`         | Drain-lite templates + short-window volume           | `BarList` + `LogStream` |
-| `slow_span`         | Per `(service, span name)` duration z-score          | `TraceWaterfall`        |
-| `culprit`           | Join a `host.cpu` anomaly with `process.cpu.percent` | `Table`                 |
-| Grok narrative      | SpaceXAI `grok-4.5` when `XAI_API_KEY` is set        | `Card` + `Text`         |
-| NL filter (next)    | Grok JSON → facets                                   | `FilterBar`             |
-| SLO forecast (next) | Projected error-log burn                             | `ErrorBudget`           |
+| Kind           | Detector                                             | Component               |
+| -------------- | ---------------------------------------------------- | ----------------------- |
+| `anomaly`      | Welford rolling z-score (3σ / 5σ)                    | `AlertList`             |
+| `changepoint`  | CUSUM on the same z-scores                           | `Timeline`              |
+| `log_burst`    | Drain-lite templates + short-window volume           | `BarList` + `LogStream` |
+| `slow_span`    | Per `(service, span name)` duration z-score          | `TraceWaterfall`        |
+| `culprit`      | Join a `host.cpu` anomaly with `process.cpu.percent` | `Table`                 |
+| Grok narrative | SpaceXAI `grok-4.5` when `XAI_API_KEY` is set        | `Card` + `Text`         |
+| NL filter      | Phrase → facets (`error logs from checkout`)         | `FilterBar`             |
+| SLO burn       | Error-log rate vs a 1% SLO                           | `ErrorBudget`           |
 
 Statistical detectors need no API key. Details: [`forseer/README.md`](forseer/README.md).
 

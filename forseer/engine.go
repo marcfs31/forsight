@@ -3,6 +3,7 @@ package forseer
 import (
 	"fmt"
 	"sort"
+	"strings"
 	"sync"
 	"time"
 )
@@ -158,4 +159,61 @@ func (e *Engine) Insights() []Insight {
 // Clusters returns Drain-style log templates, busiest first.
 func (e *Engine) Clusters() []Cluster {
 	return e.logs.Clusters()
+}
+
+const defaultErrorSLO = 0.01 // 1% error logs
+
+// Budget is the error-log burn against a 1% SLO, for ErrorBudget.
+func (e *Engine) Budget() Budget {
+	errors, total := e.logs.counts()
+	consumed := 0.0
+	if total > 0 && defaultErrorSLO > 0 {
+		rate := float64(errors) / float64(total)
+		consumed = rate / defaultErrorSLO * 100
+		if consumed > 100 {
+			consumed = 100
+		}
+	}
+	caption := "no logs yet"
+	if total > 0 {
+		caption = fmt.Sprintf("%d errors in %d lines · SLO %.0f%% error logs", errors, total, defaultErrorSLO*100)
+	}
+	return Budget{
+		Label:     "Error-log budget",
+		Consumed:  consumed,
+		Caption:   caption,
+		Errors:    errors,
+		Total:     total,
+		SLO:       defaultErrorSLO,
+		WarningAt: 70,
+		DangerAt:  90,
+	}
+}
+
+// Story stitches insights into Timeline events, critical-path related names included.
+func (e *Engine) Story() []Event {
+	insights := e.Insights()
+	out := make([]Event, 0, len(insights))
+	for _, ins := range insights {
+		tone := "accent"
+		switch ins.Severity {
+		case SeverityCritical:
+			tone = "danger"
+		case SeverityWarning:
+			tone = "warning"
+		}
+		desc := ins.Kind
+		if len(ins.Related) > 0 {
+			desc = ins.Kind + " · " + strings.Join(ins.Related, " → ")
+		}
+		out = append(out, Event{
+			ID:          "evt-" + ins.ID,
+			Time:        ins.Time,
+			Title:       ins.Title,
+			Description: desc,
+			Tone:        tone,
+		})
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Time.After(out[j].Time) })
+	return out
 }

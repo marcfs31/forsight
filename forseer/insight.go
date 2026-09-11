@@ -69,4 +69,34 @@ type SpanSample struct {
 	DurationMs float64
 	Status     string
 	TraceID    string
+	SpanID     string
+	ParentID   string
+}
+
+// Budget is an error-log SLO read for ErrorBudget. GET /api/v1/forseer/budget.
+type Budget struct {
+	Label     string  `json:"label"`
+	Consumed  float64 `json:"consumed"`
+	Caption   string  `json:"caption"`
+	Errors    int     `json:"errors"`
+	Total     int     `json:"total"`
+	SLO       float64 `json:"slo"`
+	WarningAt float64 `json:"warningAt"`
+	DangerAt  float64 `json:"dangerAt"`
+}
+
+// Event is one stitch on the incident Timeline. GET /api/v1/forseer/timeline.
+type Event struct {
+	ID          string    `json:"id"`
+	Time        time.Time `json:"time"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Tone        string    `json:"tone"`
+}
+
+// Facet is one FilterBar chip. GET /api/v1/forseer/query?q=.
+type Facet struct {
+	Key   string `json:"key"`
+	Label string `json:"label"`
+	Value string `json:"value"`
 }

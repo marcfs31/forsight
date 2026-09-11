@@ -26,8 +26,8 @@ import { Table, TableHeader, TableBody, TableRow, TableHead, TableCell } from ".
  * | `slow_span` | per-name duration z-score | TraceWaterfall |
  * | `culprit` | join host.cpu with process.cpu | Table |
  * | Grok narrative | SpaceXAI, optional | Card + Text |
- * | NL filter (next) | Grok JSON → facets | FilterBar |
- * | SLO forecast (next) | projected burn | ErrorBudget |
+ * | NL filter | phrase → facets | FilterBar |
+ * | SLO burn | error-log rate vs 1% | ErrorBudget |
  */
 const meta: Meta = {
   title: "Forsight/Forseer",

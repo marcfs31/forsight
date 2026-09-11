@@ -19,6 +19,7 @@ import (
 	"github.com/marcfs31/forsight/forsight/internal/api"
 	"github.com/marcfs31/forsight/forsight/internal/collector"
 	dockercollector "github.com/marcfs31/forsight/forsight/internal/collector/docker"
+	"github.com/marcfs31/forsight/forsight/internal/collector/filelog"
 	hostcollector "github.com/marcfs31/forsight/forsight/internal/collector/host"
 	"github.com/marcfs31/forsight/forsight/internal/collector/otlp"
 	proccollector "github.com/marcfs31/forsight/forsight/internal/collector/proc"
@@ -40,6 +41,7 @@ type runOptions struct {
 	disableAutoscrape bool
 	scrapeTargets     []string
 	statsdAddr        string
+	logFiles          []string
 }
 
 func newRunCmd() *cobra.Command {
@@ -68,6 +70,8 @@ func newRunCmd() *cobra.Command {
 			"Optionally prefix a job name: --scrape node=http://localhost:9100/metrics")
 	cmd.Flags().StringVar(&opts.statsdAddr, "statsd-addr", ":8125",
 		"listen for StatsD/DogStatsD metrics over UDP (default :8125 so a bare install receives them; --disable-statsd turns it off)")
+	cmd.Flags().StringArrayVar(&opts.logFiles, "log-file", nil,
+		"path of a log file to tail into the store (repeatable); severity is inferred from the line")
 
 	return cmd
 }
@@ -134,6 +138,16 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 
 	registry := collector.NewRegistry(st, opts.collectInterval, logger, collectors...)
 	go registry.Run(ctx)
+
+	for _, path := range opts.logFiles {
+		logPath := path
+		go func() {
+			if err := filelog.Tail(ctx, logPath, st); err != nil && ctx.Err() == nil {
+				logger.Error("log tailer stopped", "path", logPath, "error", err)
+			}
+		}()
+		logger.Info("tailing log file", "path", logPath)
+	}
 
 	var otlpHandler api.OTLPHandler
 	if !opts.disableOTLP {
@@ -254,6 +268,8 @@ func (s observingStore) WriteSpans(ctx context.Context, spans []model.Span) erro
 				DurationMs: float64(sp.Duration) / float64(time.Millisecond),
 				Status:     string(sp.Status),
 				TraceID:    sp.TraceID,
+				SpanID:     sp.SpanID,
+				ParentID:   sp.ParentID,
 			}
 		}
 		s.eng.ObserveSpans(samples)

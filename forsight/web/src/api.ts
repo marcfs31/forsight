@@ -217,6 +217,126 @@ export function useClusters(intervalMs: number): ForseerCluster[] {
   return items;
 }
 
+export interface Span {
+  traceId: string;
+  spanId: string;
+  parentId?: string;
+  name: string;
+  service: string;
+  start: string;
+  duration: number;
+  status: string;
+}
+
+export function useTraces(intervalMs: number): Span[] {
+  const [items, setItems] = useState<Span[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const res = await fetch("/api/v1/traces");
+        if (!res.ok) return;
+        const data: Span[] = await res.json();
+        if (!cancelled) setItems(Array.isArray(data) ? data : []);
+      } catch {
+        // keep last snapshot
+      }
+    }
+
+    poll();
+    const id = setInterval(poll, intervalMs);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [intervalMs]);
+
+  return items;
+}
+
+export interface ForseerBudget {
+  label: string;
+  consumed: number;
+  caption?: string;
+  errors?: number;
+  total?: number;
+  warningAt?: number;
+  dangerAt?: number;
+}
+
+export function useBudget(intervalMs: number): ForseerBudget {
+  const [state, setState] = useState<ForseerBudget>({ label: "Error-log budget", consumed: 0 });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const res = await fetch("/api/v1/forseer/budget");
+        if (!res.ok) return;
+        const data = (await res.json()) as ForseerBudget;
+        if (!cancelled && data) setState(data);
+      } catch {
+        // keep last snapshot
+      }
+    }
+
+    poll();
+    const id = setInterval(poll, intervalMs);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [intervalMs]);
+
+  return state;
+}
+
+export interface ForseerEvent {
+  id: string;
+  time: string;
+  title: string;
+  description?: string;
+  tone?: string;
+}
+
+export function useTimeline(intervalMs: number): ForseerEvent[] {
+  const [items, setItems] = useState<ForseerEvent[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const res = await fetch("/api/v1/forseer/timeline");
+        if (!res.ok) return;
+        const data: ForseerEvent[] = await res.json();
+        if (!cancelled) setItems(Array.isArray(data) ? data : []);
+      } catch {
+        // keep last snapshot
+      }
+    }
+
+    poll();
+    const id = setInterval(poll, intervalMs);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [intervalMs]);
+
+  return items;
+}
+
+export async function queryForseer(q: string): Promise<{ key: string; label: string; value: string }[]> {
+  const res = await fetch("/api/v1/forseer/query?q=" + encodeURIComponent(q));
+  if (!res.ok) return [];
+  const data = (await res.json()) as { key: string; label: string; value: string }[];
+  return Array.isArray(data) ? data : [];
+}
+
 export function useSummary(intervalMs: number): { enabled: boolean; summary: string } {
   const [state, setState] = useState({ enabled: false, summary: "" });
 
