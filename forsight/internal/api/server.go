@@ -57,6 +57,7 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/forseer/timeline", s.handleForseerTimeline)
 	mux.HandleFunc("GET /api/v1/forseer/query", s.handleForseerQuery)
 	mux.HandleFunc("GET /api/v1/forseer/summary", s.handleForseerSummary)
+	mux.HandleFunc("GET /api/v1/forseer/models", s.handleForseerModels)
 
 	if s.otlp != nil {
 		s.otlp.Register(mux)
