@@ -163,16 +163,33 @@ matches what `web/` currently builds (`.github/workflows/forsight-ci.yml`'s
 
 ## Releasing
 
-No automated release pipeline yet (see Roadmap) — cut one by hand:
+Push a `forsight-vX.Y.Z` tag and `.github/workflows/forsight-release.yml`
+does the rest: it checks that tag out, cross-compiles every
+`RELEASE_TARGETS` entry via `make release`, and publishes a GitHub Release
+with the resulting `dist/*.tar.gz` archives attached.
+
+```bash
+git tag forsight-v0.1.0
+git push --tags
+```
+
+A stuck or partially-failed run can be re-driven without pushing a new tag —
+dispatch the workflow with the existing tag as input (`gh workflow run
+forsight-release.yml -f tag=forsight-v0.1.0`, or from the Actions UI); it
+re-runs the build and uploads over the existing release's assets.
+
+`install.sh` expects that exact tag prefix (`forsight-vX.Y.Z`, distinct from
+the npm package's own `vX.Y.Z` tags — this repo now ships two independently
+versioned artifacts) and asset naming (`forsight_<os>_<arch>.tar.gz`).
+
+**Local/fallback path.** The workflow runs nothing that isn't available by
+hand — to cut a release without pushing a tag (e.g. the workflow itself is
+broken), do exactly what it does:
 
 ```bash
 make release VERSION=v0.1.0
 gh release create forsight-v0.1.0 dist/*.tar.gz --title "forsight v0.1.0"
 ```
-
-`install.sh` expects that exact tag prefix (`forsight-vX.Y.Z`, distinct from
-the npm package's own `vX.Y.Z` tags — this repo now ships two independently
-versioned artifacts) and asset naming (`forsight_<os>_<arch>.tar.gz`).
 
 ## Scope: what's real vs. what's roadmap
 
@@ -184,6 +201,13 @@ the binary, watched real host and Docker metrics flow through
 `/api/v1/metrics`, sent a real OTLP protobuf payload and queried it back
 out, and opened the dashboard in a browser to confirm the chart, stat tiles,
 and container table render live data — not just that the code compiles.
+Also **automated releases**: `.github/workflows/forsight-release.yml` cuts
+and publishes a GitHub Release on every `forsight-vX.Y.Z` tag push — see
+Releasing above. Verified by tracing it step-for-step against
+`forsight/Makefile`'s `release` target (same cross-compile targets, same
+`forsight_<os>_<arch>.tar.gz` naming) and by running that target's
+cross-compile+archive loop locally for all four `RELEASE_TARGETS`, including
+extracting and running the resulting binary.
 
 **Deliberately not built yet, flagged rather than silently skipped:**
 
@@ -200,5 +224,3 @@ and container table render live data — not just that the code compiles.
   [`forseer/README.md`](../forseer/README.md)).
 - **A real query language.** The API takes simple time-range + exact-label
   filters, not anything PromQL-equivalent.
-- **Automated releases.** `make release` is manual; no CI job cuts and
-  publishes a GitHub Release on tag push yet.
