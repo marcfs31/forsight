@@ -26,7 +26,11 @@ type Detector struct {
 	mu     sync.Mutex
 	series map[string]*rolling
 	open   map[string]Insight
-	now    func() time.Time
+	// thresholds learns, per series, how far out of line is far enough.
+	// Until a series has enough history it hands back the fixed sigma pair,
+	// so a cold detector behaves exactly as it always did.
+	thresholds *thresholdModel
+	now        func() time.Time
 }
 
 type rolling struct {
@@ -39,9 +43,10 @@ type rolling struct {
 // NewDetector builds an empty detector.
 func NewDetector() *Detector {
 	return &Detector{
-		series: make(map[string]*rolling),
-		open:   make(map[string]Insight),
-		now:    time.Now,
+		series:     make(map[string]*rolling),
+		open:       make(map[string]Insight),
+		thresholds: newThresholdModel(),
+		now:        time.Now,
 	}
 }
 
@@ -89,10 +94,11 @@ func (d *Detector) observeOneLocked(p Point, now time.Time) {
 		return
 	}
 	z := math.Abs(p.Value-s.mean) / sigma
+	warn, critical, _ := d.thresholds.Observe(key, z)
 	switch {
-	case z >= criticalSigma:
+	case z >= critical:
 		d.open[key] = insight(key, KindAnomaly, p, z, SeverityCritical, now)
-	case z >= warningSigma:
+	case z >= warn:
 		d.open[key] = insight(key, KindAnomaly, p, z, SeverityWarning, now)
 	default:
 		if existing, ok := d.open[key]; ok && existing.Kind == KindAnomaly {

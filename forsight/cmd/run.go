@@ -102,7 +102,11 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 		return err
 	}
 
-	eng := forseer.NewEngine()
+	// The severity model competes against the tailer's substring rule on the
+	// same stream, and is used only while it is winning.
+	eng := forseer.NewEngine().WithSeverityFallback(func(message string) string {
+		return string(filelog.FallbackSeverity(message))
+	})
 	if slo := resolveErrorSLO(opts.errorSLO); slo > 0 {
 		eng.SetErrorSLO(slo)
 	}
@@ -167,7 +171,7 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 
 	for _, path := range opts.logFiles {
 		logPath := path
-		go tailWithRetry(ctx, logPath, st, logger)
+		go tailWithRetry(ctx, logPath, st, eng, logger)
 		logger.Info("tailing log file", "path", logPath)
 	}
 
@@ -257,17 +261,17 @@ const (
 // whatever else a filesystem can throw at it (e.g. a transient permission
 // or I/O error), consistent with every other collector goroutine's
 // ctx-scoped restart discipline in this file.
-func tailWithRetry(ctx context.Context, path string, sink filelog.Sink, logger *slog.Logger) {
-	retryTail(ctx, path, sink, logger, tailMinBackoff, tailMaxBackoff)
+func tailWithRetry(ctx context.Context, path string, sink filelog.Sink, classifier filelog.Classifier, logger *slog.Logger) {
+	retryTail(ctx, path, sink, classifier, logger, tailMinBackoff, tailMaxBackoff)
 }
 
 // retryTail holds tailWithRetry's loop with the backoff bounds as
 // parameters so a test can drive it with millisecond backoffs instead of
 // tailMinBackoff/tailMaxBackoff's real-world values.
-func retryTail(ctx context.Context, path string, sink filelog.Sink, logger *slog.Logger, minBackoff, maxBackoff time.Duration) {
+func retryTail(ctx context.Context, path string, sink filelog.Sink, classifier filelog.Classifier, logger *slog.Logger, minBackoff, maxBackoff time.Duration) {
 	backoff := minBackoff
 	for {
-		err := filelog.Tail(ctx, path, sink)
+		err := filelog.TailWith(ctx, path, sink, classifier)
 		if ctx.Err() != nil {
 			return
 		}
@@ -366,10 +370,11 @@ func (s observingStore) WriteLogs(ctx context.Context, logs []model.LogEntry) er
 		lines := make([]forseer.LogLine, len(logs))
 		for i, l := range logs {
 			lines[i] = forseer.LogLine{
-				Timestamp: l.Timestamp,
-				Severity:  string(l.Severity),
-				Source:    l.Source,
-				Message:   l.Message,
+				Timestamp:        l.Timestamp,
+				Severity:         string(l.Severity),
+				Source:           l.Source,
+				Message:          l.Message,
+				SeverityInferred: l.SeverityInferred,
 			}
 		}
 		s.eng.ObserveLogs(lines)

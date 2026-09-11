@@ -122,3 +122,68 @@ func TestEngine_SlowSpan(t *testing.T) {
 		t.Fatalf("expected slow_span: %+v", e.Insights())
 	}
 }
+
+func TestEngine_TrainsSeverityOnlyOnDeclaredLevels(t *testing.T) {
+	e := NewEngine()
+
+	// A tailed file: the agent guessed the level, so this teaches nothing.
+	e.ObserveLogs([]LogLine{{
+		Message:          "no errors reported during the sweep",
+		Severity:         "error",
+		Source:           "/var/log/app.log",
+		SeverityInferred: true,
+	}})
+
+	if trained := e.Models()[0].Trained; trained != 0 {
+		t.Fatalf("engine trained on %d inferred severities; it would learn the rule it replaces", trained)
+	}
+
+	// OTLP: the application declared the level, so this is a real example.
+	e.ObserveLogs([]LogLine{{
+		Message:  "could not reach the database",
+		Severity: "error",
+		Source:   "checkout",
+	}})
+
+	if trained := e.Models()[0].Trained; trained != 1 {
+		t.Fatalf("engine trained on %d declared severities, want 1", trained)
+	}
+}
+
+func TestEngine_ClassifySeverityDefersUntilTheModelIsReady(t *testing.T) {
+	e := NewEngine()
+
+	if _, ok := e.ClassifySeverity("panic: nil map write"); ok {
+		t.Fatal("a cold engine answered; the caller must keep its fallback")
+	}
+
+	for i := 0; i < 60; i++ {
+		e.ObserveLogs([]LogLine{
+			{Message: "request completed cleanly", Severity: "info", Source: "api"},
+			{Message: "no errors reported during the sweep", Severity: "info", Source: "api"},
+			{Message: "panic nil map write in handler", Severity: "error", Source: "api"},
+			{Message: "could not reach the database cluster", Severity: "error", Source: "api"},
+		})
+	}
+
+	got, ok := e.ClassifySeverity("panic nil map write in the checkout handler")
+	if !ok {
+		t.Fatal("a warm engine still declined to classify a clearly learned line")
+	}
+	if got != "error" {
+		t.Errorf("got %q, want error", got)
+	}
+}
+
+func TestEngine_ModelsDescribeThemselves(t *testing.T) {
+	cards := NewEngine().Models()
+
+	if len(cards) == 0 {
+		t.Fatal("engine reports no models")
+	}
+	for _, card := range cards {
+		if card.Name == "" || card.Job == "" || len(card.Reads) == 0 || card.Fallback == "" {
+			t.Errorf("model %q does not fully describe itself: %+v", card.Name, card)
+		}
+	}
+}

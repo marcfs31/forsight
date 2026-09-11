@@ -225,7 +225,7 @@ func TestRetryTail_RestartsAfterFailureAndStopsOnCancel(t *testing.T) {
 
 	done := make(chan struct{})
 	go func() {
-		retryTail(ctx, path, sink, logger, time.Millisecond, 5*time.Millisecond)
+		retryTail(ctx, path, sink, nil, logger, time.Millisecond, 5*time.Millisecond)
 		close(done)
 	}()
 

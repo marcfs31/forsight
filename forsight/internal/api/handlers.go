@@ -138,6 +138,22 @@ func (s *Server) handleForseerBudget(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, s.forseer.Budget())
 }
 
+// handleForseerModels serves GET /api/v1/forseer/models: one card per
+// trained model, saying what job it does, which inputs it reads, whether it
+// has seen enough of this deployment to be trusted, and how it is scoring.
+//
+// It is the agent's only claim about what it has learned, and it is
+// deliberately readable rather than impressive: a model that is not ready
+// says so, and one whose job supplies no labels reports no accuracy instead
+// of a flattering number.
+func (s *Server) handleForseerModels(w http.ResponseWriter, _ *http.Request) {
+	if s.forseer == nil {
+		writeJSON(w, http.StatusOK, []forseer.Card{})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.forseer.Models())
+}
+
 func (s *Server) handleForseerTimeline(w http.ResponseWriter, _ *http.Request) {
 	if s.forseer == nil {
 		writeJSON(w, http.StatusOK, []forseer.Event{})

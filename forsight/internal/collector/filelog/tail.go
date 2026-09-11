@@ -23,6 +23,21 @@ type Sink interface {
 	WriteLogs(ctx context.Context, logs []model.LogEntry) error
 }
 
+// Classifier gives a tailed line the severity this deployment would give it.
+//
+// A tailed file carries no level, so one has to be worked out from the text.
+// severityOf below is the rule that has always done it, and it is wrong
+// whenever the word and the meaning disagree ("no errors reported").
+// Forseer's severity model, trained on the levels the OTLP half of the same
+// stream declares, does better once it has seen enough — and says so by
+// returning false until then, which is why this is an interface the agent
+// injects rather than a dependency this package takes.
+type Classifier interface {
+	// ClassifySeverity returns the level for message, and false when the
+	// caller should use its own fallback instead.
+	ClassifySeverity(message string) (string, bool)
+}
+
 const (
 	// maxLineBytes bounds a single line's memory footprint, matching the
 	// Scanner token cap this package has always used. A line longer than
@@ -50,7 +65,18 @@ const (
 
 // Tail follows path until ctx is cancelled. New lines become log entries
 // with Source set to the file's base name. Missing files are retried.
+//
+// Severity is worked out from the line text by the substring rule. Use
+// TailWith to offer a trained classifier the first refusal.
 func Tail(ctx context.Context, path string, sink Sink) error {
+	return TailWith(ctx, path, sink, nil)
+}
+
+// TailWith is Tail with a classifier consulted before the substring rule.
+// A nil classifier, or one that declines a given line, leaves the rule in
+// charge — so the tailer behaves identically until a model is actually
+// better than it.
+func TailWith(ctx context.Context, path string, sink Sink, classifier Classifier) error {
 	source := filepath.Base(path)
 	var offset int64
 	for {
@@ -58,7 +84,7 @@ func Tail(ctx context.Context, path string, sink Sink) error {
 			return err
 		}
 		offset = resetOffsetOnTruncate(path, offset)
-		n, err := readOnce(ctx, path, source, offset, sink)
+		n, err := readOnce(ctx, path, source, offset, sink, classifier)
 		if err != nil && ctx.Err() == nil && !os.IsNotExist(err) {
 			return err
 		}
@@ -94,7 +120,7 @@ func resetOffsetOnTruncate(path string, offset int64) int64 {
 	return offset
 }
 
-func readOnce(ctx context.Context, path, source string, offset int64, sink Sink) (int64, error) {
+func readOnce(ctx context.Context, path, source string, offset int64, sink Sink, classifier Classifier) (int64, error) {
 	f, err := os.Open(path)
 	if err != nil {
 		return offset, err
@@ -135,11 +161,13 @@ func readOnce(ctx context.Context, path, source string, offset int64, sink Sink)
 			text := sc.Text()
 			read += int64(len(text) + 1)
 			if strings.TrimSpace(text) != "" {
+				severity, inferred := classify(classifier, text)
 				lines = append(lines, model.LogEntry{
-					Timestamp: now,
-					Severity:  severityOf(text),
-					Source:    source,
-					Message:   text,
+					Timestamp:        now,
+					Severity:         severity,
+					Source:           source,
+					Message:          text,
+					SeverityInferred: inferred,
 				})
 				if len(lines) >= flushChunkSize {
 					if err := flush(); err != nil {
@@ -234,6 +262,47 @@ func skipLine(f *os.File, start int64) (int64, error) {
 			return 0, err
 		}
 	}
+}
+
+// classify asks the trained model first and falls back to the substring
+// rule. The bool is true in both cases: a tailed line never carries a level
+// the source declared, so the severity is always inferred, however good the
+// thing that inferred it. That is what keeps the model from training on its
+// own output.
+func classify(classifier Classifier, line string) (model.LogSeverity, bool) {
+	if classifier != nil {
+		if severity, ok := classifier.ClassifySeverity(line); ok {
+			if known, valid := knownSeverity(severity); valid {
+				return known, true
+			}
+		}
+	}
+	return severityOf(line), true
+}
+
+// knownSeverity maps a model's answer onto the agent's vocabulary, refusing
+// anything outside it. The model learns whatever strings the stream carries,
+// and a level this agent does not define must not reach the store.
+func knownSeverity(severity string) (model.LogSeverity, bool) {
+	switch model.LogSeverity(strings.ToLower(strings.TrimSpace(severity))) {
+	case model.LogSeverityDebug:
+		return model.LogSeverityDebug, true
+	case model.LogSeverityInfo:
+		return model.LogSeverityInfo, true
+	case model.LogSeverityWarn:
+		return model.LogSeverityWarn, true
+	case model.LogSeverityError:
+		return model.LogSeverityError, true
+	default:
+		return "", false
+	}
+}
+
+// FallbackSeverity is the substring rule: the answer this package gives when
+// no model is ready. It is exported because Forseer grades itself against it
+// on the same stream, and a benchmark nobody can name is not a benchmark.
+func FallbackSeverity(line string) model.LogSeverity {
+	return severityOf(line)
 }
 
 func severityOf(line string) model.LogSeverity {

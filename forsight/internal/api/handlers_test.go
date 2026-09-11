@@ -5,9 +5,11 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
+	"github.com/marcfs31/forsight/forseer"
 	"github.com/marcfs31/forsight/forsight/internal/model"
 	"github.com/marcfs31/forsight/forsight/internal/store"
 )
@@ -279,3 +281,68 @@ func TestHandleForseerClusters_EmptyWithoutEngine(t *testing.T) {
 type otlpRegisterFunc func(mux *http.ServeMux)
 
 func (f otlpRegisterFunc) Register(mux *http.ServeMux) { f(mux) }
+
+func TestForseerModels_DescribesEachTrainedModel(t *testing.T) {
+	eng := forseer.NewEngine()
+	s := NewServer(store.NewMemoryStore(time.Hour), nil, nil, nil).WithForseer(eng)
+
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/forseer/models", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d, want 200", rec.Code)
+	}
+	var cards []forseer.Card
+	if err := json.Unmarshal(rec.Body.Bytes(), &cards); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if len(cards) == 0 {
+		t.Fatal("no model cards returned")
+	}
+	for _, card := range cards {
+		if card.Name == "" || card.Job == "" {
+			t.Errorf("card %+v does not name its job", card)
+		}
+		if len(card.Reads) == 0 {
+			t.Errorf("model %q declares no inputs", card.Name)
+		}
+		if card.Fallback == "" {
+			t.Errorf("model %q names no fallback", card.Name)
+		}
+	}
+}
+
+func TestForseerModels_ReportsAColdModelAsNotReady(t *testing.T) {
+	eng := forseer.NewEngine()
+	s := NewServer(store.NewMemoryStore(time.Hour), nil, nil, nil).WithForseer(eng)
+
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/forseer/models", nil))
+
+	var cards []forseer.Card
+	if err := json.Unmarshal(rec.Body.Bytes(), &cards); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	for _, card := range cards {
+		if card.Ready {
+			t.Errorf("model %q claims to be ready having learned nothing", card.Name)
+		}
+		if card.Accuracy != forseer.Unmeasured {
+			t.Errorf("model %q reports accuracy %.2f before grading anything", card.Name, card.Accuracy)
+		}
+	}
+}
+
+func TestForseerModels_EmptyWithoutAnEngine(t *testing.T) {
+	s := NewServer(store.NewMemoryStore(time.Hour), nil, nil, nil)
+
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/forseer/models", nil))
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d, want 200", rec.Code)
+	}
+	if body := strings.TrimSpace(rec.Body.String()); body != "[]" {
+		t.Errorf("body %q, want []", body)
+	}
+}

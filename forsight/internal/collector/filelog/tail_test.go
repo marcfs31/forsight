@@ -67,7 +67,7 @@ func TestReadOnce_ClassifiesErrorLines(t *testing.T) {
 		t.Fatal(err)
 	}
 	sink := &memSink{}
-	n, err := readOnce(context.Background(), path, "app.log", 0, sink)
+	n, err := readOnce(context.Background(), path, "app.log", 0, sink, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -162,7 +162,7 @@ func TestReadOnce_CapsLinesPerCycle(t *testing.T) {
 	}
 
 	sink := &memSink{}
-	n1, err := readOnce(context.Background(), path, "burst.log", 0, sink)
+	n1, err := readOnce(context.Background(), path, "burst.log", 0, sink, nil)
 	if err != nil {
 		t.Fatalf("first cycle: %v", err)
 	}
@@ -173,7 +173,7 @@ func TestReadOnce_CapsLinesPerCycle(t *testing.T) {
 		t.Fatalf("first cycle consumed the whole file (offset %d >= %d); want it to stop at the cap", n1, buf.Len())
 	}
 
-	n2, err := readOnce(context.Background(), path, "burst.log", n1, sink)
+	n2, err := readOnce(context.Background(), path, "burst.log", n1, sink, nil)
 	if err != nil {
 		t.Fatalf("second cycle: %v", err)
 	}
@@ -201,7 +201,7 @@ func TestReadOnce_SkipsOversizedLine(t *testing.T) {
 	}
 
 	sink := &memSink{}
-	n, err := readOnce(context.Background(), path, "big.log", 0, sink)
+	n, err := readOnce(context.Background(), path, "big.log", 0, sink, nil)
 	if err != nil {
 		t.Fatalf("readOnce returned fatally instead of skipping the oversized line: %v", err)
 	}
@@ -213,5 +213,133 @@ func TestReadOnce_SkipsOversizedLine(t *testing.T) {
 	}
 	if sink.logs[0].Message != "before" || sink.logs[1].Message != "after" {
 		t.Fatalf("unexpected lines: %+v", sink.logs)
+	}
+}
+
+// stubClassifier stands in for a warm Forseer severity model.
+type stubClassifier struct {
+	answer string
+	ok     bool
+	asked  []string
+}
+
+func (c *stubClassifier) ClassifySeverity(message string) (string, bool) {
+	c.asked = append(c.asked, message)
+	return c.answer, c.ok
+}
+
+func TestClassify_UsesTheSubstringRuleWithoutAClassifier(t *testing.T) {
+	// The blind spot the trained model exists to fix: the word is present,
+	// the meaning is not. Pinned here so a change to the rule is deliberate.
+	severity, inferred := classify(nil, "no errors reported during the sweep")
+
+	if severity != model.LogSeverityError {
+		t.Errorf("got %q, want the rule's own (wrong) answer %q", severity, model.LogSeverityError)
+	}
+	if !inferred {
+		t.Error("a tailed line's severity is always inferred, never declared")
+	}
+}
+
+func TestClassify_PrefersAConfidentClassifier(t *testing.T) {
+	stub := &stubClassifier{answer: "info", ok: true}
+
+	severity, inferred := classify(stub, "no errors reported during the sweep")
+
+	if severity != model.LogSeverityInfo {
+		t.Errorf("got %q, want the classifier's answer %q", severity, model.LogSeverityInfo)
+	}
+	if !inferred {
+		t.Error("severity stays inferred even when a model produced it, or the model would train on its own output")
+	}
+	if len(stub.asked) != 1 {
+		t.Errorf("classifier asked %d times, want 1", len(stub.asked))
+	}
+}
+
+func TestClassify_FallsBackWhenTheClassifierDeclines(t *testing.T) {
+	stub := &stubClassifier{ok: false}
+
+	// A line the substring rule does recognise, so "fell back" is
+	// distinguishable from "found nothing and defaulted to info".
+	severity, _ := classify(stub, "fatal: the payment service is unreachable")
+
+	if severity != model.LogSeverityError {
+		t.Errorf("got %q, want the fallback's %q", severity, model.LogSeverityError)
+	}
+}
+
+func TestClassify_RefusesALevelTheAgentDoesNotDefine(t *testing.T) {
+	// The model learns whatever strings the stream carries. A level outside
+	// the agent's vocabulary must not reach the store.
+	stub := &stubClassifier{answer: "SEVERE", ok: true}
+
+	severity, _ := classify(stub, "everything is on fire")
+
+	if severity != model.LogSeverityInfo {
+		t.Errorf("got %q, want the fallback's %q for an unknown level", severity, model.LogSeverityInfo)
+	}
+}
+
+func TestClassify_AcceptsAKnownLevelInAnyCasing(t *testing.T) {
+	stub := &stubClassifier{answer: "  WARN  ", ok: true}
+
+	severity, _ := classify(stub, "queue depth above the soft limit")
+
+	if severity != model.LogSeverityWarn {
+		t.Errorf("got %q, want %q", severity, model.LogSeverityWarn)
+	}
+}
+
+func TestTailWith_MarksEveryTailedLineAsInferred(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app.log")
+	if err := os.WriteFile(path, []byte("something happened\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	sink := &memSink{}
+
+	if _, err := readOnce(context.Background(), path, "app.log", 0, sink, nil); err != nil {
+		t.Fatal(err)
+	}
+
+	if len(sink.logs) != 1 {
+		t.Fatalf("got %d entries, want 1", len(sink.logs))
+	}
+	if !sink.logs[0].SeverityInferred {
+		t.Error("a tailed entry was not marked as having an inferred severity")
+	}
+}
+
+// FallbackSeverity is the benchmark Forseer's severity model grades itself
+// against, and forseer's own tests carry a stand-in copy of this rule so
+// that module stays dependency-free. Pinning the real rule here is what
+// makes the two comparable: if this table has to change, the copy in
+// forseer/severity_test.go has to change with it.
+func TestFallbackSeverity_IsPinnedAsTheBenchmark(t *testing.T) {
+	cases := []struct {
+		line string
+		want model.LogSeverity
+	}{
+		{"fatal: out of memory", model.LogSeverityError},
+		{"could not open file: error 13", model.LogSeverityError},
+		{"failed to connect", model.LogSeverityError},
+		{"warn: retrying", model.LogSeverityWarn},
+		{"debug: entering handler", model.LogSeverityDebug},
+		{"request served in 4ms", model.LogSeverityInfo},
+
+		// The blind spots, pinned deliberately: the rule is wrong on all
+		// four, and those are the cases the model has to win to be worth
+		// switching on.
+		{"no errors reported during the sweep", model.LogSeverityError},
+		{"error_rate 0 for checkout", model.LogSeverityError},
+		{"recovered from the earlier failure", model.LogSeverityError},
+		{"panic: nil map write", model.LogSeverityInfo},
+	}
+
+	for _, tc := range cases {
+		if got := FallbackSeverity(tc.line); got != tc.want {
+			t.Errorf("FallbackSeverity(%q) = %q, want %q", tc.line, got, tc.want)
+		}
 	}
 }

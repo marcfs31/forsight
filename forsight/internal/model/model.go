@@ -57,4 +57,9 @@ type LogEntry struct {
 	Source    string            `json:"source"`
 	Message   string            `json:"message"`
 	Labels    map[string]string `json:"labels,omitempty"`
+	// SeverityInferred is true when nothing in the source declared a level
+	// and the agent worked one out from the text — a tailed file, today.
+	// Forseer's severity model trains only on declared levels, so this flag
+	// is what stops it learning from its own guesses.
+	SeverityInferred bool `json:"severityInferred,omitempty"`
 }
