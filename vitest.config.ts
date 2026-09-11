@@ -9,11 +9,20 @@ export default defineConfig({
     globals: false,
     // .claude/worktrees holds throwaway git worktrees (full repo copies with
     // their own node_modules + tests) created by Claude Code sessions.
-    // forsight/ is the Go agent's tree, including forsight/web — its own npm
-    // project with its own vitest.config.ts/setup (see CLAUDE.md, "two
-    // artifacts"); same exclusion eslint.config.js and .prettierignore
-    // already make for that directory, for the same reason.
-    exclude: [...configDefaults.exclude, ".claude/worktrees/**", "fixtures/**", "forsight/**"],
+    // forsight/ and forseer/ are separate Go modules with their own toolchain
+    // (forsight/web is its own npm project, with its own vitest config and
+    // its own React/testing-library versions) — not part of this project's
+    // test run. Same exclusion eslint.config.js and .prettierignore already
+    // make; vitest's default `include` glob has no directory scoping of its
+    // own, so without this a `*.test.tsx` added under forsight/web/src gets
+    // picked up and run against THIS package's react copy instead of its own.
+    exclude: [
+      ...configDefaults.exclude,
+      ".claude/worktrees/**",
+      "fixtures/**",
+      "forsight/**",
+      "forseer/**",
+    ],
     // Radix overlay tests still open a portal + run focus-scope/floating-ui
     // logic under jsdom (no layout engine), which is slow-ish on a loaded CI
     // runner. The pathological case — `axe` on an *open* overlay, which ran
