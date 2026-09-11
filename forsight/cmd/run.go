@@ -27,6 +27,7 @@ import (
 
 type runOptions struct {
 	addr            string
+	authToken       string
 	retention       time.Duration
 	collectInterval time.Duration
 	disableDocker   bool
@@ -46,6 +47,9 @@ func newRunCmd() *cobra.Command {
 	}
 
 	cmd.Flags().StringVar(&opts.addr, "addr", ":8080", "address to serve the API and dashboard on")
+	cmd.Flags().StringVar(&opts.authToken, "auth-token", "",
+		"require Authorization: Bearer <token> on every route except GET /healthz; "+
+			"also read from FORSIGHT_AUTH_TOKEN when the flag is empty (auth is off by default)")
 	cmd.Flags().DurationVar(&opts.retention, "retention", time.Hour, "how long the in-memory store retains data")
 	cmd.Flags().DurationVar(&opts.collectInterval, "collect-interval", 10*time.Second, "how often the host/Docker collectors poll")
 	cmd.Flags().BoolVar(&opts.disableDocker, "disable-docker", false, "skip the Docker collector even if a daemon is reachable")
@@ -117,7 +121,11 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 	}
 
 	server := api.NewServer(st, otlpHandler, api.DashboardHandler(), logger)
-	httpServer := &http.Server{Addr: opts.addr, Handler: server.Handler()}
+	authToken := resolveAuthToken(opts.authToken)
+	if authToken == "" && !isLoopbackListenAddr(opts.addr) {
+		logger.Warn("listening on a non-loopback address with no authentication configured; set --auth-token or FORSIGHT_AUTH_TOKEN")
+	}
+	httpServer := &http.Server{Addr: opts.addr, Handler: api.BearerAuth(authToken, server.Handler())}
 
 	serveErr := make(chan error, 1)
 	go func() {
@@ -137,6 +145,24 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 	case err := <-serveErr:
 		return err
 	}
+}
+
+// resolveAuthToken prefers the --auth-token flag; when that is empty it falls
+// back to FORSIGHT_AUTH_TOKEN. An empty result means auth stays off.
+func resolveAuthToken(flagValue string) string {
+	if flagValue != "" {
+		return flagValue
+	}
+	return os.Getenv("FORSIGHT_AUTH_TOKEN")
+}
+
+// isLoopbackListenAddr reports whether addr is explicitly bound to a loopback
+// interface. Bare ":PORT" and "0.0.0.0:PORT" are not — they listen on all
+// interfaces.
+func isLoopbackListenAddr(addr string) bool {
+	return strings.HasPrefix(addr, "127.0.0.1:") ||
+		strings.HasPrefix(addr, "localhost:") ||
+		strings.HasPrefix(addr, "[::1]:")
 }
 
 // parseScrapeTargets turns --scrape values into promscrape targets. Each value
