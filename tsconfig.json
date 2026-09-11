@@ -20,5 +20,12 @@
       "@/*": ["src/*"]
     }
   },
-  "include": ["src", ".storybook", "vitest.setup.ts", "vitest.config.ts", "tsup.config.ts"]
+  "include": [
+    "src",
+    ".storybook",
+    "vitest.setup.ts",
+    "vitest.config.ts",
+    "vitest.storybook.config.ts",
+    "tsup.config.ts"
+  ]
 }

@@ -5,7 +5,7 @@ const config: StorybookConfig = {
   // `@storybook/addon-essentials` was dissolved in v9: controls, actions,
   // viewport, backgrounds, toolbars and measure/outline moved into the
   // `storybook` core package, while docs went back to being its own addon.
-  addons: ["@storybook/addon-docs", "@storybook/addon-a11y"],
+  addons: ["@storybook/addon-docs", "@storybook/addon-a11y", "@storybook/addon-vitest"],
   framework: {
     name: "@storybook/react-vite",
     options: {},

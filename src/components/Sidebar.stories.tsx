@@ -141,10 +141,15 @@ export const ToggleCollapse: Story = {
  */
 export const MobileDrawer: Story = {
   // The mobile trigger is `md:hidden` — real at a narrow viewport, correctly
-  // absent from the accessibility tree at the test runner's default desktop
-  // size. `.storybook/test-runner.ts` reads this parameter and resizes the
-  // real browser page before `play` runs.
-  parameters: { viewport: { width: 390, height: 844 } },
+  // absent from the accessibility tree at the default desktop size. Storybook's
+  // viewport parameter resizes the real browser page before `play` runs, and
+  // is reset for the next story automatically.
+  parameters: {
+    viewport: {
+      options: { mobile: { name: "Mobile", styles: { width: "390px", height: "844px" } } },
+      defaultViewport: "mobile",
+    },
+  },
   render: () => (
     <SidebarProvider>
       <AppShell>

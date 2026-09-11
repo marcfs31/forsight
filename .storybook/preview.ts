@@ -73,6 +73,32 @@ const preview: Preview = {
       },
     },
     backgrounds: { disable: true },
+    /**
+     * The project-wide axe contract, previously hand-rolled in
+     * `.storybook/test-runner.ts` and now read by `@storybook/addon-a11y` —
+     * in the Storybook UI's a11y panel and, identically, in the Vitest
+     * browser project (see vitest.storybook.config.ts).
+     *
+     * `test: "error"` is load-bearing and must not be removed: without it the
+     * addon still runs axe and still reports violations, but never fails the
+     * run — the suite goes green with no accessibility gate at all. Verified
+     * by a deliberate low-contrast story, which passes without this line and
+     * fails with it.
+     *
+     * `region` (content must sit inside a landmark) is a page-level rule, and
+     * an isolated component story has no landmarks by design, so it is off
+     * here and re-enabled by the stories that render a full page. Storybook
+     * deep-merges parameters, so a story's own
+     * `parameters.a11y.options.rules` adds to this rather than replacing it.
+     *
+     * Per-story escape hatches keep the shape they already had:
+     *   parameters: { a11y: { disable: true } }
+     *   parameters: { a11y: { options: { rules: { region: { enabled: false } } } } }
+     */
+    a11y: {
+      test: "error",
+      options: { rules: { region: { enabled: false } } },
+    },
     // Docs pages (autodocs) are rendered by Storybook's own UI, which doesn't
     // see our CSS tokens — the container below themes that chrome to match
     // the toolbar's theme. The manager UI is themed in .storybook/manager.ts.
