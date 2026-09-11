@@ -13,9 +13,9 @@ import animate from "tailwindcss-animate";
  *   import forsightPreset from "@marcfs31/forsight/tailwind-preset";
  *   export default { presets: [forsightPreset], content: [...] };
  *
- * This repo's own tailwind.config.ts consumes the same preset. Tailwind v4
- * consumers use the "@marcfs31/forsight/tailwind.css" export instead.
- * Keep both in sync.
+ * This repo's own build loads the same preset via `@config` in
+ * src/styles/package.css and globals.css. Tailwind v4 consumers use the
+ * "@marcfs31/forsight/tailwind.css" export instead. Keep both in sync.
  */
 const forsightPreset: Partial<Config> = {
   theme: {

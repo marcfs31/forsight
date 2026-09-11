@@ -84,7 +84,7 @@ export default {
 };
 ```
 
-Either way you then get `bg-ink-surface`, `text-fg-secondary`, `border-ink-border`, `bg-accent` / `text-accent-fg`, `bg-danger-subtle`, `rounded-md`, `shadow-md`, `font-heading`, and so on — every value resolves through the `--forsight-*` custom properties, so it follows the [theme switch](#theming) at runtime. (Tailwind v4 has no duration namespace; use `duration-[var(--forsight-duration-fast)]` / `duration-[var(--forsight-duration-base)]` for the motion tokens.)
+Either way you then get `bg-ink-surface`, `text-fg-secondary`, `border-ink-border`, `bg-accent` / `text-accent-fg`, `bg-danger-subtle`, `rounded-md`, `shadow-md`, `font-heading`, `duration-fast` / `duration-base`, and so on — every value resolves through the `--forsight-*` custom properties, so it follows the [theme switch](#theming) at runtime.
 
 ### Fonts
 
