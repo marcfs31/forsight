@@ -23,9 +23,10 @@ type Engine struct {
 }
 
 type procSnap struct {
-	name string
-	cpu  float64
-	rss  float64
+	name     string
+	cpu      float64
+	rss      float64
+	lastSeen time.Time
 }
 
 // NewEngine builds a live engine. Statistical detection is always on;
@@ -71,6 +72,19 @@ func (e *Engine) trackProcesses(points []Point) {
 			delete(e.culprits, k)
 		}
 	}
+	// processes is keyed by whatever "pid" label arrives on a metric point —
+	// for OTLP-sourced points that is an attacker-controlled resource
+	// attribute copied verbatim by the receiver, with no cardinality
+	// filtering upstream. Unlike culprits (open insights), nothing evicted
+	// entries here, so this map grew without bound. Sweep it the same way,
+	// on the same tick, using each pid's last-observed time rather than an
+	// insight's Time: a busy but legitimate process should not be evicted
+	// just because it never triggers a culprit ranking.
+	for pid, snap := range e.processes {
+		if now.Sub(snap.lastSeen) > insightTTL {
+			delete(e.processes, pid)
+		}
+	}
 	for _, p := range points {
 		pid := ""
 		if p.Labels != nil {
@@ -89,6 +103,7 @@ func (e *Engine) trackProcesses(points []Point) {
 		case "process.memory.rss_bytes":
 			snap.rss = p.Value
 		}
+		snap.lastSeen = now
 		e.processes[pid] = snap
 	}
 

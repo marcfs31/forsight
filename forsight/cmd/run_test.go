@@ -1,10 +1,17 @@
 package cmd
 
 import (
+	"context"
+	"errors"
+	"io"
 	"log/slog"
+	"os"
+	"path/filepath"
+	"sync/atomic"
 	"testing"
 	"time"
 
+	"github.com/marcfs31/forsight/forsight/internal/model"
 	"github.com/marcfs31/forsight/forsight/internal/store"
 )
 
@@ -164,4 +171,52 @@ func TestParseScrapeTargets(t *testing.T) {
 			t.Fatalf("got %v, %v", got, err)
 		}
 	})
+}
+
+// errSink always fails WriteLogs, forcing filelog.Tail to return an error
+// so retryTail's restart path runs.
+type errSink struct{ calls atomic.Int32 }
+
+func (s *errSink) WriteLogs(_ context.Context, _ []model.LogEntry) error {
+	s.calls.Add(1)
+	return errors.New("boom")
+}
+
+// TestRetryTail_RestartsAfterFailureAndStopsOnCancel guards against the
+// finding that a filelog.Tail failure used to kill the collector for a
+// path permanently ("log tailer stopped" was the last anyone heard of it,
+// logged once by cmd/run.go's goroutine before it exited for good). A
+// failing tailer must now be restarted with backoff — and still exit
+// promptly once the context is cancelled, rather than retrying forever.
+func TestRetryTail_RestartsAfterFailureAndStopsOnCancel(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "app.log")
+	if err := os.WriteFile(path, []byte("line\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	sink := &errSink{}
+	logger := slog.New(slog.NewTextHandler(io.Discard, nil))
+	ctx, cancel := context.WithCancel(context.Background())
+
+	done := make(chan struct{})
+	go func() {
+		retryTail(ctx, path, sink, logger, time.Millisecond, 5*time.Millisecond)
+		close(done)
+	}()
+
+	deadline := time.Now().Add(5 * time.Second)
+	for sink.calls.Load() < 3 && time.Now().Before(deadline) {
+		time.Sleep(5 * time.Millisecond)
+	}
+	if got := sink.calls.Load(); got < 3 {
+		t.Fatalf("want at least 3 restarts (WriteLogs calls), got %d — retryTail should keep restarting a failing tailer", got)
+	}
+
+	cancel()
+	select {
+	case <-done:
+	case <-time.After(2 * time.Second):
+		t.Fatal("retryTail did not stop promptly after ctx cancellation")
+	}
 }

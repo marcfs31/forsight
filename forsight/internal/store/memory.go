@@ -124,10 +124,26 @@ func (s *MemoryStore) QueryLogs(_ context.Context, q LogQuery) ([]model.LogEntry
 	return out, nil
 }
 
-// pruneMetricsLocked drops points older than the retention window. Callers
-// must hold s.mu for writing.
+// pruneMetricsLocked drops points older than the retention window, then
+// enforces the element cap. Callers must hold s.mu for writing.
+//
+// The age scan is skipped when the oldest retained element — data arrives
+// in roughly chronological order, the same assumption capOldest's own
+// comment documents — is still within the retention window: nothing has
+// expired, so there is no reason for every write to re-scan up to
+// maxElements (2,000,000 by default) entries just to learn that. The
+// element cap is still enforced unconditionally either way; it is the hard
+// bound, and this only skips the O(n) age pass in the common case where it
+// would keep everything anyway.
 func (s *MemoryStore) pruneMetricsLocked() {
+	if len(s.metrics) == 0 {
+		return
+	}
 	cutoff := s.now().Add(-s.retention)
+	if s.metrics[0].Timestamp.After(cutoff) {
+		s.metrics = capOldest(s.metrics, s.maxElements)
+		return
+	}
 	kept := s.metrics[:0]
 	for _, m := range s.metrics {
 		if m.Timestamp.After(cutoff) {
@@ -149,8 +165,17 @@ func capOldest[T any](xs []T, max int) []T {
 	return append(xs[:0], xs[len(xs)-max:]...)
 }
 
+// pruneSpansLocked mirrors pruneMetricsLocked's fast path for the common
+// case where nothing has expired yet — see its comment.
 func (s *MemoryStore) pruneSpansLocked() {
+	if len(s.spans) == 0 {
+		return
+	}
 	cutoff := s.now().Add(-s.retention)
+	if s.spans[0].Start.After(cutoff) {
+		s.spans = capOldest(s.spans, s.maxElements)
+		return
+	}
 	kept := s.spans[:0]
 	for _, sp := range s.spans {
 		if sp.Start.After(cutoff) {
@@ -160,8 +185,17 @@ func (s *MemoryStore) pruneSpansLocked() {
 	s.spans = capOldest(kept, s.maxElements)
 }
 
+// pruneLogsLocked mirrors pruneMetricsLocked's fast path for the common
+// case where nothing has expired yet — see its comment.
 func (s *MemoryStore) pruneLogsLocked() {
+	if len(s.logs) == 0 {
+		return
+	}
 	cutoff := s.now().Add(-s.retention)
+	if s.logs[0].Timestamp.After(cutoff) {
+		s.logs = capOldest(s.logs, s.maxElements)
+		return
+	}
 	kept := s.logs[:0]
 	for _, entry := range s.logs {
 		if entry.Timestamp.After(cutoff) {

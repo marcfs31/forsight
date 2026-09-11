@@ -159,11 +159,7 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 
 	for _, path := range opts.logFiles {
 		logPath := path
-		go func() {
-			if err := filelog.Tail(ctx, logPath, st); err != nil && ctx.Err() == nil {
-				logger.Error("log tailer stopped", "path", logPath, "error", err)
-			}
-		}()
+		go tailWithRetry(ctx, logPath, st, logger)
 		logger.Info("tailing log file", "path", logPath)
 	}
 
@@ -235,6 +231,49 @@ func closeBadgerStore(bs *store.BadgerStore, logger *slog.Logger) error {
 		return fmt.Errorf("close Badger store: %w", err)
 	}
 	return nil
+}
+
+// tailMinBackoff and tailMaxBackoff bound the delay tailWithRetry waits
+// between restarts of a failed filelog.Tail.
+const (
+	tailMinBackoff = time.Second
+	tailMaxBackoff = 30 * time.Second
+)
+
+// tailWithRetry runs filelog.Tail for path, restarting it with a capped
+// exponential backoff whenever it returns an error other than ctx
+// cancellation. Tail itself now recovers from the failures this codebase
+// has actually hit (an oversized line, a rotated/truncated file) instead of
+// returning fatally, but this keeps a log file from going permanently
+// unwatched — "log tailer stopped" used to mean stopped forever — on
+// whatever else a filesystem can throw at it (e.g. a transient permission
+// or I/O error), consistent with every other collector goroutine's
+// ctx-scoped restart discipline in this file.
+func tailWithRetry(ctx context.Context, path string, sink filelog.Sink, logger *slog.Logger) {
+	retryTail(ctx, path, sink, logger, tailMinBackoff, tailMaxBackoff)
+}
+
+// retryTail holds tailWithRetry's loop with the backoff bounds as
+// parameters so a test can drive it with millisecond backoffs instead of
+// tailMinBackoff/tailMaxBackoff's real-world values.
+func retryTail(ctx context.Context, path string, sink filelog.Sink, logger *slog.Logger, minBackoff, maxBackoff time.Duration) {
+	backoff := minBackoff
+	for {
+		err := filelog.Tail(ctx, path, sink)
+		if ctx.Err() != nil {
+			return
+		}
+		logger.Error("log tailer stopped, restarting", "path", path, "error", err, "retry_in", backoff)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
+		backoff *= 2
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
+	}
 }
 
 // resolveAuthToken prefers the --auth-token flag; when that is empty it falls
