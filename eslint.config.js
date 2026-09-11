@@ -48,7 +48,12 @@ export default tseslint.config(
     // globals instead.
     files: ["scripts/**/*.mjs"],
     languageOptions: {
-      globals: { console: "readonly", process: "readonly" },
+      globals: {
+        console: "readonly",
+        process: "readonly",
+        TextDecoder: "readonly",
+        Buffer: "readonly",
+      },
     },
   },
   // Must stay last — disables ESLint stylistic rules that would otherwise

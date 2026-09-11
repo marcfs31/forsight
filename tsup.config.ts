@@ -1,4 +1,5 @@
 import { defineConfig } from "tsup";
+import { forsightTreeshakePlugin } from "./scripts/forsight-treeshake-plugin";
 
 export default defineConfig({
   // `index` is the client component bundle (its source starts with
@@ -20,4 +21,8 @@ export default defineConfig({
   sourcemap: true,
   clean: true,
   external: ["react", "react-dom"],
+  // Annotate forwardRef/memo/cva as PURE, strip displayName from the compile
+  // input, and name render functions — without this, a named import of a
+  // single component pulls in the entire barrel (~75 KB brotli).
+  esbuildPlugins: [forsightTreeshakePlugin()],
 });
