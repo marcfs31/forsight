@@ -11,19 +11,21 @@ const maxSpanSeries = 256
 const maxTraces = 64
 
 type spanWatch struct {
-	mu     sync.Mutex
-	series map[string]*rolling
-	open   map[string]Insight
-	traces map[string][]SpanSample
-	now    func() time.Time
+	mu        sync.Mutex
+	series    map[string]*rolling
+	open      map[string]Insight
+	traces    map[string][]SpanSample
+	traceSeen map[string]time.Time
+	now       func() time.Time
 }
 
 func newSpanWatch() *spanWatch {
 	return &spanWatch{
-		series: make(map[string]*rolling),
-		open:   make(map[string]Insight),
-		traces: make(map[string][]SpanSample),
-		now:    time.Now,
+		series:    make(map[string]*rolling),
+		open:      make(map[string]Insight),
+		traces:    make(map[string][]SpanSample),
+		traceSeen: make(map[string]time.Time),
+		now:       time.Now,
 	}
 }
 
@@ -44,6 +46,7 @@ func (w *spanWatch) Observe(spans []SpanSample) {
 			tr := w.traces[sp.TraceID]
 			tr = append(tr, sp)
 			w.traces[sp.TraceID] = tr
+			w.traceSeen[sp.TraceID] = now
 			if len(w.traces) > maxTraces {
 				w.evictOldestTraceLocked()
 			}
@@ -53,12 +56,16 @@ func (w *spanWatch) Observe(spans []SpanSample) {
 }
 
 func (w *spanWatch) evictOldestTraceLocked() {
-	var oldest string
-	for id := range w.traces {
-		oldest = id
-		break
+	var oldestID string
+	var oldest time.Time
+	first := true
+	for id, seen := range w.traceSeen {
+		if first || seen.Before(oldest) {
+			oldestID, oldest, first = id, seen, false
+		}
 	}
-	delete(w.traces, oldest)
+	delete(w.traces, oldestID)
+	delete(w.traceSeen, oldestID)
 }
 
 func (w *spanWatch) observeOneLocked(sp SpanSample, now time.Time) {
