@@ -156,6 +156,12 @@ function AddFilterControl({
         <PopoverPrimitive.Content
           align="start"
           sideOffset={8}
+          // Radix renders this as `role="dialog"`, which needs its own
+          // accessible name. Unlike Combobox/MultiSelect there is nothing to
+          // derive it from — this popover is internal and single-purpose — so
+          // it mirrors the trigger's own visible name, which is also what the
+          // `Command` below is labelled.
+          aria-label="Add filter"
           className={cn(
             "z-50 w-64 max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-ink-border bg-ink-surface p-0 shadow-lg outline-none",
             POPPER_ANIMATION_CLASSES
