@@ -104,29 +104,58 @@ than claims it. On the same five lines:
 
 **Component.** **LogStream**, and every severity filter above it.
 
+### Alert thresholds
+
+**Job.** Decide how far out of line one series has to go before a human
+should hear about it.
+
+Every series shared 3σ and 5σ. That is the right shape of answer and the
+wrong number for almost every series, because sigma only means "rare" if the
+series is normally distributed, and metrics are not: a percentage bounded at
+100 is skewed, a request rate has a daily cycle, and a queue depth that is
+mostly zero has its standard deviation set by the very spikes it is supposed
+to detect. What the operator sees is one series paging every few minutes and
+another that never fires.
+
+So the threshold is learned per series from that series' own history, and the
+budget is stated in a unit somebody can hold an opinion about: alert on about
+one point in a thousand, page on one in ten thousand.
+
+**Method.** Robbins-Monro stochastic approximation, one line:
+`t ← t · (1 + step · (exceeded − target))`. A point above the threshold pushes
+it up, every point below nudges it down, and those balance exactly at the
+target quantile — with four floats per series and no assumption about the
+shape of the distribution.
+
+The update is multiplicative and the step does not decay. Both were arrived at
+by watching the obvious version fail: an additive step has to be chosen
+against a scale nobody knows in advance, and a decaying one died long before a
+threshold starting at 3 could walk out to the one-in-ten-thousand tail — 2.8%
+of points still alerting after forty thousand samples, against a 0.1% budget.
+
+**Measured** over 40,000 points per series, after a 20,000-point warm-up:
+
+| Series | Fixed 3σ alerts on | Learned alerts on | Learned threshold |
+| --- | --- | --- | --- |
+| well-behaved | 0.25% of points | 0.08% | 3.41 |
+| heavy-tailed | 5.10% of points | 0.33% | 11.94 |
+
+The heavy-tailed row is the one that matters: at a ten-second interval, 5.1%
+is a page every three minutes, which is how an alert channel becomes something
+people mute. It does not reach the 0.1% budget because it is pressed against
+the ceiling — deliberate, since a series that genuinely goes haywire must stay
+alertable.
+
+**Component.** **AlertList**, unchanged — the severities are the same, there
+are just far fewer of them that nobody asked for.
+
 ## Next
 
 Ordered by what each one is worth against what it costs. Every row keeps the
 rules above: declared inputs, a readiness gate, a named fallback, and an
 existing Forsight component to land on.
 
-### 1. Per-series alert thresholds
-
-**Job.** Decide how far out of line a series has to go before it is worth
-telling someone.
-
-Today every series shares 3σ and 5σ. A noisy series pages constantly and a
-smooth one never fires, and the operator's only recourse is to stop trusting
-alerts. The fix is to learn the distribution of |z| *per series* with a
-streaming quantile estimate, and set the threshold at the quantile matching
-an alert budget the operator states once ("about one alert per series per
-day") rather than a sigma count nobody can reason about.
-
-*Labels: none — this is a calibration, so the card reports `Unmeasured` and
-the readiness gate is a minimum sample count. Reads: the z-score history of
-one series. Fallback: 3σ/5σ. Component: **AlertList**.*
-
-### 2. Is this log cluster worth paging
+### 1. Is this log cluster worth paging
 
 **Job.** Rank Drain-lite clusters by whether a burst of this template has
 ever coincided with something that mattered.
@@ -140,7 +169,7 @@ labels come from the agent's own insight stream.
 *Reads: cluster severity mix, burst shape, co-occurring insights. Fallback:
 the current volume ratio. Component: **BarList**.*
 
-### 3. Error-budget forecast
+### 2. Error-budget forecast
 
 Already on the roadmap in the README, and it belongs here. `Engine.Budget()`
 reads the current burn; the forecast projects it. Holt linear with the level
@@ -155,7 +184,7 @@ precision is not.
 one is genuinely measurable. Reads: the error/total ratio over time.
 Fallback: current burn with no projection. Component: **ErrorBudget**.*
 
-### 4. Per-endpoint latency shape
+### 3. Per-endpoint latency shape
 
 **Job.** Decide what slow means for one endpoint.
 
@@ -168,7 +197,7 @@ own p99" is a sentence an on-call can act on.
 *Reads: durations for one (service, span name). Fallback: the current
 z-score. Component: **TraceWaterfall**.*
 
-### 5. Persist what has been learned
+### 4. Persist what has been learned
 
 A model that resets on restart has to re-earn its readiness every deploy,
 which on a frequently-restarted agent means it is never ready. The state is
@@ -181,7 +210,7 @@ data directory belongs to the operator, never to this repo.
 
 *Applies to every model.*
 
-### 6. A models view in the dashboard
+### 5. A models view in the dashboard
 
 The cards are already served. A view that shows what each model does, whether
 it is ready, and what it is scoring — on **Table**, with **ErrorBudget**'s

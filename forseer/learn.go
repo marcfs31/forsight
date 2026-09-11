@@ -60,6 +60,11 @@ type Card struct {
 	FallbackAccuracy float64 `json:"fallbackAccuracy"`
 	// Graded is how many predictions the two accuracies are computed over.
 	Graded int `json:"graded"`
+	// Detail is one line of whatever this model is actually doing, for the
+	// models that have something worth saying that Accuracy cannot carry —
+	// a calibration has no labels to be right about, but it does have a
+	// budget and a rate it is hitting. Optional.
+	Detail string `json:"detail,omitempty"`
 }
 
 // Unmeasured is the Accuracy of a model whose job supplies no labels to
