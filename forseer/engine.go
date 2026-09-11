@@ -12,9 +12,10 @@ import (
 // statistical detectors (metrics, logs, traces) so a single `forsight run`
 // produces insights without a sidecar process.
 type Engine struct {
-	det   *Detector
-	logs  *logMiner
-	spans *spanWatch
+	det      *Detector
+	logs     *logMiner
+	spans    *spanWatch
+	severity *severityModel
 
 	mu        sync.Mutex
 	processes map[string]procSnap
@@ -38,6 +39,7 @@ func NewEngine() *Engine {
 		det:       NewDetector(),
 		logs:      newLogMiner(),
 		spans:     newSpanWatch(),
+		severity:  newSeverityModel(),
 		processes: make(map[string]procSnap),
 		culprits:  make(map[string]Insight),
 		now:       now,
@@ -55,9 +57,39 @@ func (e *Engine) ObserveMetrics(points []Point) {
 	e.trackProcesses(points)
 }
 
-// ObserveLogs feeds OTLP (and later file-tail) log lines into the miner.
+// ObserveLogs feeds OTLP and file-tail log lines into the miner, and trains
+// the severity model on the ones that arrived with a level the source
+// actually declared.
 func (e *Engine) ObserveLogs(lines []LogLine) {
 	e.logs.Observe(lines)
+	for _, line := range lines {
+		if line.SeverityInferred {
+			continue
+		}
+		e.severity.Learn(line.Message, line.Severity)
+	}
+}
+
+// ClassifySeverity answers for a log line that arrived without a level.
+// The bool is false whenever the caller should keep its own fallback: the
+// model has not seen enough of this deployment yet, or it is not confident
+// enough about this particular line to be worth preferring over a rule the
+// operator can predict.
+func (e *Engine) ClassifySeverity(message string) (string, bool) {
+	severity, _, ok := e.severity.Classify(message)
+	return severity, ok
+}
+
+// Models reports every trained model in the engine: the job it does, the
+// inputs it reads, whether it is ready, and how it is scoring. This is the
+// only place the agent claims anything about what it has learned.
+func (e *Engine) Models() []Card {
+	models := []Model{e.severity}
+	cards := make([]Card, 0, len(models))
+	for _, m := range models {
+		cards = append(cards, m.Card())
+	}
+	return cards
 }
 
 // ObserveSpans feeds OTLP spans into the slow-span watcher.

@@ -60,6 +60,11 @@ type LogLine struct {
 	Severity  string
 	Source    string
 	Message   string
+	// SeverityInferred is true when nothing in the source declared a level
+	// and the agent guessed one — a tailed file, today. The severity model
+	// trains only on declared levels: learning from a guess would teach it
+	// the rule it exists to replace.
+	SeverityInferred bool
 }
 
 // SpanSample is one ingested span, stripped to what the slow-span watcher needs.

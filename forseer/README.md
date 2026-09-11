@@ -8,7 +8,8 @@ API key. Optional Grok narrative uses SpaceXAI (`XAI_API_KEY`).
 
 | Path | What |
 | --- | --- |
-| `.` (this Go module) | Detectors compiled into the agent |
+| `.` (this Go module) | Detectors and trained models compiled into the agent |
+| [`MODELS.md`](MODELS.md) | What a Forseer model is, the one that ships, and the roadmap |
 | [`python/`](python/) | Training, notebooks, local models. They talk to the agent over `/api/v1/*`. |
 
 ## What the agent serves
@@ -20,6 +21,7 @@ API key. Optional Grok narrative uses SpaceXAI (`XAI_API_KEY`).
 | `GET /api/v1/forseer/budget` | no | Error-log burn vs a 1% SLO |
 | `GET /api/v1/forseer/timeline` | no | Stitched incident events |
 | `GET /api/v1/forseer/query?q=` | no | Phrase → FilterBar facets |
+| `GET /api/v1/forseer/models` | no | What each trained model reads, whether it is ready, how it scores |
 | `GET /api/v1/forseer/summary` | `XAI_API_KEY` | Grok paragraph; otherwise `{"enabled":false}` |
 
 ## Detectors that ship, and the component they drive
@@ -29,6 +31,7 @@ exists for that shape of answer. Forseer never invents a new widget.
 
 | Kind | Method | Why it is ML/stats, not a threshold | Dashboard component |
 | --- | --- | --- | --- |
+| `log severity` | Multinomial naive Bayes over hashed tokens, trained online on the levels OTLP declares | A tailed line carries no level; the four-substring rule it replaces reads "no errors reported" as an error and "panic:" as info. See [MODELS.md](MODELS.md) | **LogStream** |
 | `anomaly` | Welford online mean/variance, 3σ / 5σ | The baseline is the series itself, not a hardcoded CPU% | **AlertList** (severity vocabulary is identical) |
 | `changepoint` | CUSUM on the same z-scores | Catches a *shift* that a single spike detector misses (disk filling, leak) | **Timeline** |
 | `log_burst` | Drain-lite templates (UUID/IP/number → `<*>`) + short-window volume | Turns a firehose into "this pattern just exploded" | **BarList** (ranked templates) + **LogStream** (raw lines) |
