@@ -55,19 +55,25 @@ and landing each score on the component that already knows how to show it*:
 - Regime changes belong on **Timeline**, next to deploys later.
 - Repeated logs belong on **BarList**, with the raw feed still on **LogStream**.
 - Slow traces belong on **TraceWaterfall**, not a table of durations.
-- A burned SLO belongs on **ErrorBudget** — that detector is next, not a
-  chatbot that restates the burn in prose.
+- A burned SLO belongs on **ErrorBudget**, not a chatbot that restates the
+  burn in prose.
+
+## Shipped since the table below was first written
+
+Seasonal (hour-of-day) baselines, the NL-filter → FilterBar facets, incident
+stitching onto Timeline, and trace critical-path → TraceWaterfall are all
+built — see the detector table above (`seasonal baseline`, `NL filter`,
+`incident stitch`, `critical path` rows). `Engine.Budget()` reads the current
+error-log burn against a 1% SLO for **ErrorBudget**; what is NOT built yet is
+the *forecast* — projecting that burn forward, not just reading it now (see
+the table below).
 
 ## Next (stay in this folder)
 
 | Idea | Method | Component |
 | --- | --- | --- |
-| Seasonal baseline | hour-of-day mean, not one global mean | **Heatmap** / **CalendarHeatmap** / **Gauge** |
-| Error-budget forecast | linear / Holt projection of error-log rate vs an SLO | **ErrorBudget** |
-| Natural-language filter | Grok JSON → `name`/`since`/`label.*` | **FilterBar** + **Combobox** |
-| Incident stitch | insights + top templates + slow spans in one window | **Timeline** |
+| Error-budget forecast | linear / Holt projection of error-log rate vs an SLO, on top of the current-burn read `Engine.Budget()` already does | **ErrorBudget** |
 | Multivariate outlier | Isolation Forest in `python/`, scores POSTed back | **AlertList** |
-| Trace critical path | span-graph longest path on error traces | **TraceWaterfall** |
 
 Do not put model weights or API keys in this repo. Python jobs that need
 numpy/a trainer stay under `python/` and read `/api/v1/*`; they do not
