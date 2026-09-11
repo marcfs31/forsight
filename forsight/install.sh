@@ -66,6 +66,7 @@ After=network.target
 [Service]
 ExecStart=${INSTALL_DIR}/forsight run
 Restart=on-failure
+MemoryMax=256M
 
 [Install]
 WantedBy=multi-user.target

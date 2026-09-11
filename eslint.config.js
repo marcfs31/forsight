@@ -34,7 +34,11 @@ export default tseslint.config(
     files: ["**/*.{ts,tsx}"],
     plugins: { "react-hooks": reactHooks },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      // v7's `recommended` enables the React Compiler rule set. Keep the
+      // classic hooks rules that this repo already relied on (v5 intent);
+      // do not turn on the compiler pipeline here.
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
       "@typescript-eslint/no-unused-vars": ["warn", { argsIgnorePattern: "^_" }],
     },
   },

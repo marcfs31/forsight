@@ -1,6 +1,43 @@
 package cmd
 
-import "testing"
+import (
+	"testing"
+)
+
+func TestResolveAuthToken(t *testing.T) {
+	t.Setenv("FORSIGHT_AUTH_TOKEN", "from-env")
+
+	if got := resolveAuthToken("from-flag"); got != "from-flag" {
+		t.Errorf("flag should override env: got %q", got)
+	}
+	if got := resolveAuthToken(""); got != "from-env" {
+		t.Errorf("empty flag should fall back to env: got %q", got)
+	}
+
+	t.Setenv("FORSIGHT_AUTH_TOKEN", "")
+	if got := resolveAuthToken(""); got != "" {
+		t.Errorf("empty flag and empty env: got %q, want empty", got)
+	}
+}
+
+func TestIsLoopbackListenAddr(t *testing.T) {
+	cases := []struct {
+		addr string
+		want bool
+	}{
+		{"127.0.0.1:8080", true},
+		{"localhost:8080", true},
+		{"[::1]:8080", true},
+		{":8080", false},
+		{"0.0.0.0:8080", false},
+		{"192.168.1.1:8080", false},
+	}
+	for _, tc := range cases {
+		if got := isLoopbackListenAddr(tc.addr); got != tc.want {
+			t.Errorf("isLoopbackListenAddr(%q) = %v, want %v", tc.addr, got, tc.want)
+		}
+	}
+}
 
 func TestParseScrapeTargets(t *testing.T) {
 	t.Run("bare URL labels the job with the host", func(t *testing.T) {
