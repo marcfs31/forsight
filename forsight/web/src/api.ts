@@ -262,6 +262,8 @@ export interface ForseerBudget {
   caption?: string;
   errors?: number;
   total?: number;
+  /** Target error-log rate the budget burns against, e.g. 0.01 for 1%. */
+  slo?: number;
   warningAt?: number;
   dangerAt?: number;
 }

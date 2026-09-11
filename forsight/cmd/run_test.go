@@ -95,6 +95,30 @@ func TestResolveAuthToken(t *testing.T) {
 	}
 }
 
+func TestResolveErrorSLO(t *testing.T) {
+	t.Setenv("FORSIGHT_ERROR_SLO", "0.02")
+
+	if got := resolveErrorSLO(0.05); got != 0.05 {
+		t.Errorf("flag should override env: got %v", got)
+	}
+	if got := resolveErrorSLO(0); got != 0.02 {
+		t.Errorf("unset flag should fall back to env: got %v", got)
+	}
+
+	t.Setenv("FORSIGHT_ERROR_SLO", "not-a-number")
+	if got := resolveErrorSLO(0); got != 0 {
+		t.Errorf("unparsable env should be ignored: got %v, want 0", got)
+	}
+
+	t.Setenv("FORSIGHT_ERROR_SLO", "")
+	if got := resolveErrorSLO(0); got != 0 {
+		t.Errorf("unset flag and empty env: got %v, want 0", got)
+	}
+	if got := resolveErrorSLO(-1); got != 0 {
+		t.Errorf("non-positive flag and empty env: got %v, want 0", got)
+	}
+}
+
 func TestIsLoopbackListenAddr(t *testing.T) {
 	cases := []struct {
 		addr string
