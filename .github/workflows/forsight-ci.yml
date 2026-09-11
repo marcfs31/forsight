@@ -138,6 +138,15 @@ jobs:
         working-directory: forsight/web
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      # forsight/web has had a test suite, a vitest config and a vitest setup
+      # for as long as it has had a dashboard, and nothing ever ran them — this
+      # job installed, built, and diffed the embed. So App.test.tsx could have
+      # been broken indefinitely without anyone noticing. Runs before the build
+      # so a failing test is the error you see, not an embed mismatch
+      # downstream of it.
+      - run: npm test
+        working-directory: forsight/web
+
       - run: npm run build
         working-directory: forsight/web
       # Vite's output is content-hashed, so an unchanged source tree
