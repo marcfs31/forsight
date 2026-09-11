@@ -330,11 +330,29 @@ export function useTimeline(intervalMs: number): ForseerEvent[] {
   return items;
 }
 
-export async function queryForseer(q: string): Promise<{ key: string; label: string; value: string }[]> {
+export interface ForseerQueryFacet {
+  key: string;
+  label: string;
+  value: string;
+}
+
+export interface ForseerQueryResult {
+  facets: ForseerQueryFacet[];
+  /** Whether the phrase was recognized at all. False for both "nothing
+   * typed" and "typed something this grammar doesn't understand" — callers
+   * that need to tell those apart should check the query text themselves
+   * before calling this. */
+  matched: boolean;
+}
+
+export async function queryForseer(q: string): Promise<ForseerQueryResult> {
   const res = await fetch("/api/v1/forseer/query?q=" + encodeURIComponent(q));
-  if (!res.ok) return [];
-  const data = (await res.json()) as { key: string; label: string; value: string }[];
-  return Array.isArray(data) ? data : [];
+  if (!res.ok) return { facets: [], matched: false };
+  const data = (await res.json()) as Partial<ForseerQueryResult>;
+  return {
+    facets: Array.isArray(data.facets) ? data.facets : [],
+    matched: Boolean(data.matched),
+  };
 }
 
 export function useSummary(intervalMs: number): { enabled: boolean; summary: string } {
