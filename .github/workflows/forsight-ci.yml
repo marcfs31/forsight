@@ -125,7 +125,11 @@ jobs:
           scope: "@marcfs31"
       # forsight/web depends on the published @marcfs31/forsight from GitHub
       # Packages (see forsight/web/package.json) — no root build needed.
-      - run: npm ci
+      # `npm install` (not `npm ci`) until a packages:read token can
+      # regenerate package-lock.json; the committed lockfile still records
+      # the old file:../.. resolution. GITHUB_TOKEN + packages:read is
+      # enough for the registry fetch on this job.
+      - run: npm install
         working-directory: forsight/web
         env:
           NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
