@@ -18,12 +18,12 @@ RELEASE_TARGETS := linux/amd64 linux/arm64 darwin/amd64 darwin/arm64
 # Full release build: real dashboard + the agent binary.
 build: build-web build-go
 
-# Rebuilds the design system itself (one level up), then forsight/web against
-# it, then copies the output into internal/api/webdist/ for go:embed. Run
-# this after any change under forsight/web/ or to the design system's
-# components — the diff it produces in webdist/ is expected, not a mistake.
+# Builds forsight/web against the pinned published @marcfs31/forsight from
+# GitHub Packages, then copies the output into internal/api/webdist/ for
+# go:embed. Run this after any change under forsight/web/ or a bump of the
+# design-system pin — the diff it produces in webdist/ is expected, not a
+# mistake. Needs packages:read auth for npm (see forsight/web/.npmrc).
 build-web:
-	cd .. && npm run build
 	cd web && npm ci && npm run build
 	rm -rf internal/api/webdist/assets
 	cp -r web/dist/. internal/api/webdist/

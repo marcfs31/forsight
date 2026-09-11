@@ -57,13 +57,14 @@ jobs:
           # The Go module itself (the dashboard's sources are the web job's concern).
           if grep -qE '^(forsight/(cmd|internal|deploy|main\.go|go\.(mod|sum)|Makefile|install\.sh)|\.github/workflows/forsight-ci\.yml)' <<<"$changed"; then go=true; fi
           # What the embedded dashboard build is made of. Deliberately NOT the
-          # design system's own sources: forsight/web consumes it through a
-          # `file:../..` link, so every root `src/`/dependency change would
-          # otherwise re-hash the bundle and make this check red on PRs that
-          # cannot fix it (Dependabot cannot run `make build-web`). The embed
-          # is a snapshot, refreshed deliberately — the next forsight/web PR
-          # picks the design-system changes up with it, because `make
-          # build-web` rebuilds both. See CLAUDE.md, "two artifacts".
+          # design system's own sources: forsight/web depends on a pinned
+          # published `@marcfs31/forsight` from GitHub Packages, so a root
+          # `src/`/dependency change does not re-hash this bundle. Design-
+          # system bumps land as an ordinary Dependabot PR on forsight/web's
+          # package.json that rebuilds the embed. The embed is still a
+          # snapshot — a forsight/web change must ship a refreshed
+          # webdist/ via `make build-web` on the same PR. See CLAUDE.md,
+          # "two artifacts".
           if grep -qE '^(forsight/web/|forsight/internal/api/webdist/|\.github/workflows/forsight-ci\.yml)' <<<"$changed"; then web=true; fi
           # No usable base (a dispatch on an unknown ref, a first push, a
           # history rewrite): fail open and run everything.
@@ -108,28 +109,41 @@ jobs:
     needs: changes
     if: ${{ !cancelled() && (needs.changes.result != 'success' || needs.changes.outputs.web == 'true') }}
     runs-on: ubuntu-latest
+    # packages: read so npm ci can fetch the pinned @marcfs31/forsight from
+    # GitHub Packages (same-repo package; GITHUB_TOKEN is enough).
+    permissions:
+      contents: read
+      packages: read
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
-      # forsight/web depends on the design system via a local `file:` reference
-      # (see forsight/web/package.json) — it needs a real dist/ to resolve, not
-      # just the source.
-      - run: npm ci
-      - run: npm run build
-      - run: npm ci
+          cache-dependency-path: forsight/web/package-lock.json
+          registry-url: https://npm.pkg.github.com
+          scope: "@marcfs31"
+      # forsight/web depends on the published @marcfs31/forsight from GitHub
+      # Packages. The committed lockfile still records file:../.. (no local
+      # packages:read token to regenerate it), so delete it and resolve the
+      # caret pin from the registry. GITHUB_TOKEN + packages:read is enough
+      # for same-repo GitHub Packages.
+      - run: |
+          rm -f package-lock.json
+          npm install --no-fund --no-audit
         working-directory: forsight/web
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - run: npm run build
         working-directory: forsight/web
       # Vite's output is content-hashed, so an unchanged source tree
       # rebuilds byte-for-byte identical — if this diff is non-empty,
-      # someone changed forsight/web (or the design system it bundles)
-      # without running `make build-web` and committing the refreshed embed,
-      # which is exactly the drift internal/api/dashboard.go's doc comment
-      # warns against (see also CONTRIBUTING.md's "Snapshots are reviewed,
-      # not rubber-stamped" — the same discipline for a generated embed
-      # instead of a test snapshot).
+      # someone changed forsight/web (or bumped the design-system pin it
+      # bundles) without running `make build-web` and committing the
+      # refreshed embed, which is exactly the drift
+      # internal/api/dashboard.go's doc comment warns against (see also
+      # CONTRIBUTING.md's "Snapshots are reviewed, not rubber-stamped" —
+      # the same discipline for a generated embed instead of a test
+      # snapshot).
       - name: Diff the fresh build against internal/api/webdist/
         run: diff -rq forsight/web/dist forsight/internal/api/webdist
