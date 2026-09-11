@@ -204,6 +204,10 @@ check(
   () => !css.includes("@tailwind")
 );
 check("styles.css contains compiled component styles", () => css.includes("--forsight-accent"));
+check("styles.css includes overlay motion from tailwindcss-animate", () =>
+  css.includes("animate-in")
+);
+check("styles.css includes duration-fast", () => css.includes("duration-fast"));
 check("styles.css makes no network calls (no webfont @import)", () => !css.includes("@import"));
 check("styles.css is non-trivial in size", () => statSync(distStyles).size > 1000);
 

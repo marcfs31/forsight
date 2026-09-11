@@ -51,12 +51,19 @@ describe("tailwind-preset (v3) and tailwind.css (v4 @theme)", () => {
     ["fontFamily", "font"],
     ["borderRadius", "radius"],
     ["boxShadow", "shadow"],
+    ["animation", "animate"],
   ])("expose the same %s utilities", (presetKey, cssNamespace) => {
     const presetKeys = Object.keys(extend[presetKey]).sort();
     const cssKeys = [...tailwindCss.matchAll(new RegExp(`--${cssNamespace}-([a-z0-9-]+):`, "g"))]
       .map((m) => m[1])
       .sort();
     expect(cssKeys).toEqual(presetKeys);
+  });
+
+  it("exposes duration-fast and duration-base (preset theme + v4 @utility)", () => {
+    expect(Object.keys(extend.transitionDuration).sort()).toEqual(["base", "fast"]);
+    expect(tailwindCss).toMatch(/@utility duration-fast\s*\{/);
+    expect(tailwindCss).toMatch(/@utility duration-base\s*\{/);
   });
 
   it("ships the animate plugin the overlay motion classes come from", () => {
