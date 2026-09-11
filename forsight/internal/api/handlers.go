@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/marcfs31/forsight/forsight/internal/model"
 	"github.com/marcfs31/forsight/forsight/internal/store"
 )
 
@@ -52,6 +53,29 @@ func (s *Server) handleTraces(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	writeJSON(w, http.StatusOK, spans)
+}
+
+// handleLogs serves GET /api/v1/logs?since=<RFC3339>&source=&severity=
+func (s *Server) handleLogs(w http.ResponseWriter, r *http.Request) {
+	q := r.URL.Query()
+	query := store.LogQuery{
+		Source:   q.Get("source"),
+		Severity: model.LogSeverity(q.Get("severity")),
+	}
+
+	since, err := parseSince(q)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	query.Since = since
+
+	logs, err := s.store.QueryLogs(r.Context(), query)
+	if err != nil {
+		http.Error(w, "failed to query logs", http.StatusInternalServerError)
+		return
+	}
+	writeJSON(w, http.StatusOK, logs)
 }
 
 func parseSince(q url.Values) (time.Time, error) {

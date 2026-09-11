@@ -7,6 +7,16 @@ export interface Metric {
   labels?: Record<string, string>;
 }
 
+export type LogSeverity = "debug" | "info" | "warn" | "error";
+
+export interface LogEntry {
+  timestamp: string;
+  severity: LogSeverity;
+  source: string;
+  message: string;
+  labels?: Record<string, string>;
+}
+
 /** Polls /api/v1/metrics every `intervalMs` — the server's own MemoryStore
  * already retains the whole window, so one fetch returns full history for
  * every metric name, not just the latest point. */
@@ -37,6 +47,35 @@ export function useMetrics(intervalMs: number): Metric[] {
   }, [intervalMs]);
 
   return metrics;
+}
+
+/** Polls /api/v1/logs every `intervalMs` — same retention window as metrics. */
+export function useLogs(intervalMs: number): LogEntry[] {
+  const [logs, setLogs] = useState<LogEntry[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const res = await fetch("/api/v1/logs");
+        if (!res.ok) return;
+        const data: LogEntry[] = await res.json();
+        if (!cancelled) setLogs(data);
+      } catch {
+        // Keep the last good snapshot on transient failure.
+      }
+    }
+
+    poll();
+    const id = setInterval(poll, intervalMs);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [intervalMs]);
+
+  return logs;
 }
 
 /** Every point for one metric name, oldest first (LineChart expects that order). */

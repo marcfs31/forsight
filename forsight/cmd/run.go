@@ -117,7 +117,7 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 
 	var otlpHandler api.OTLPHandler
 	if !opts.disableOTLP {
-		otlpHandler = otlp.NewHandler(st, st)
+		otlpHandler = otlp.NewHandler(st, st, st)
 	}
 
 	server := api.NewServer(st, otlpHandler, api.DashboardHandler(), logger)

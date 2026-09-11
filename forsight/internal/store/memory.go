@@ -8,11 +8,11 @@ import (
 	"github.com/marcfs31/forsight/forsight/internal/model"
 )
 
-// DefaultMaxElements bounds how many metrics (and, separately, spans) a
-// MemoryStore will hold. Age alone is not a bound: retention prunes by
-// timestamp, and timestamps on ingested data come off the wire, so a remote
-// writer choosing a far-future timestamp is otherwise never pruned at all.
-// This cap is what makes the store's memory a function of the agent's
+// DefaultMaxElements bounds how many metrics (and, separately, spans and
+// logs) a MemoryStore will hold. Age alone is not a bound: retention prunes
+// by timestamp, and timestamps on ingested data come off the wire, so a
+// remote writer choosing a far-future timestamp is otherwise never pruned at
+// all. This cap is what makes the store's memory a function of the agent's
 // configuration rather than of what somebody sends it.
 //
 // 2,000,000 metrics is roughly 200 MB at this struct's size and comfortably
@@ -34,6 +34,7 @@ type MemoryStore struct {
 	mu      sync.RWMutex
 	metrics []model.Metric
 	spans   []model.Span
+	logs    []model.LogEntry
 }
 
 // NewMemoryStore builds a MemoryStore retaining data for the given window
@@ -54,6 +55,7 @@ func (s *MemoryStore) SetMaxElements(n int) {
 	s.maxElements = n
 	s.pruneMetricsLocked()
 	s.pruneSpansLocked()
+	s.pruneLogsLocked()
 }
 
 func (s *MemoryStore) WriteMetrics(_ context.Context, metrics []model.Metric) error {
@@ -100,6 +102,28 @@ func (s *MemoryStore) QuerySpans(_ context.Context, q SpanQuery) ([]model.Span, 
 	return out, nil
 }
 
+func (s *MemoryStore) WriteLogs(_ context.Context, logs []model.LogEntry) error {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.logs = append(s.logs, logs...)
+	s.pruneLogsLocked()
+	return nil
+}
+
+func (s *MemoryStore) QueryLogs(_ context.Context, q LogQuery) ([]model.LogEntry, error) {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	out := make([]model.LogEntry, 0, len(s.logs))
+	for _, entry := range s.logs {
+		if !matchesLog(entry, q) {
+			continue
+		}
+		out = append(out, entry)
+	}
+	return out, nil
+}
+
 // pruneMetricsLocked drops points older than the retention window. Callers
 // must hold s.mu for writing.
 func (s *MemoryStore) pruneMetricsLocked() {
@@ -136,6 +160,17 @@ func (s *MemoryStore) pruneSpansLocked() {
 	s.spans = capOldest(kept, s.maxElements)
 }
 
+func (s *MemoryStore) pruneLogsLocked() {
+	cutoff := s.now().Add(-s.retention)
+	kept := s.logs[:0]
+	for _, entry := range s.logs {
+		if entry.Timestamp.After(cutoff) {
+			kept = append(kept, entry)
+		}
+	}
+	s.logs = capOldest(kept, s.maxElements)
+}
+
 func matchesMetric(m model.Metric, q MetricQuery) bool {
 	if q.Name != "" && m.Name != q.Name {
 		return false
@@ -159,6 +194,19 @@ func matchesSpan(sp model.Span, q SpanQuery) bool {
 		return false
 	}
 	if !q.Since.IsZero() && sp.Start.Before(q.Since) {
+		return false
+	}
+	return true
+}
+
+func matchesLog(entry model.LogEntry, q LogQuery) bool {
+	if q.Severity != "" && entry.Severity != q.Severity {
+		return false
+	}
+	if q.Source != "" && entry.Source != q.Source {
+		return false
+	}
+	if !q.Since.IsZero() && entry.Timestamp.Before(q.Since) {
 		return false
 	}
 	return true

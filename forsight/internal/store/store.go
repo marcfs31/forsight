@@ -27,14 +27,23 @@ type SpanQuery struct {
 	Since   time.Time
 }
 
-// Store is the read/write surface the API and collectors/receivers use. It
-// deliberately doesn't expose logs yet — LogEntry exists in the model package
-// ahead of the collector that will produce it (see model.go's comment), but
-// there's no store method for it until that collector lands.
+// LogQuery filters a logs read, analogous to SpanQuery.
+type LogQuery struct {
+	Since    time.Time
+	Severity model.LogSeverity // empty matches any severity
+	Source   string            // exact match; empty matches any source
+}
+
+// Store is the read/write surface the API and collectors/receivers use —
+// metrics, spans, and log entries from the OTLP receiver and built-in
+// collectors.
 type Store interface {
 	WriteMetrics(ctx context.Context, metrics []model.Metric) error
 	QueryMetrics(ctx context.Context, q MetricQuery) ([]model.Metric, error)
 
 	WriteSpans(ctx context.Context, spans []model.Span) error
 	QuerySpans(ctx context.Context, q SpanQuery) ([]model.Span, error)
+
+	WriteLogs(ctx context.Context, logs []model.LogEntry) error
+	QueryLogs(ctx context.Context, q LogQuery) ([]model.LogEntry, error)
 }

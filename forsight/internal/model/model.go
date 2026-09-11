@@ -48,9 +48,9 @@ const (
 	LogSeverityError LogSeverity = "error"
 )
 
-// LogEntry is one log line, tagged with its source. Log tailing/parsing
-// itself is roadmap (see forsight/README.md) — this type exists now so the
-// store and API shapes are settled before that collector lands.
+// LogEntry is one log line, tagged with its source. Produced today by the
+// OTLP/HTTP logs receiver; file-tail / pattern extraction remains roadmap
+// (see forsight/README.md).
 type LogEntry struct {
 	Timestamp time.Time         `json:"timestamp"`
 	Severity  LogSeverity       `json:"severity"`

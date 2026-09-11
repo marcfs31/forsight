@@ -91,6 +91,43 @@ func TestHandleTraces_FiltersByService(t *testing.T) {
 	}
 }
 
+func TestHandleLogs_FiltersBySourceAndSeverity(t *testing.T) {
+	st := store.NewMemoryStore(time.Hour)
+	now := time.Now()
+	_ = st.WriteLogs(context.Background(), []model.LogEntry{
+		{Timestamp: now, Severity: model.LogSeverityInfo, Source: "checkout", Message: "ok"},
+		{Timestamp: now, Severity: model.LogSeverityError, Source: "payments", Message: "fail"},
+		{Timestamp: now, Severity: model.LogSeverityWarn, Source: "payments", Message: "slow"},
+	})
+	s := NewServer(st, nil, nil, nil)
+
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?source=payments&severity=error", nil)
+	s.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body: %s)", rec.Code, rec.Body.String())
+	}
+	var got []model.LogEntry
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decoding body: %v", err)
+	}
+	if len(got) != 1 || got[0].Message != "fail" {
+		t.Fatalf("got %+v, want exactly the payments error entry", got)
+	}
+}
+
+func TestHandleLogs_RejectsInvalidSince(t *testing.T) {
+	s := NewServer(store.NewMemoryStore(time.Hour), nil, nil, nil)
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodGet, "/api/v1/logs?since=not-a-date", nil)
+	s.Handler().ServeHTTP(rec, req)
+
+	if rec.Code != http.StatusBadRequest {
+		t.Errorf("status = %d, want 400", rec.Code)
+	}
+}
+
 func TestHandler_MountsOTLPAndDashboard(t *testing.T) {
 	otlpMounted := false
 	fakeOTLP := otlpRegisterFunc(func(mux *http.ServeMux) {
