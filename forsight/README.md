@@ -188,13 +188,13 @@ does the rest: it checks that tag out, cross-compiles every
 with the resulting `dist/*.tar.gz` archives attached.
 
 ```bash
-git tag forsight-v0.1.0
+git tag forsight-v1.0.0
 git push --tags
 ```
 
 A stuck or partially-failed run can be re-driven without pushing a new tag —
 dispatch the workflow with the existing tag as input (`gh workflow run
-forsight-release.yml -f tag=forsight-v0.1.0`, or from the Actions UI); it
+forsight-release.yml -f tag=forsight-v1.0.0`, or from the Actions UI); it
 re-runs the build and uploads over the existing release's assets.
 
 `install.sh` expects that exact tag prefix (`forsight-vX.Y.Z`, distinct from
@@ -206,8 +206,8 @@ hand — to cut a release without pushing a tag (e.g. the workflow itself is
 broken), do exactly what it does:
 
 ```bash
-make release VERSION=v0.1.0
-gh release create forsight-v0.1.0 dist/*.tar.gz --title "forsight v0.1.0"
+make release VERSION=v1.0.0
+gh release create forsight-v1.0.0 dist/*.tar.gz --title "forsight v1.0.0"
 ```
 
 ## Scope: what's real vs. what's roadmap

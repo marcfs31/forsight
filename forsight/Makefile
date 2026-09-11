@@ -49,14 +49,14 @@ lint:
 clean:
 	rm -rf bin dist
 
-# `make release VERSION=v0.1.0` — cross-compiles the real (build-web) binary
+# `make release VERSION=v1.0.1` — cross-compiles the real (build-web) binary
 # for every target in RELEASE_TARGETS and tars each one up as
 # dist/forsight_<os>_<arch>.tar.gz. Upload the result with:
 #   gh release create forsight-$(VERSION) dist/*.tar.gz
 # (No automated release workflow yet — see forsight/README.md's roadmap note.)
 release: build-web
 	@if [ "$(VERSION)" = "dev" ]; then \
-		echo "release: pass an explicit VERSION, e.g. make release VERSION=v0.1.0" >&2; \
+		echo "release: pass an explicit VERSION, e.g. make release VERSION=v1.0.1" >&2; \
 		exit 1; \
 	fi
 	mkdir -p dist

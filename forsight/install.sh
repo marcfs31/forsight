@@ -5,7 +5,7 @@
 #   curl -fsSL https://raw.githubusercontent.com/marcfs31/forsight/main/forsight/install.sh | sh
 #
 # Honors:
-#   FORSIGHT_VERSION   release tag to install, e.g. "forsight-v0.1.0" (default: latest)
+#   FORSIGHT_VERSION   release tag to install, e.g. "forsight-v1.0.0" (default: latest)
 #   FORSIGHT_INSTALL_DIR   where to place the binary (default: /usr/local/bin)
 set -eu
 
