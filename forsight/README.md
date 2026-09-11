@@ -7,6 +7,8 @@ observability platform.
 - **Host metrics** — CPU, memory, disk, network, uptime, via
   [gopsutil](https://github.com/shirou/gopsutil). Works on any OS Go
   supports, with zero configuration.
+- **Process metrics** — per-process CPU and RSS for the busiest processes,
+  on by default (`--disable-proc` to skip).
 - **Docker container metrics** — per-container CPU/memory, auto-discovered
   from the local Docker daemon if one is reachable; simply doesn't register
   if not (a laptop with no Docker running still works fine).
@@ -15,14 +17,16 @@ observability platform.
   OTel SDK can point its exporter at forsight with no forsight-specific
   integration. Gauge, Sum, Histogram, ExponentialHistogram and Summary, plus
   log records, over protobuf or JSON bodies.
-- **Prometheus scraping** — point `--scrape` at any exposition endpoint
-  (`node_exporter`, a `/metrics` handler in your own app) and it is polled on
-  the same interval as everything else. Counters, gauges, histograms and
-  summaries all become forsight metrics, labelled with a `job` you choose.
-- **StatsD / DogStatsD** — `--statsd-addr :8125` opens a UDP receiver for the
-  other near-universal metrics protocol. Counters and timers flush and reset
-  each tick, gauges persist their last value, and DogStatsD `|#tag:value`
-  tags become labels.
+- **Prometheus scraping** — `--scrape` any exposition endpoint, **and** a
+  default probe of well-known local exporters (`node_exporter` :9100,
+  Prometheus :9090, windows_exporter :9182, process-exporter :9273). A miss
+  is silence. `--disable-autoscrape` turns the probe off.
+- **StatsD / DogStatsD** — listens on `:8125` by default so a bare install
+  receives them. `--disable-statsd` turns it off; a bind failure is a
+  warning, not a crash.
+- **Forseer** — AI/ML lives in the sibling [`forseer/`](../forseer/) folder.
+  Statistical detectors (z-score, CUSUM, log templates, slow spans, process
+  culprits) are always on. Optional Grok narrative when `XAI_API_KEY` is set.
 - **Kubernetes** — the [DaemonSet manifest](deploy/k8s/daemonset.yaml) runs
   this exact binary on every node, reusing the same host/Docker collectors
   (see the manifest's own comments for how and why).
@@ -70,11 +74,14 @@ forsight run [flags]
     --collect-interval duration  how often pull-based collectors poll (default 10s)
     --disable-docker             skip the Docker collector even if a daemon is reachable
     --disable-otlp               don't mount the OTLP ingest endpoints
+    --disable-proc               skip per-process CPU/memory collection
+    --disable-statsd             don't listen for StatsD/DogStatsD
+    --disable-autoscrape         don't probe well-known local Prometheus exporters
     --scrape string              Prometheus exposition endpoint to scrape, repeatable;
                                  optionally prefixed with a job name
                                  (--scrape node=http://localhost:9100/metrics)
-    --statsd-addr string         listen for StatsD/DogStatsD over UDP on this address
-                                 (e.g. :8125); empty disables it
+    --statsd-addr string         StatsD/DogStatsD UDP listen address (default :8125)
+    --log-file string            log file to tail into the store (repeatable)
 
 forsight version
 ```
@@ -88,6 +95,12 @@ forsight version
 | `/api/v1/metrics?name=&since=&label.<k>=<v>` | GET | Query stored metrics (all filters optional)             |
 | `/api/v1/traces?service=&traceId=&since=`    | GET | Query stored spans                                        |
 | `/api/v1/logs?since=&source=&severity=`       | GET | Query stored log entries                                  |
+| `/api/v1/forseer/insights`                   | GET | Current Forseer findings (always on, no API key)          |
+| `/api/v1/forseer/clusters`                   | GET | Drain-style log templates                                 |
+| `/api/v1/forseer/budget`                     | GET | Error-log burn against a 1% SLO (ErrorBudget)             |
+| `/api/v1/forseer/timeline`                   | GET | Stitched incident events (Timeline)                       |
+| `/api/v1/forseer/query?q=`                   | GET | Phrase → FilterBar facets                                 |
+| `/api/v1/forseer/summary`                    | GET | Grok paragraph when `XAI_API_KEY` is set; else disabled   |
 | `/v1/metrics`                            | POST   | OTLP/HTTP metrics ingest (protobuf or JSON body)          |
 | `/v1/traces`                             | POST   | OTLP/HTTP traces ingest (protobuf or JSON body)           |
 | `/v1/logs`                               | POST   | OTLP/HTTP logs ingest (protobuf or JSON body)             |
@@ -99,17 +112,20 @@ uses by default.
 ## Architecture
 
 ```
+forseer/                   AI/ML module imported by the agent (detectors + Grok)
 forsight/
   main.go, cmd/            CLI (cobra): `run`, `version`
   internal/
     model/                 shared data shapes: Metric, Span, LogEntry
     collector/              the Collector interface + a scheduling Registry
       host/                 gopsutil — CPU/memory/disk/network/uptime
+      proc/                  per-process CPU and RSS
       docker/                Docker API — per-container CPU/memory
       otlp/                  OTLP/HTTP receiver — metrics (all five types),
                              traces, and logs (protobuf or JSON)
-      promscrape/            Prometheus exposition-format scraper
+      promscrape/            Prometheus exposition-format scraper + local discover
       statsd/                StatsD/DogStatsD UDP receiver
+      filelog/               tail --log-file paths into LogEntry
     store/                  Store interface + an in-memory, retention-bounded impl
     api/                    HTTP server: query API, OTLP mount, embedded dashboard
   web/                      the dashboard — a small React app on the design system
@@ -161,13 +177,13 @@ versioned artifacts) and asset naming (`forsight_<os>_<arch>.tar.gz`).
 ## Scope: what's real vs. what's roadmap
 
 **Built and verified working:** everything listed at the top of this file —
-host metrics, Docker container metrics, OTLP metrics+traces+logs ingestion,
-Kubernetes via the DaemonSet manifest, embedded in-memory storage, and a real
-dashboard. Verified by hand: ran the binary, watched real host and Docker
-metrics flow through `/api/v1/metrics`, sent a real OTLP protobuf payload and
-queried it back out, and opened the dashboard in a browser to confirm the
-chart, stat tiles, and container table render live data — not just that the
-code compiles.
+host and process metrics, Docker container metrics, OTLP metrics+traces+logs
+ingestion, Kubernetes via the DaemonSet manifest, embedded in-memory storage,
+a real dashboard, and Forseer statistical detectors. Verified by hand: ran
+the binary, watched real host and Docker metrics flow through
+`/api/v1/metrics`, sent a real OTLP protobuf payload and queried it back
+out, and opened the dashboard in a browser to confirm the chart, stat tiles,
+and container table render live data — not just that the code compiles.
 
 **Deliberately not built yet, flagged rather than silently skipped:**
 
@@ -178,7 +194,10 @@ code compiles.
   `--retention` (default 1h) — restart the process and history is gone. A
   `store.Store`-implementing Badger-backed store is the natural next step;
   the interface is already the seam for it.
-- **Alerting rules.** No threshold/anomaly alerting on collected data yet.
+- **Seasonal baselines and SLO error-budget forecast.** Forseer ships
+  rolling z-score / CUSUM / log-template / slow-span detectors; hour-of-day
+  baselines and **ErrorBudget** projection are next (see
+  [`forseer/README.md`](../forseer/README.md)).
 - **A real query language.** The API takes simple time-range + exact-label
   filters, not anything PromQL-equivalent.
 - **Automated releases.** `make release` is manual; no CI job cuts and

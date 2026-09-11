@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"time"
 
+	"github.com/marcfs31/forsight/forseer"
 	"github.com/marcfs31/forsight/forsight/internal/store"
 )
 
@@ -24,6 +25,7 @@ type Server struct {
 	otlp      OTLPHandler  // nil is valid: OTLP ingest simply isn't mounted
 	dashboard http.Handler // nil is valid: falls back to a plain 404 at "/"
 	logger    *slog.Logger
+	forseer   *forseer.Engine // nil: /api/v1/forseer/* returns empty/disabled
 }
 
 // NewServer builds a Server. dashboard may be nil (see dashboard.go for the
@@ -36,6 +38,12 @@ func NewServer(st store.Store, otlpHandler OTLPHandler, dashboard http.Handler, 
 	return &Server{store: st, otlp: otlpHandler, dashboard: dashboard, logger: logger}
 }
 
+// WithForseer attaches the AI/ML engine (statistical detectors + optional Grok).
+func (s *Server) WithForseer(e *forseer.Engine) *Server {
+	s.forseer = e
+	return s
+}
+
 // Handler builds the full routed http.Handler.
 func (s *Server) Handler() http.Handler {
 	mux := http.NewServeMux()
@@ -43,6 +51,12 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("GET /api/v1/metrics", s.handleMetrics)
 	mux.HandleFunc("GET /api/v1/traces", s.handleTraces)
 	mux.HandleFunc("GET /api/v1/logs", s.handleLogs)
+	mux.HandleFunc("GET /api/v1/forseer/insights", s.handleForseerInsights)
+	mux.HandleFunc("GET /api/v1/forseer/clusters", s.handleForseerClusters)
+	mux.HandleFunc("GET /api/v1/forseer/budget", s.handleForseerBudget)
+	mux.HandleFunc("GET /api/v1/forseer/timeline", s.handleForseerTimeline)
+	mux.HandleFunc("GET /api/v1/forseer/query", s.handleForseerQuery)
+	mux.HandleFunc("GET /api/v1/forseer/summary", s.handleForseerSummary)
 
 	if s.otlp != nil {
 		s.otlp.Register(mux)
