@@ -2,18 +2,19 @@ import "@testing-library/jest-dom/vitest";
 import { afterEach } from "vitest";
 import { cleanup } from "@testing-library/react";
 
-// This project runs with `test.globals: false`, so Testing Library's own
-// auto-cleanup (which only registers when it detects test-framework globals)
-// never fires without this. Mirrors the design system's own vitest.setup.ts.
+// RTL's own auto-cleanup only registers when it detects test-framework
+// globals (afterEach on `globalThis`) — this project runs with
+// `test.globals: false` and explicit vitest imports, so it never fires
+// without this (mirrors the root design-system package's vitest.setup.ts).
 afterEach(() => {
   cleanup();
 });
 
 /**
- * jsdom doesn't implement these — the design system's overlay primitives
- * (FilterBar's "Add filter" popover, in particular) call them during
- * pointer interaction and layout, so mounting App() crashes without a
- * no-op polyfill even though nothing here asserts on them.
+ * jsdom doesn't implement these — the design-system's Radix-based overlay
+ * primitives (FilterBar's popover, among others rendered by App) call them
+ * during pointer interaction and layout, so a render crashes without a
+ * no-op polyfill even when nothing here asserts on them directly.
  */
 if (!window.HTMLElement.prototype.hasPointerCapture) {
   window.HTMLElement.prototype.hasPointerCapture = () => false;
