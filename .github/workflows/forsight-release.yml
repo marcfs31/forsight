@@ -1,0 +1,142 @@
+name: forsight release
+
+# Automates what forsight/README.md used to document as a manual sequence:
+#   make release VERSION=vX.Y.Z
+#   gh release create forsight-vX.Y.Z dist/*.tar.gz --title "forsight vX.Y.Z"
+#
+# Fires on push of the forsight-vX.Y.Z tag — install.sh and this repo's own
+# docs already treat that exact prefix as the forsight agent's release tag,
+# distinct from the npm package's own vX.Y.Z tags (see CLAUDE.md, "two
+# independently versioned artifacts"). Never touches release.yml's Changesets
+# pipeline or forsight-ci.yml — this is a separate artifact with its own tag
+# convention and its own release path.
+on:
+  push:
+    tags:
+      - "forsight-v*"
+  # Convenience for re-running a release that failed partway (e.g. a
+  # transient npm/GitHub Packages hiccup) without pushing a new tag. Requires
+  # the tag to already exist — this workflow only builds and publishes
+  # against an existing forsight-vX.Y.Z ref, it never creates one.
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: "Existing forsight-vX.Y.Z tag to (re-)release"
+        required: true
+
+# Safe default; the one job below adds exactly the two scopes it uses.
+permissions:
+  contents: read
+
+# One release per tag at a time. Different tags get independent groups
+# (unlike release.yml's single-queue `group: release` for the continuous npm
+# pipeline) since a forsight-vX.Y.Z release never depends on another.
+concurrency:
+  group: forsight-release-${{ github.event.inputs.tag || github.ref_name }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    name: build archives and publish the GitHub Release
+    runs-on: ubuntu-latest
+    # contents: write — create the GitHub Release and upload its assets.
+    # packages: read — `make release` depends on `build-web` (see
+    # forsight/Makefile), which builds forsight/web against the pinned,
+    # published @marcfs31/forsight from GitHub Packages
+    # (forsight/web/.npmrc); npm ci/install against that registry 401s
+    # without it. Same scope, same reason, as forsight-ci.yml's "web" job.
+    permissions:
+      contents: write
+      packages: read
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref_name }}
+
+      # Matches forsight-ci.yml's "go" job exactly, for the same Go version
+      # everything else in this repo builds and tests against.
+      - uses: actions/setup-go@v7
+        with:
+          go-version-file: forsight/go.mod
+
+      # Matches forsight-ci.yml's "web" job: same Node version, same
+      # GitHub Packages registry/scope wiring for the @marcfs31 packages
+      # forsight/web depends on.
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: forsight/web/package-lock.json
+          registry-url: https://npm.pkg.github.com
+          scope: "@marcfs31"
+
+      - name: Derive VERSION from the tag
+        id: version
+        env:
+          TAG: ${{ github.event.inputs.tag || github.ref_name }}
+        run: |
+          set -euo pipefail
+          case "$TAG" in
+            forsight-v*) ;;
+            *)
+              echo "::error::'$TAG' does not match the forsight-vX.Y.Z tag convention (see install.sh, forsight/README.md)" >&2
+              exit 1
+              ;;
+          esac
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          # forsight/Makefile's release target takes the bare vX.Y.Z it
+          # stamps into -ldflags and reuses for the go build; strip the
+          # "forsight-" prefix to get it.
+          echo "version=${TAG#forsight-}" >> "$GITHUB_OUTPUT"
+
+      # forsight/web/package-lock.json still resolves @marcfs31/forsight as
+      # `file:../..` — it predates #53's move to consuming the published
+      # package from GitHub Packages, and was never regenerated because that
+      # needs packages:read auth nobody had locally at the time. `npm ci`
+      # (what `make build-web` runs) refuses to reconcile that against
+      # package.json's `^3.0.0` registry pin. forsight-ci.yml's "web" job
+      # already carries the same workaround, with the same comment; mirror
+      # it here so `make release` gets a lockfile npm ci can actually use.
+      - name: Refresh forsight/web's lockfile against the published design system
+        working-directory: forsight/web
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          rm -f package-lock.json
+          npm install --no-fund --no-audit
+
+      # Cross-compiles every RELEASE_TARGETS entry and tars each one up as
+      # dist/forsight_<os>_<arch>.tar.gz — exactly the sequence
+      # forsight/README.md used to say to run by hand. Nothing about that
+      # logic is reproduced here; the Makefile stays the one place it's
+      # defined.
+      - name: make release
+        working-directory: forsight
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: make release VERSION=${{ steps.version.outputs.version }}
+
+      # Plain `gh`, not a third-party Action — this repo's other workflows
+      # (dependabot-automerge.yml, release.yml's arm-version-pr job) already
+      # do every GitHub API interaction this way with GH_TOKEN/GH_REPO, so
+      # this stays consistent with the existing pattern instead of pinning
+      # a new Action just to attach release assets. `gh release upload
+      # --clobber` on the re-run path (workflow_dispatch against a tag whose
+      # release a previous, partially-failed run already created) so a retry
+      # replaces the assets instead of erroring that the release exists.
+      - name: Create or update the GitHub Release
+        working-directory: forsight
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_REPO: ${{ github.repository }}
+          TAG: ${{ steps.version.outputs.tag }}
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          set -euo pipefail
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" dist/*.tar.gz --clobber
+          else
+            gh release create "$TAG" dist/*.tar.gz \
+              --title "forsight $VERSION" \
+              --generate-notes
+          fi

@@ -8,6 +8,14 @@ import (
 	"github.com/marcfs31/forsight/forsight/internal/model"
 )
 
+// TestMemoryStore_Conformance runs the shared Store query-semantics suite
+// (also run by BadgerStore in badger_test.go) against MemoryStore.
+func TestMemoryStore_Conformance(t *testing.T) {
+	runStoreConformanceTests(t, func(t *testing.T) Store {
+		return NewMemoryStore(time.Hour)
+	})
+}
+
 func TestMemoryStore_WriteThenQuery(t *testing.T) {
 	s := NewMemoryStore(time.Hour)
 	ctx := context.Background()
@@ -139,6 +147,34 @@ func TestMemoryStore_ElementCapBoundsGrowth(t *testing.T) {
 	// The newest are the ones kept: the last write was values 450..499.
 	if got[len(got)-1].Value != 499 {
 		t.Errorf("newest retained value = %v, want 499 (the cap must drop the oldest, not the newest)", got[len(got)-1].Value)
+	}
+}
+
+// TestMemoryStore_NoExpiredElementsKeepsAll exercises pruneMetricsLocked's
+// fast path: when the oldest retained element is still within the
+// retention window, the O(n) age scan is skipped entirely (an optimization
+// so a write doesn't rescan up to maxElements entries when nothing has
+// expired). That skip must not lose data relative to running the full
+// scan — every unexpired point must still come back.
+func TestMemoryStore_NoExpiredElementsKeepsAll(t *testing.T) {
+	s := NewMemoryStore(time.Hour)
+	ctx := context.Background()
+	now := time.Now()
+
+	batch := make([]model.Metric, 50)
+	for i := range batch {
+		batch[i] = model.Metric{Name: "m", Value: float64(i), Timestamp: now}
+	}
+	if err := s.WriteMetrics(ctx, batch); err != nil {
+		t.Fatalf("WriteMetrics: %v", err)
+	}
+
+	got, err := s.QueryMetrics(ctx, MetricQuery{Name: "m"})
+	if err != nil {
+		t.Fatalf("QueryMetrics: %v", err)
+	}
+	if len(got) != 50 {
+		t.Fatalf("got %d metrics, want all 50 kept (fast path must not drop unexpired data)", len(got))
 	}
 }
 

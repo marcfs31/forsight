@@ -1,6 +1,7 @@
 package forseer
 
 import (
+	"strconv"
 	"testing"
 	"time"
 )
@@ -52,6 +53,53 @@ func TestEngine_CulpritRanksHotProcess(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("expected culprit insight for rogue: %+v", e.Insights())
+	}
+}
+
+// TestEngine_PrunesStaleProcesses guards against the same unbounded-growth
+// bug PR #44 fixed on the OTLP ingest path, recurring here: unlike
+// e.culprits, e.processes was never evicted, and pid resource attributes
+// reach it verbatim off an unauthenticated OTLP POST. A burst of distinct
+// pids must grow the map (it's supposed to track what it sees), but once
+// insightTTL has passed with no further sighting, those entries must be
+// swept — the same TTL discipline already applied to culprits, on the same
+// tick.
+func TestEngine_PrunesStaleProcesses(t *testing.T) {
+	e := NewEngine()
+	now := time.Date(2026, 9, 11, 12, 0, 0, 0, time.UTC)
+	e.now = func() time.Time { return now }
+
+	const burst = 5000
+	for i := 0; i < burst; i++ {
+		e.ObserveMetrics([]Point{{
+			Name:   "process.cpu.percent",
+			Value:  1,
+			Labels: map[string]string{"pid": strconv.Itoa(i), "name": "p"},
+		}})
+	}
+	e.mu.Lock()
+	got := len(e.processes)
+	e.mu.Unlock()
+	if got != burst {
+		t.Fatalf("processes = %d, want %d right after the burst", got, burst)
+	}
+
+	// Advance the clock past insightTTL and feed one more point. Every pid
+	// from the burst is now stale and must be swept in this same tick,
+	// leaving only the one just observed — bounded, not the unbounded
+	// burst size.
+	now = now.Add(insightTTL + time.Minute)
+	e.ObserveMetrics([]Point{{
+		Name:   "process.cpu.percent",
+		Value:  1,
+		Labels: map[string]string{"pid": "fresh", "name": "p"},
+	}})
+
+	e.mu.Lock()
+	got = len(e.processes)
+	e.mu.Unlock()
+	if got != 1 {
+		t.Fatalf("processes after TTL sweep = %d, want 1 (bounded, stale pids evicted)", got)
 	}
 }
 

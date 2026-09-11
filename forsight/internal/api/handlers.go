@@ -146,8 +146,16 @@ func (s *Server) handleForseerTimeline(w http.ResponseWriter, _ *http.Request) {
 	writeJSON(w, http.StatusOK, s.forseer.Story())
 }
 
+// handleForseerQuery serves GET /api/v1/forseer/query?q=. The response
+// carries "matched" alongside "facets" so the dashboard can tell "the phrase
+// was empty" apart from "the phrase wasn't understood" — both parse to no
+// facets, but only the latter is worth surfacing to the user as feedback.
 func (s *Server) handleForseerQuery(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, http.StatusOK, forseer.ParseQuery(r.URL.Query().Get("q")))
+	facets, matched := forseer.ParseQuery(r.URL.Query().Get("q"))
+	if facets == nil {
+		facets = []forseer.Facet{}
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"facets": facets, "matched": matched})
 }
 
 func (s *Server) handleForseerSummary(w http.ResponseWriter, r *http.Request) {

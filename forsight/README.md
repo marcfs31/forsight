@@ -34,7 +34,8 @@ observability platform.
   and a real dashboard (built on
   [`@marcfs31/forsight`](..), the design system this
   repo also publishes) served from the same process. No separate database,
-  no separate frontend server.
+  no separate frontend server. In-memory by default; add `--store badger` for
+  a store that survives a restart (see below).
 
 ## Install
 
@@ -70,7 +71,11 @@ project's planning notes for the full comparison.
 ```
 forsight run [flags]
     --addr string                address to serve on (default ":8080")
-    --retention duration         how long the in-memory store retains data (default 1h)
+    --retention duration         how long the store retains data, memory or Badger alike (default 1h)
+    --store string                storage backend: "memory" (default, resets on restart)
+                                 or "badger" (persists to --data-dir, survives a restart)
+    --data-dir string             directory for the Badger database when --store=badger
+                                 (default "./forsight-data"); ignored otherwise
     --collect-interval duration  how often pull-based collectors poll (default 10s)
     --disable-docker             skip the Docker collector even if a daemon is reachable
     --disable-otlp               don't mount the OTLP ingest endpoints
@@ -85,6 +90,19 @@ forsight run [flags]
 
 forsight version
 ```
+
+### Persistent storage (`--store badger`)
+
+By default `forsight run` stores everything in memory: fast, zero setup, and
+gone on restart. Pass `--store badger --data-dir /path/to/dir` to persist
+metrics, spans, and logs to an embedded [Badger](https://github.com/dgraph-io/badger)
+key-value database instead — same query semantics (time-range + exact-label
+match, retention-based pruning), same `Store` interface, so it's a drop-in
+swap and nothing else about `run` changes. `--data-dir` defaults to
+`./forsight-data` and is created if it doesn't exist; `--retention` governs
+Badger's per-entry TTL the same way it governs MemoryStore's pruning.
+`internal/store/badger.go`'s doc comment covers the key encoding and why it's
+shaped the way it is.
 
 ## HTTP surface
 
@@ -126,7 +144,8 @@ forsight/
       promscrape/            Prometheus exposition-format scraper + local discover
       statsd/                StatsD/DogStatsD UDP receiver
       filelog/               tail --log-file paths into LogEntry
-    store/                  Store interface + an in-memory, retention-bounded impl
+    store/                  Store interface + MemoryStore (default) and BadgerStore
+                             (--store badger) implementations, same query semantics
     api/                    HTTP server: query API, OTLP mount, embedded dashboard
   web/                      the dashboard — a small React app on the design system
   deploy/k8s/               DaemonSet manifest for cluster-wide deployment
@@ -163,42 +182,66 @@ matches what `web/` currently builds (`.github/workflows/forsight-ci.yml`'s
 
 ## Releasing
 
-No automated release pipeline yet (see Roadmap) — cut one by hand:
+Push a `forsight-vX.Y.Z` tag and `.github/workflows/forsight-release.yml`
+does the rest: it checks that tag out, cross-compiles every
+`RELEASE_TARGETS` entry via `make release`, and publishes a GitHub Release
+with the resulting `dist/*.tar.gz` archives attached.
+
+```bash
+git tag forsight-v0.1.0
+git push --tags
+```
+
+A stuck or partially-failed run can be re-driven without pushing a new tag —
+dispatch the workflow with the existing tag as input (`gh workflow run
+forsight-release.yml -f tag=forsight-v0.1.0`, or from the Actions UI); it
+re-runs the build and uploads over the existing release's assets.
+
+`install.sh` expects that exact tag prefix (`forsight-vX.Y.Z`, distinct from
+the npm package's own `vX.Y.Z` tags — this repo now ships two independently
+versioned artifacts) and asset naming (`forsight_<os>_<arch>.tar.gz`).
+
+**Local/fallback path.** The workflow runs nothing that isn't available by
+hand — to cut a release without pushing a tag (e.g. the workflow itself is
+broken), do exactly what it does:
 
 ```bash
 make release VERSION=v0.1.0
 gh release create forsight-v0.1.0 dist/*.tar.gz --title "forsight v0.1.0"
 ```
 
-`install.sh` expects that exact tag prefix (`forsight-vX.Y.Z`, distinct from
-the npm package's own `vX.Y.Z` tags — this repo now ships two independently
-versioned artifacts) and asset naming (`forsight_<os>_<arch>.tar.gz`).
-
 ## Scope: what's real vs. what's roadmap
 
 **Built and verified working:** everything listed at the top of this file —
 host and process metrics, Docker container metrics, OTLP metrics+traces+logs
 ingestion, Kubernetes via the DaemonSet manifest, embedded in-memory storage,
-a real dashboard, and Forseer statistical detectors. Verified by hand: ran
-the binary, watched real host and Docker metrics flow through
-`/api/v1/metrics`, sent a real OTLP protobuf payload and queried it back
-out, and opened the dashboard in a browser to confirm the chart, stat tiles,
-and container table render live data — not just that the code compiles.
+persistent Badger-backed storage (`--store badger`), a real dashboard, and
+Forseer statistical detectors. Verified by hand: ran the binary, watched real
+host and Docker metrics flow through `/api/v1/metrics`, sent a real OTLP
+protobuf payload and queried it back out, opened the dashboard in a browser
+to confirm the chart, stat tiles, and container table render live data, and
+— for the Badger store — ran with `--store badger --data-dir <dir>`, sent a
+real OTLP metrics payload and let the host collector tick, queried the data
+back out, killed the process, restarted it against the same `--data-dir`,
+and confirmed every metric written before the restart (the OTLP payload and
+every prior host-collector tick) was still there — not just that the code
+compiles.
+Also **automated releases**: `.github/workflows/forsight-release.yml` cuts
+and publishes a GitHub Release on every `forsight-vX.Y.Z` tag push — see
+Releasing above. Verified by tracing it step-for-step against
+`forsight/Makefile`'s `release` target (same cross-compile targets, same
+`forsight_<os>_<arch>.tar.gz` naming) and by running that target's
+cross-compile+archive loop locally for all four `RELEASE_TARGETS`, including
+extracting and running the resulting binary.
 
 **Deliberately not built yet, flagged rather than silently skipped:**
 
 - **Log file tailing/parsing.** OTLP log ingest (`POST /v1/logs`) and the
   query/dashboard surface are built; reading and parsing log *files* on disk
   (tail + pattern extraction) still deserves its own careful design.
-- **Persistent storage.** The store is in-memory only, bounded by
-  `--retention` (default 1h) — restart the process and history is gone. A
-  `store.Store`-implementing Badger-backed store is the natural next step;
-  the interface is already the seam for it.
 - **Seasonal baselines and SLO error-budget forecast.** Forseer ships
   rolling z-score / CUSUM / log-template / slow-span detectors; hour-of-day
   baselines and **ErrorBudget** projection are next (see
   [`forseer/README.md`](../forseer/README.md)).
 - **A real query language.** The API takes simple time-range + exact-label
   filters, not anything PromQL-equivalent.
-- **Automated releases.** `make release` is manual; no CI job cuts and
-  publishes a GitHub Release on tag push yet.

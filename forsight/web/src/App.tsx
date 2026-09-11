@@ -62,6 +62,16 @@ const timeLabelFormat = new Intl.DateTimeFormat(undefined, {
   second: "2-digit",
 });
 
+// Neutral helper text for the "Ask Forseer" box — spells out the grammar
+// ParseQuery actually understands (forseer/query.go) so users aren't
+// guessing at a hidden vocabulary. "critical" is called out explicitly
+// since it's the word AlertList/Timeline elsewhere on this dashboard train
+// users to type.
+const QUERY_HINT =
+  'Understands error/fail/fatal/critical/severe, warn/warning, debug, and "from <source>" — e.g. "critical from checkout-api"';
+const QUERY_NOT_UNDERSTOOD =
+  'Didn\'t recognize that phrase — try error/warn/debug/critical, optionally "from <source>"';
+
 function formatPercent(v: number | undefined): string {
   return v === undefined ? "—" : `${v.toFixed(1)}`;
 }
@@ -70,6 +80,11 @@ function formatRss(bytes: number | undefined): string {
   if (bytes === undefined) return "—";
   if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatSLO(slo: number | undefined): string | undefined {
+  if (slo === undefined) return undefined;
+  return `${Math.round(slo * 10000) / 100}% SLO`;
 }
 
 function formatInsightTime(iso: string): string {
@@ -120,6 +135,17 @@ function toTimelineItems(events: ForseerEvent[]): TimelineItem[] {
     description: ev.description,
     tone: (ev.tone as TimelineTone) || toneFor("info"),
   }));
+}
+
+// Merges newly-parsed query facets into the existing filter set rather than
+// replacing it wholesale: any previous chip whose key the new parse didn't
+// touch survives; a key the parse did produce is replaced by its new value
+// (so re-querying "critical" after "critical from checkout-api" doesn't
+// leave two conflicting status chips FilterBar's AND semantics can never
+// both satisfy).
+function mergeQueryFacets(prev: FilterBarFacet[], parsed: FilterBarFacet[]): FilterBarFacet[] {
+  const parsedKeys = new Set(parsed.map((f) => f.key));
+  return [...prev.filter((f) => !parsedKeys.has(f.key)), ...parsed];
 }
 
 function matchesFilters(entry: LogEntry, filters: FilterBarFacet[]): boolean {
@@ -214,6 +240,9 @@ export default function App() {
   const story = useTimeline(5000);
   const [query, setQuery] = useState("");
   const [filters, setFilters] = useState<FilterBarFacet[]>([]);
+  // null = neutral (show QUERY_HINT); a string = the last submitted phrase
+  // wasn't understood (show it as an inline error instead).
+  const [queryError, setQueryError] = useState<string | null>(null);
 
   const cpuHistory = historyFor(metrics, "host.cpu.percent");
   const cpuLabels = cpuHistory.map((m) => timeLabelFormat.format(new Date(m.timestamp)));
@@ -256,6 +285,8 @@ export default function App() {
 
   const connected = metrics.length > 0 || logs.length > 0;
   const status = statusFromInsights(connected, insights);
+  const sloLabel = formatSLO(budget.slo);
+  const budgetLabel = sloLabel ? `${budget.label || "Error-log budget"} · ${sloLabel}` : budget.label || "Error-log budget";
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-6">
@@ -315,9 +346,15 @@ export default function App() {
           <CardTitle>Forseer</CardTitle>
         </CardHeader>
         <CardContent className="flex flex-col gap-4">
-          {summary.enabled && summary.summary ? <Text>{summary.summary}</Text> : null}
+          {summary.enabled ? (
+            summary.summary ? <Text>{summary.summary}</Text> : null
+          ) : (
+            <Text tone="muted" size="sm">
+              AI narrative disabled — set XAI_API_KEY to enable
+            </Text>
+          )}
           <ErrorBudget
-            label={budget.label || "Error-log budget"}
+            label={budgetLabel}
             consumed={budget.consumed}
             caption={budget.caption}
             warningAt={budget.warningAt}
@@ -327,15 +364,28 @@ export default function App() {
             className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-end"
             onSubmit={(event) => {
               event.preventDefault();
-              void queryForseer(query).then(setFilters);
+              const phrase = query.trim();
+              if (!phrase) return;
+              void queryForseer(phrase).then(({ facets, matched }) => {
+                if (!matched) {
+                  setQueryError(QUERY_NOT_UNDERSTOOD);
+                  return;
+                }
+                setQueryError(null);
+                setFilters((prev) => mergeQueryFacets(prev, facets));
+              });
             }}
           >
             <Input
               className="min-w-0 flex-1"
               aria-label="Ask Forseer"
-              hint="Maps a phrase onto FilterBar facets, e.g. error logs from checkout"
+              invalid={queryError != null}
+              hint={queryError ?? QUERY_HINT}
               value={query}
-              onChange={(event) => setQuery(event.target.value)}
+              onChange={(event) => {
+                setQuery(event.target.value);
+                if (queryError) setQueryError(null);
+              }}
             />
             <Button type="submit">Apply</Button>
           </form>
@@ -350,7 +400,14 @@ export default function App() {
             items={alertItems}
             emptyMessage="Forseer watches every metric, log template, and span against its own baseline. Spikes, regime shifts, log bursts, and slow traces show up here."
           />
-          {timelineItems.length > 0 ? <Timeline items={timelineItems} /> : null}
+          {timelineItems.length > 0 ? (
+            <Timeline items={timelineItems} />
+          ) : (
+            <EmptyState
+              title="No timeline events yet"
+              description="Forseer insights are stitched into a timeline here as they occur."
+            />
+          )}
         </CardContent>
       </Card>
 

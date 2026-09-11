@@ -194,12 +194,69 @@ func TestHandleForseerQuery_ParsesPhrase(t *testing.T) {
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status = %d", rec.Code)
 	}
-	var got []map[string]string
+	var got struct {
+		Facets  []map[string]string `json:"facets"`
+		Matched bool                `json:"matched"`
+	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 2 {
-		t.Fatalf("got %+v", got)
+	if !got.Matched {
+		t.Errorf("matched = false, want true for %+v", got.Facets)
+	}
+	if len(got.Facets) != 2 {
+		t.Fatalf("got %+v", got.Facets)
+	}
+}
+
+// A phrase this grammar doesn't recognize must round-trip as
+// matched:false with an empty (non-null) facets array — the dashboard
+// uses "matched" to decide whether to show "didn't understand that"
+// feedback instead of silently doing nothing.
+func TestHandleForseerQuery_UnrecognizedPhraseIsUnmatched(t *testing.T) {
+	s := NewServer(store.NewMemoryStore(time.Hour), nil, nil, nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/forseer/query?q=what+is+happening", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var got struct {
+		Facets  []map[string]string `json:"facets"`
+		Matched bool                `json:"matched"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if got.Matched {
+		t.Errorf("matched = true, want false for %+v", got.Facets)
+	}
+	if len(got.Facets) != 0 {
+		t.Errorf("got %+v, want no facets", got.Facets)
+	}
+}
+
+// "critical" is the word AlertList/Timeline train the user to type
+// (Insight.Severity's vocabulary); the query grammar must map it onto the
+// error-class status facet rather than leaving it unmatched.
+func TestHandleForseerQuery_CriticalMapsToErrorStatus(t *testing.T) {
+	s := NewServer(store.NewMemoryStore(time.Hour), nil, nil, nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/forseer/query?q=critical", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d", rec.Code)
+	}
+	var got struct {
+		Facets  []map[string]string `json:"facets"`
+		Matched bool                `json:"matched"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatal(err)
+	}
+	if !got.Matched {
+		t.Fatalf("matched = false, want true for %+v", got.Facets)
+	}
+	if len(got.Facets) != 1 || got.Facets[0]["key"] != "status" || got.Facets[0]["value"] != "error" {
+		t.Fatalf("got %+v, want [status=error]", got.Facets)
 	}
 }
 

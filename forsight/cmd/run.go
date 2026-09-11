@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -42,6 +43,9 @@ type runOptions struct {
 	scrapeTargets     []string
 	statsdAddr        string
 	logFiles          []string
+	errorSLO          float64
+	storeBackend      string
+	dataDir           string
 }
 
 func newRunCmd() *cobra.Command {
@@ -58,7 +62,7 @@ func newRunCmd() *cobra.Command {
 	cmd.Flags().StringVar(&opts.authToken, "auth-token", "",
 		"require Authorization: Bearer <token> on every route except GET /healthz; "+
 			"also read from FORSIGHT_AUTH_TOKEN when the flag is empty (auth is off by default)")
-	cmd.Flags().DurationVar(&opts.retention, "retention", time.Hour, "how long the in-memory store retains data")
+	cmd.Flags().DurationVar(&opts.retention, "retention", time.Hour, "how long the store retains data, memory or Badger alike")
 	cmd.Flags().DurationVar(&opts.collectInterval, "collect-interval", 10*time.Second, "how often the host/Docker collectors poll")
 	cmd.Flags().BoolVar(&opts.disableDocker, "disable-docker", false, "skip the Docker collector even if a daemon is reachable")
 	cmd.Flags().BoolVar(&opts.disableOTLP, "disable-otlp", false, "don't mount the OTLP ingest endpoints")
@@ -72,6 +76,15 @@ func newRunCmd() *cobra.Command {
 		"listen for StatsD/DogStatsD metrics over UDP (default :8125 so a bare install receives them; --disable-statsd turns it off)")
 	cmd.Flags().StringArrayVar(&opts.logFiles, "log-file", nil,
 		"path of a log file to tail into the store (repeatable); severity is inferred from the line")
+	cmd.Flags().Float64Var(&opts.errorSLO, "error-slo", 0,
+		"target error-log rate for Forseer's error budget, e.g. 0.01 for 1% (default 1%); "+
+			"also read from FORSIGHT_ERROR_SLO when unset")
+	cmd.Flags().StringVar(&opts.storeBackend, "store", "memory",
+		`storage backend: "memory" (default; fast, resets on every restart) or `+
+			`"badger" (persists to --data-dir, survives a restart)`)
+	cmd.Flags().StringVar(&opts.dataDir, "data-dir", "./forsight-data",
+		`directory for the Badger database when --store=badger (ignored otherwise); `+
+			"created if it doesn't exist")
 
 	return cmd
 }
@@ -80,8 +93,27 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
+	// Scrape targets are pull-based like host/Docker, so the registry's own
+	// ticker drives them — one collector for all targets, not one each.
+	// Validated up front, before the store (possibly a Badger database) is
+	// opened, so a bad --scrape value fails fast with nothing to clean up.
+	targets, err := parseScrapeTargets(opts.scrapeTargets)
+	if err != nil {
+		return err
+	}
+
 	eng := forseer.NewEngine()
-	st := observingStore{Store: store.NewMemoryStore(opts.retention), eng: eng}
+	if slo := resolveErrorSLO(opts.errorSLO); slo > 0 {
+		eng.SetErrorSLO(slo)
+	}
+	backingStore, badgerStore, err := newBackingStore(opts)
+	if err != nil {
+		return err
+	}
+	if badgerStore != nil {
+		logger.Info("using the Badger persistent store", "dir", opts.dataDir, "retention", opts.retention)
+	}
+	st := observingStore{Store: backingStore, eng: eng}
 
 	collectors := []collector.Collector{hostcollector.New()}
 	if !opts.disableProc {
@@ -95,12 +127,6 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 		}
 	}
 
-	// Scrape targets are pull-based like host/Docker, so the registry's own
-	// ticker drives them — one collector for all targets, not one each.
-	targets, err := parseScrapeTargets(opts.scrapeTargets)
-	if err != nil {
-		return err
-	}
 	if !opts.disableAutoscrape {
 		found := promscrape.DiscoverLocal(ctx, targets)
 		for _, t := range found {
@@ -141,11 +167,7 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 
 	for _, path := range opts.logFiles {
 		logPath := path
-		go func() {
-			if err := filelog.Tail(ctx, logPath, st); err != nil && ctx.Err() == nil {
-				logger.Error("log tailer stopped", "path", logPath, "error", err)
-			}
-		}()
+		go tailWithRetry(ctx, logPath, st, logger)
 		logger.Info("tailing log file", "path", logPath)
 	}
 
@@ -175,9 +197,90 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 		logger.Info("shutting down")
 		shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 		defer cancel()
-		return httpServer.Shutdown(shutdownCtx)
+		shutdownErr := httpServer.Shutdown(shutdownCtx)
+		return errors.Join(shutdownErr, closeBadgerStore(badgerStore, logger))
 	case err := <-serveErr:
-		return err
+		return errors.Join(err, closeBadgerStore(badgerStore, logger))
+	}
+}
+
+// newBackingStore builds the Store the agent writes to and queries,
+// selected by --store. It also returns the concrete *store.BadgerStore when
+// that backend was chosen (nil otherwise), so run's shutdown path can call
+// Close on it directly — Store itself has no Close method, since MemoryStore
+// has nothing to close.
+func newBackingStore(opts *runOptions) (backing store.Store, badgerStore *store.BadgerStore, err error) {
+	switch opts.storeBackend {
+	case "", "memory":
+		return store.NewMemoryStore(opts.retention), nil, nil
+	case "badger":
+		bs, err := store.NewBadgerStore(opts.dataDir, opts.retention)
+		if err != nil {
+			return nil, nil, fmt.Errorf("open Badger store: %w", err)
+		}
+		return bs, bs, nil
+	default:
+		return nil, nil, fmt.Errorf(`--store %q: want "memory" or "badger"`, opts.storeBackend)
+	}
+}
+
+// closeBadgerStore closes bs if it's non-nil (opts.storeBackend != "badger"
+// leaves it nil, so this is always safe to call unconditionally on both
+// shutdown paths below). Called from two places rather than a bare
+// top-level defer so a hard failure of the HTTP server's own shutdown
+// doesn't skip it, and so the same explicit path handles both the graceful
+// (ctx.Done) and the listener-failed (serveErr) cases identically.
+func closeBadgerStore(bs *store.BadgerStore, logger *slog.Logger) error {
+	if bs == nil {
+		return nil
+	}
+	if err := bs.Close(); err != nil {
+		logger.Error("closing Badger store", "error", err)
+		return fmt.Errorf("close Badger store: %w", err)
+	}
+	return nil
+}
+
+// tailMinBackoff and tailMaxBackoff bound the delay tailWithRetry waits
+// between restarts of a failed filelog.Tail.
+const (
+	tailMinBackoff = time.Second
+	tailMaxBackoff = 30 * time.Second
+)
+
+// tailWithRetry runs filelog.Tail for path, restarting it with a capped
+// exponential backoff whenever it returns an error other than ctx
+// cancellation. Tail itself now recovers from the failures this codebase
+// has actually hit (an oversized line, a rotated/truncated file) instead of
+// returning fatally, but this keeps a log file from going permanently
+// unwatched — "log tailer stopped" used to mean stopped forever — on
+// whatever else a filesystem can throw at it (e.g. a transient permission
+// or I/O error), consistent with every other collector goroutine's
+// ctx-scoped restart discipline in this file.
+func tailWithRetry(ctx context.Context, path string, sink filelog.Sink, logger *slog.Logger) {
+	retryTail(ctx, path, sink, logger, tailMinBackoff, tailMaxBackoff)
+}
+
+// retryTail holds tailWithRetry's loop with the backoff bounds as
+// parameters so a test can drive it with millisecond backoffs instead of
+// tailMinBackoff/tailMaxBackoff's real-world values.
+func retryTail(ctx context.Context, path string, sink filelog.Sink, logger *slog.Logger, minBackoff, maxBackoff time.Duration) {
+	backoff := minBackoff
+	for {
+		err := filelog.Tail(ctx, path, sink)
+		if ctx.Err() != nil {
+			return
+		}
+		logger.Error("log tailer stopped, restarting", "path", path, "error", err, "retry_in", backoff)
+		select {
+		case <-ctx.Done():
+			return
+		case <-time.After(backoff):
+		}
+		backoff *= 2
+		if backoff > maxBackoff {
+			backoff = maxBackoff
+		}
 	}
 }
 
@@ -188,6 +291,22 @@ func resolveAuthToken(flagValue string) string {
 		return flagValue
 	}
 	return os.Getenv("FORSIGHT_AUTH_TOKEN")
+}
+
+// resolveErrorSLO prefers the --error-slo flag; when that is unset (the flag
+// defaults to 0, since 0% error tolerance is not a meaningful SLO) it falls
+// back to FORSIGHT_ERROR_SLO. A non-positive result means the engine keeps
+// its own built-in default (see forseer.defaultErrorSLO).
+func resolveErrorSLO(flagValue float64) float64 {
+	if flagValue > 0 {
+		return flagValue
+	}
+	if raw := os.Getenv("FORSIGHT_ERROR_SLO"); raw != "" {
+		if v, err := strconv.ParseFloat(raw, 64); err == nil {
+			return v
+		}
+	}
+	return 0
 }
 
 // isLoopbackListenAddr reports whether addr is explicitly bound to a loopback

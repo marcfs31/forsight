@@ -20,12 +20,14 @@ type Engine struct {
 	processes map[string]procSnap
 	culprits  map[string]Insight
 	now       func() time.Time
+	errorSLO  float64
 }
 
 type procSnap struct {
-	name string
-	cpu  float64
-	rss  float64
+	name     string
+	cpu      float64
+	rss      float64
+	lastSeen time.Time
 }
 
 // NewEngine builds a live engine. Statistical detection is always on;
@@ -39,6 +41,7 @@ func NewEngine() *Engine {
 		processes: make(map[string]procSnap),
 		culprits:  make(map[string]Insight),
 		now:       now,
+		errorSLO:  defaultErrorSLO,
 	}
 	e.det.now = func() time.Time { return e.now() }
 	e.logs.now = func() time.Time { return e.now() }
@@ -71,6 +74,19 @@ func (e *Engine) trackProcesses(points []Point) {
 			delete(e.culprits, k)
 		}
 	}
+	// processes is keyed by whatever "pid" label arrives on a metric point —
+	// for OTLP-sourced points that is an attacker-controlled resource
+	// attribute copied verbatim by the receiver, with no cardinality
+	// filtering upstream. Unlike culprits (open insights), nothing evicted
+	// entries here, so this map grew without bound. Sweep it the same way,
+	// on the same tick, using each pid's last-observed time rather than an
+	// insight's Time: a busy but legitimate process should not be evicted
+	// just because it never triggers a culprit ranking.
+	for pid, snap := range e.processes {
+		if now.Sub(snap.lastSeen) > insightTTL {
+			delete(e.processes, pid)
+		}
+	}
 	for _, p := range points {
 		pid := ""
 		if p.Labels != nil {
@@ -89,6 +105,7 @@ func (e *Engine) trackProcesses(points []Point) {
 		case "process.memory.rss_bytes":
 			snap.rss = p.Value
 		}
+		snap.lastSeen = now
 		e.processes[pid] = snap
 	}
 
@@ -163,20 +180,39 @@ func (e *Engine) Clusters() []Cluster {
 
 const defaultErrorSLO = 0.01 // 1% error logs
 
-// Budget is the error-log burn against a 1% SLO, for ErrorBudget.
+// SetErrorSLO overrides the error-log SLO Budget burns against (default 1%,
+// see defaultErrorSLO — e.g. `forsight run --error-slo 0.02` for 2%). A
+// non-positive value is ignored, leaving the current SLO in effect.
+func (e *Engine) SetErrorSLO(slo float64) {
+	if slo <= 0 {
+		return
+	}
+	e.mu.Lock()
+	e.errorSLO = slo
+	e.mu.Unlock()
+}
+
+// Budget is the error-log burn against the configured SLO (1% by default),
+// for ErrorBudget. The SLO itself is always reported on Budget.SLO so a
+// caller — the dashboard included — never has to parse it back out of
+// Caption, which is absent before any logs have landed.
 func (e *Engine) Budget() Budget {
+	e.mu.Lock()
+	slo := e.errorSLO
+	e.mu.Unlock()
+
 	errors, total := e.logs.counts()
 	consumed := 0.0
-	if total > 0 && defaultErrorSLO > 0 {
+	if total > 0 && slo > 0 {
 		rate := float64(errors) / float64(total)
-		consumed = rate / defaultErrorSLO * 100
+		consumed = rate / slo * 100
 		if consumed > 100 {
 			consumed = 100
 		}
 	}
 	caption := "no logs yet"
 	if total > 0 {
-		caption = fmt.Sprintf("%d errors in %d lines · SLO %.0f%% error logs", errors, total, defaultErrorSLO*100)
+		caption = fmt.Sprintf("%d errors in %d lines · SLO %.0f%% error logs", errors, total, slo*100)
 	}
 	return Budget{
 		Label:     "Error-log budget",
@@ -184,7 +220,7 @@ func (e *Engine) Budget() Budget {
 		Caption:   caption,
 		Errors:    errors,
 		Total:     total,
-		SLO:       defaultErrorSLO,
+		SLO:       slo,
 		WarningAt: 70,
 		DangerAt:  90,
 	}
