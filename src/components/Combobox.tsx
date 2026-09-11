@@ -64,6 +64,24 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
     const [open, setOpen] = React.useState(false);
     const selected = options.find((option) => option.value === value);
 
+    /**
+     * The popover below is a Radix `role="dialog"`, which needs its own
+     * accessible name — it is composed internally, so a consumer has no way to
+     * label it. Mirror whatever names the trigger, so the dialog is announced
+     * with the field's purpose ("Framework") rather than a generic string.
+     *
+     * `aria-labelledby` is preferred over `aria-label` for the same reason it
+     * is on the trigger: it tracks the referenced element's text if that text
+     * changes. When the trigger carries neither — it is labelled by an
+     * associated <label> or visible text — fall back to the placeholder, which
+     * always has a value, so the dialog is never left unnamed.
+     */
+    const triggerLabel = props["aria-label"];
+    const triggerLabelledBy = props["aria-labelledby"];
+    const dialogLabel = triggerLabelledBy
+      ? { "aria-labelledby": triggerLabelledBy }
+      : { "aria-label": triggerLabel ?? placeholder };
+
     return (
       <PopoverPrimitive.Root open={open} onOpenChange={setOpen}>
         <PopoverPrimitive.Trigger asChild>
@@ -104,6 +122,7 @@ export const Combobox = React.forwardRef<HTMLButtonElement, ComboboxProps>(
           <PopoverPrimitive.Content
             align="start"
             sideOffset={8}
+            {...dialogLabel}
             className={cn(
               "z-50 w-[var(--radix-popper-anchor-width)] max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-ink-border bg-ink-surface p-0 shadow-lg outline-none",
               POPPER_ANIMATION_CLASSES

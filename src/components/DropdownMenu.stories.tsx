@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, within } from "storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import {
   DropdownMenu,
   DropdownMenuTrigger,
@@ -79,5 +79,12 @@ export const KeyboardSelect: Story = {
     await screen.findByRole("menuitem", { name: "Rename" });
     await userEvent.keyboard("{ArrowDown}{Enter}");
     await expect(canvas.getByTestId("picked")).toHaveTextContent("duplicate");
+    // Selecting closes the menu, and Radix clears the `aria-hidden` it puts on
+    // the rest of the page as part of that unmount. Wait for the menu to
+    // actually leave the DOM so the a11y pass that runs after this play
+    // function measures the settled state — mid-teardown it would still see
+    // focusable content inside an `aria-hidden` container and flag
+    // `aria-hidden-focus`.
+    await waitFor(() => expect(screen.queryByRole("menu")).not.toBeInTheDocument());
   },
 };

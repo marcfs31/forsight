@@ -63,6 +63,19 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
     const [open, setOpen] = React.useState(false);
     const selected = options.filter((option) => value.includes(option.value));
 
+    /**
+     * The popover below is a Radix `role="dialog"`, which needs its own
+     * accessible name — it is composed internally, so a consumer has no way to
+     * label it. Mirror whatever names the trigger, so the dialog is announced
+     * with the field's purpose rather than a generic string. Same reasoning
+     * (and same shape) as `Combobox`.
+     */
+    const triggerLabel = props["aria-label"];
+    const triggerLabelledBy = props["aria-labelledby"];
+    const dialogLabel = triggerLabelledBy
+      ? { "aria-labelledby": triggerLabelledBy }
+      : { "aria-label": triggerLabel ?? placeholder };
+
     const toggle = (optionValue: string) => {
       onValueChange(
         value.includes(optionValue)
@@ -120,6 +133,7 @@ export const MultiSelect = React.forwardRef<HTMLButtonElement, MultiSelectProps>
           <PopoverPrimitive.Content
             align="start"
             sideOffset={8}
+            {...dialogLabel}
             className={cn(
               "z-50 w-[var(--radix-popper-anchor-width)] max-w-[calc(100vw-2rem)] overflow-hidden rounded-md border border-ink-border bg-ink-surface p-0 shadow-lg outline-none",
               POPPER_ANIMATION_CLASSES
