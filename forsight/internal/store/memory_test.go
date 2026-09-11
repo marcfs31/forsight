@@ -8,6 +8,14 @@ import (
 	"github.com/marcfs31/forsight/forsight/internal/model"
 )
 
+// TestMemoryStore_Conformance runs the shared Store query-semantics suite
+// (also run by BadgerStore in badger_test.go) against MemoryStore.
+func TestMemoryStore_Conformance(t *testing.T) {
+	runStoreConformanceTests(t, func(t *testing.T) Store {
+		return NewMemoryStore(time.Hour)
+	})
+}
+
 func TestMemoryStore_WriteThenQuery(t *testing.T) {
 	s := NewMemoryStore(time.Hour)
 	ctx := context.Background()
