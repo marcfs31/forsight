@@ -34,7 +34,8 @@ observability platform.
   and a real dashboard (built on
   [`@marcfs31/forsight`](..), the design system this
   repo also publishes) served from the same process. No separate database,
-  no separate frontend server.
+  no separate frontend server. In-memory by default; add `--store badger` for
+  a store that survives a restart (see below).
 
 ## Install
 
@@ -70,7 +71,11 @@ project's planning notes for the full comparison.
 ```
 forsight run [flags]
     --addr string                address to serve on (default ":8080")
-    --retention duration         how long the in-memory store retains data (default 1h)
+    --retention duration         how long the store retains data, memory or Badger alike (default 1h)
+    --store string                storage backend: "memory" (default, resets on restart)
+                                 or "badger" (persists to --data-dir, survives a restart)
+    --data-dir string             directory for the Badger database when --store=badger
+                                 (default "./forsight-data"); ignored otherwise
     --collect-interval duration  how often pull-based collectors poll (default 10s)
     --disable-docker             skip the Docker collector even if a daemon is reachable
     --disable-otlp               don't mount the OTLP ingest endpoints
@@ -85,6 +90,19 @@ forsight run [flags]
 
 forsight version
 ```
+
+### Persistent storage (`--store badger`)
+
+By default `forsight run` stores everything in memory: fast, zero setup, and
+gone on restart. Pass `--store badger --data-dir /path/to/dir` to persist
+metrics, spans, and logs to an embedded [Badger](https://github.com/dgraph-io/badger)
+key-value database instead — same query semantics (time-range + exact-label
+match, retention-based pruning), same `Store` interface, so it's a drop-in
+swap and nothing else about `run` changes. `--data-dir` defaults to
+`./forsight-data` and is created if it doesn't exist; `--retention` governs
+Badger's per-entry TTL the same way it governs MemoryStore's pruning.
+`internal/store/badger.go`'s doc comment covers the key encoding and why it's
+shaped the way it is.
 
 ## HTTP surface
 
@@ -126,7 +144,8 @@ forsight/
       promscrape/            Prometheus exposition-format scraper + local discover
       statsd/                StatsD/DogStatsD UDP receiver
       filelog/               tail --log-file paths into LogEntry
-    store/                  Store interface + an in-memory, retention-bounded impl
+    store/                  Store interface + MemoryStore (default) and BadgerStore
+                             (--store badger) implementations, same query semantics
     api/                    HTTP server: query API, OTLP mount, embedded dashboard
   web/                      the dashboard — a small React app on the design system
   deploy/k8s/               DaemonSet manifest for cluster-wide deployment
@@ -196,11 +215,17 @@ gh release create forsight-v0.1.0 dist/*.tar.gz --title "forsight v0.1.0"
 **Built and verified working:** everything listed at the top of this file —
 host and process metrics, Docker container metrics, OTLP metrics+traces+logs
 ingestion, Kubernetes via the DaemonSet manifest, embedded in-memory storage,
-a real dashboard, and Forseer statistical detectors. Verified by hand: ran
-the binary, watched real host and Docker metrics flow through
-`/api/v1/metrics`, sent a real OTLP protobuf payload and queried it back
-out, and opened the dashboard in a browser to confirm the chart, stat tiles,
-and container table render live data — not just that the code compiles.
+persistent Badger-backed storage (`--store badger`), a real dashboard, and
+Forseer statistical detectors. Verified by hand: ran the binary, watched real
+host and Docker metrics flow through `/api/v1/metrics`, sent a real OTLP
+protobuf payload and queried it back out, opened the dashboard in a browser
+to confirm the chart, stat tiles, and container table render live data, and
+— for the Badger store — ran with `--store badger --data-dir <dir>`, sent a
+real OTLP metrics payload and let the host collector tick, queried the data
+back out, killed the process, restarted it against the same `--data-dir`,
+and confirmed every metric written before the restart (the OTLP payload and
+every prior host-collector tick) was still there — not just that the code
+compiles.
 Also **automated releases**: `.github/workflows/forsight-release.yml` cuts
 and publishes a GitHub Release on every `forsight-vX.Y.Z` tag push — see
 Releasing above. Verified by tracing it step-for-step against
@@ -214,10 +239,6 @@ extracting and running the resulting binary.
 - **Log file tailing/parsing.** OTLP log ingest (`POST /v1/logs`) and the
   query/dashboard surface are built; reading and parsing log *files* on disk
   (tail + pattern extraction) still deserves its own careful design.
-- **Persistent storage.** The store is in-memory only, bounded by
-  `--retention` (default 1h) — restart the process and history is gone. A
-  `store.Store`-implementing Badger-backed store is the natural next step;
-  the interface is already the seam for it.
 - **Seasonal baselines and SLO error-budget forecast.** Forseer ships
   rolling z-score / CUSUM / log-template / slow-span detectors; hour-of-day
   baselines and **ErrorBudget** projection are next (see
