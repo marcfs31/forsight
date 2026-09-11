@@ -16,6 +16,7 @@ type Engine struct {
 	logs     *logMiner
 	spans    *spanWatch
 	severity *severityModel
+	forecast *burnForecast
 
 	mu        sync.Mutex
 	processes map[string]procSnap
@@ -40,6 +41,7 @@ func NewEngine() *Engine {
 		logs:      newLogMiner(),
 		spans:     newSpanWatch(),
 		severity:  newSeverityModel(),
+		forecast:  newBurnForecast(),
 		processes: make(map[string]procSnap),
 		culprits:  make(map[string]Insight),
 		now:       now,
@@ -93,7 +95,7 @@ func (e *Engine) ClassifySeverity(message string) (string, bool) {
 // inputs it reads, whether it is ready, and how it is scoring. This is the
 // only place the agent claims anything about what it has learned.
 func (e *Engine) Models() []Card {
-	models := []Model{e.severity, e.det.thresholds}
+	models := []Model{e.severity, e.det.thresholds, e.forecast}
 	cards := make([]Card, 0, len(models))
 	for _, m := range models {
 		cards = append(cards, m.Card())
@@ -255,10 +257,28 @@ func (e *Engine) Budget() Budget {
 	if total > 0 {
 		caption = fmt.Sprintf("%d errors in %d lines · SLO %.0f%% error logs", errors, total, slo*100)
 	}
+
+	// Reading the budget is also what feeds the forecast: the dashboard
+	// polls this, so the cadence of the projection is the cadence somebody
+	// is actually looking at it.
+	if total > 0 {
+		e.forecast.Observe(consumed, e.now())
+	}
+	forecastText := ""
+	if soonest, latest, ok := e.forecast.Exhausted(); ok {
+		if phrase := FormatProjection(soonest, latest); phrase == "already spent" {
+			forecastText = "budget already spent"
+		} else {
+			forecastText = "exhausted " + phrase
+		}
+		caption += " · " + forecastText
+	}
+
 	return Budget{
 		Label:     "Error-log budget",
 		Consumed:  consumed,
 		Caption:   caption,
+		Forecast:  forecastText,
 		Errors:    errors,
 		Total:     total,
 		SLO:       slo,

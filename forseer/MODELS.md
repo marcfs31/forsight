@@ -149,6 +149,58 @@ alertable.
 **Component.** **AlertList**, unchanged — the severities are the same, there
 are just far fewer of them that nobody asked for.
 
+### Error-budget forecast
+
+**Job.** Say when the error budget will be gone, not just how much of it
+already is.
+
+Those are different questions and only the second is actionable. "You have
+used 60% of the budget" is a fact about the past, and whether it is a problem
+depends entirely on whether that 60% arrived over a month or over the last
+twenty minutes.
+
+**Method.** Holt's linear method — a level and a trend, each exponentially
+smoothed — projected forward to 100%. The projection is a range, not a line,
+widened by the uncertainty in the trend.
+
+**Two things this got wrong first, both caught by running it rather than by
+reading it.**
+
+The gate was originally the head-to-head win rate against naive persistence,
+the way the severity model gates against its substring rule. That is the wrong
+test here: one-step accuracy on a flat series is a tie that persistence wins,
+so the gate closed exactly when a burn turned upward and would have needed a
+hundred observations of sustained trend to reopen — useless, since the turn is
+the entire thing a forecast is for. What the model actually replaces is *no
+projection at all*: persistence is flat by construction and never reaches
+100%, so it never produces an exhaustion time. The gate is now whether the
+trend survives its own error band, which is a significance test that falls out
+of the band already being computed.
+
+The band was then sized with the per-step prediction error, which is a
+different quantity from the uncertainty in the trend. Per-step noise does not
+shrink however long the model runs; the trend estimate does, because smoothing
+averages it away. Confusing the two made the band far too wide and withheld
+projections from series with a perfectly clear trend.
+
+**Measured** against a quiet period followed by a rising burn, read once per
+second:
+
+| Consumed | Projection |
+| --- | --- |
+| 2.2% (quiet) | none — no trend that stands out from the noise |
+| 5.0% | exhausted in 5m to 2h |
+| 6.5% | exhausted in 5m to 40m |
+| 9.9% | exhausted in 5m to 15m |
+| 13.7% | exhausted in 1m to 10m |
+
+The range narrowing as evidence accumulates is the behaviour being aimed at.
+The win rate against persistence stays on the card as an honest measure of
+one-step skill — information, not a gate.
+
+**Component.** **ErrorBudget**, whose caption now carries the projection, so a
+dashboard that knows nothing about the new field still shows it.
+
 ## Next
 
 Ordered by what each one is worth against what it costs. Every row keeps the
@@ -169,22 +221,7 @@ labels come from the agent's own insight stream.
 *Reads: cluster severity mix, burst shape, co-occurring insights. Fallback:
 the current volume ratio. Component: **BarList**.*
 
-### 2. Error-budget forecast
-
-Already on the roadmap in the README, and it belongs here. `Engine.Budget()`
-reads the current burn; the forecast projects it. Holt linear with the level
-and trend coefficients fitted online, so the projection adapts instead of
-assuming a fixed smoothing.
-
-The honest version reports an interval, not a line: "the budget is exhausted
-in 40 to 90 minutes" is actionable, and a single number pretending to that
-precision is not.
-
-*Labels: the series itself — the next value grades the last forecast, so this
-one is genuinely measurable. Reads: the error/total ratio over time.
-Fallback: current burn with no projection. Component: **ErrorBudget**.*
-
-### 3. Per-endpoint latency shape
+### 2. Per-endpoint latency shape
 
 **Job.** Decide what slow means for one endpoint.
 
@@ -197,7 +234,7 @@ own p99" is a sentence an on-call can act on.
 *Reads: durations for one (service, span name). Fallback: the current
 z-score. Component: **TraceWaterfall**.*
 
-### 4. Persist what has been learned
+### 3. Persist what has been learned
 
 A model that resets on restart has to re-earn its readiness every deploy,
 which on a frequently-restarted agent means it is never ready. The state is
@@ -210,7 +247,7 @@ data directory belongs to the operator, never to this repo.
 
 *Applies to every model.*
 
-### 5. A models view in the dashboard
+### 4. A models view in the dashboard
 
 The cards are already served. A view that shows what each model does, whether
 it is ready, and what it is scoring — on **Table**, with **ErrorBudget**'s

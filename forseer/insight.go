@@ -80,9 +80,14 @@ type SpanSample struct {
 
 // Budget is an error-log SLO read for ErrorBudget. GET /api/v1/forseer/budget.
 type Budget struct {
-	Label     string  `json:"label"`
-	Consumed  float64 `json:"consumed"`
-	Caption   string  `json:"caption"`
+	Label    string  `json:"label"`
+	Consumed float64 `json:"consumed"`
+	Caption  string  `json:"caption"`
+	// Forecast is when the budget runs out, as a range, or empty when the
+	// burn is not on course to exhaust it or the model cannot say yet. The
+	// same words are appended to Caption, so a dashboard that knows nothing
+	// about this field still shows the projection.
+	Forecast  string  `json:"forecast,omitempty"`
 	Errors    int     `json:"errors"`
 	Total     int     `json:"total"`
 	SLO       float64 `json:"slo"`

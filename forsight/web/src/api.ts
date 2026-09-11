@@ -260,6 +260,11 @@ export interface ForseerBudget {
   label: string;
   consumed: number;
   caption?: string;
+  /** When the budget is projected to exhaust, e.g. "exhausted in 40 minutes
+   *  to 2 hours" — already folded into `caption`, present here too so a
+   *  consumer that wants just the projection doesn't have to parse it back
+   *  out of the caption string. */
+  forecast?: string;
   errors?: number;
   total?: number;
   /** Target error-log rate the budget burns against, e.g. 0.01 for 1%. */
