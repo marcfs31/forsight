@@ -226,32 +226,33 @@ function ForseerIncident() {
           </div>
         </header>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Grok narrative</CardTitle>
-            <CardDescription>
-              Optional. SpaceXAI <code className="font-mono">grok-4.5</code> when{" "}
-              <code className="font-mono">XAI_API_KEY</code> is set; statistical detectors run
-              without it.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Text>
-              Checkout is timing out on Postgres at 10.4.1.22 while host CPU sits 5σ above its
-              rolling baseline. The checkout process is the likely culprit (74% CPU). payment.charge
-              is 6σ slow on the same window — check the payments span and the disk-fill changepoint
-              from 13:40 before rolling forward.
-            </Text>
-          </CardContent>
-        </Card>
+        <Section id="forseer-narrative" title="Grok narrative → Card">
+          <Card>
+            <CardHeader>
+              <CardTitle>Grok narrative</CardTitle>
+              <CardDescription>
+                Optional. SpaceXAI <code className="font-mono">grok-4.5</code> when{" "}
+                <code className="font-mono">XAI_API_KEY</code> is set; statistical detectors run
+                without it.
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Text>
+                Checkout is timing out on Postgres at 10.4.1.22 while host CPU sits 5σ above its
+                rolling baseline. The checkout process is the likely culprit (74% CPU).
+                payment.charge is 6σ slow on the same window — check the payments span and the
+                disk-fill changepoint from 13:40 before rolling forward.
+              </Text>
+            </CardContent>
+          </Card>
+        </Section>
 
         <Section id="forseer-filter" title="Natural-language filter → FilterBar">
           <Card>
             <CardHeader>
               <CardTitle>Mapped query</CardTitle>
               <CardDescription>
-                “show error logs from checkout” becomes facets. The detector is next; the component
-                already exists.
+                “show error logs from checkout” becomes facets. Heuristic parse, no API key.
               </CardDescription>
             </CardHeader>
             <CardContent>
