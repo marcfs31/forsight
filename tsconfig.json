@@ -27,6 +27,7 @@
     "vitest.config.ts",
     "vitest.storybook.config.ts",
     "tsup.config.ts",
-    "scripts/forsight-treeshake-plugin.ts"
+    "scripts/forsight-treeshake-plugin.ts",
+    "scripts/forsight-treeshake-plugin.test.ts"
   ]
 }
