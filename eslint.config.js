@@ -18,14 +18,14 @@ export default tseslint.config(
       // `graft init` / `graft upgrade`.
       ".claude/helpers",
       "fixtures/**/.next",
-      // forsight is a separate Go module with its own toolchain (golangci-lint
-      // for the Go source; forsight/web is its own npm project with its own
-      // tsconfig, not part of this one). Its embedded dashboard build output
-      // (forsight/internal/api/webdist/) is checked-in minified JS/CSS, not
-      // source — linting it as if it were this project's TypeScript is what
-      // broke this exclusion's absence in the first place (1600+ false
-      // "'document' is not defined" errors from a single-line bundle).
+      // forsight and forseer are separate Go modules with their own toolchain
+      // (golangci-lint for Go; forsight/web is its own npm project). The
+      // embedded dashboard build (forsight/internal/api/webdist/) is checked-in
+      // minified JS/CSS — linting it as this project's TypeScript is what
+      // broke this exclusion's absence (1600+ "'document' is not defined"
+      // errors from a single-line bundle).
       "forsight",
+      "forseer",
     ],
   },
   js.configs.recommended,

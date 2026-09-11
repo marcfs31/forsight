@@ -3,15 +3,22 @@
 [![CI](https://github.com/marcfs31/forsight/actions/workflows/ci.yml/badge.svg)](https://github.com/marcfs31/forsight/actions/workflows/ci.yml)
 [![Storybook](https://img.shields.io/badge/Storybook-live-16C7B0)](https://marcfs31.github.io/forsight/)
 
-The design system behind Marc Fors's software: brand tokens and a React component library shared across every custom client app and in-house product Fors builds, so nothing starts from a blank Tailwind config again.
+One repo, two independently versioned artifacts:
 
-This package is the **observability fork** of [`@marcfs31/fors-design-system`](https://github.com/marcfs31/fors-design-system): the same tokens and base components, plus two families for the dashboards Fors builds on top of them — [data visualization](#data-visualization) (charts drawn in plain SVG, no charting dependency) and [observability](#observability) (metric tiles, health, uptime, logs, traces). Every import path changes to `@marcfs31/forsight`; nothing else about the base API moves.
+| Artifact                          | What it is                                                               | Built by        | Versioned as          |
+| --------------------------------- | ------------------------------------------------------------------------ | --------------- | --------------------- |
+| [`@marcfs31/forsight`](#install)  | Observability design system (npm, GitHub Packages)                       | `npm run build` | Changesets → `vX.Y.Z` |
+| [`forsight/`](forsight/README.md) | One Go binary: collectors, in-memory store, HTTP API, embedded dashboard | `make build`    | `forsight-vX.Y.Z`     |
+
+**Forseer** (`forseer/`) is the AI/ML module compiled into the agent. It scores the stream; the dashboard renders those scores with the design-system components in [Storybook → Forseer](https://marcfs31.github.io/forsight/?path=/docs/forsight-forseer--docs).
 
 **[Browse the component library →](https://marcfs31.github.io/forsight/)** (Storybook, deployed from `main`)
 
-**Brand concept.** "Forsight" is built on _fors_, Swedish/Norwegian for rapids — force, flow, clarity, momentum — and on the foresight an observability tool is meant to give you. The palette is dark-first and engineering-forward: near-black ink surfaces, a signature Rapids Teal accent, a Spark Amber secondary, Inter for body/UI text, Space Grotesk for headings. A light theme is included for apps that need it — see [Theming](#theming) below.
+Published **v3.0.0**. The package build is Tailwind **v4**; a Tailwind v3 `tailwind-preset` is still exported for older consumers. React 18 and 19 · Next.js App Router, [RSC-ready](#using-with-nextjs) · ESM + CJS.
 
-**Compatibility.** React 18 and 19 · Next.js App Router, [RSC-ready](#using-with-nextjs) (the components entry ships `"use client"`) · ESM + CJS, validated with `publint`/`arethetypeswrong` on every resolution mode.
+This package is the observability continuation of [`@marcfs31/fors-design-system`](https://github.com/marcfs31/fors-design-system): same tokens and base components, plus [data visualization](#data-visualization) (plain SVG, no charting library) and [observability](#observability) primitives. Import paths are `@marcfs31/forsight`.
+
+**Brand.** _Fors_ is Swedish/Norwegian for rapids — force, flow, clarity — and foresight is what an observability tool is for. Dark-first: near-black ink, Rapids Teal accent, Spark Amber secondary, Inter for UI, Space Grotesk for headings. Light theme included — see [Theming](#theming).
 
 ## Install
 
@@ -158,11 +165,21 @@ export default function Page() {
 
 Don't add `import "@marcfs31/forsight/fonts.css"` alongside `next/font` — that would load the same families twice, once render-blocking from Google and once self-hosted.
 
+## Agent
+
+The Go agent lives in [`forsight/`](forsight/README.md). A bare `forsight run` collects host, process, and Docker metrics, scrapes well-known local Prometheus exporters, listens for StatsD on `:8125`, and receives OTLP metrics/traces/logs. Storage is in-process (`MemoryStore`, default 1h retention). Optional bearer auth (`--auth-token` / `FORSIGHT_AUTH_TOKEN`). The dashboard is a small React app on this design system, embedded at `forsight/internal/api/webdist/`.
+
+```bash
+cd forsight
+make test
+make build-go    # no Node
+```
+
 ## Development
 
 ```bash
 npm install
-npm run storybook       # component playground at localhost:6006
+npm run storybook       # component playground at localhost:6006 — Forseer section is Forsight/Forseer
 npm test                # unit + accessibility + token-contrast tests
 npm run typecheck
 npm run build            # dist/{index,theme,tailwind-preset}.{js,cjs,d.ts,d.cts} + dist/{styles,tailwind,fonts}.css
@@ -195,24 +212,41 @@ git push --follow-tags
 
 ### Base
 
-Typography: `Heading`, `Text`, `Label`. Forms: `Button` (with a built-in `loading` state), `Input`, `Textarea`, `Checkbox`, `RadioGroup`, `Switch`, `Select`, `Slider`, `Calendar`/`DatePicker`. Overlays: `Dialog`, `DropdownMenu`, `Popover`, `Tooltip`, `Toast`/`Toaster`/`useToast`, `Command`/`CommandDialog` (command palette). Feedback & data: `Alert`, `Badge`, `Avatar`/`AvatarGroup`, `Spinner`, `Progress`, `Skeleton`, `Card`, `Table`, `Tabs`, `Accordion`, `Collapsible`, `Separator`. Navigation & layout: `Breadcrumb`, `Pagination`, `Sidebar`/`AppShell` (page shell with `SidebarProvider`/`useSidebar`). Every component supports `dir="rtl"`.
+Typography: `Heading`, `Text`, `Label`. Forms: `Button` (built-in `loading`), `Input`, `Textarea`, `Checkbox`, `RadioGroup`, `Switch`, `Toggle`/`ToggleGroup`, `Select`, `Combobox`, `MultiSelect`, `Slider`, `Calendar`/`DatePicker`. Overlays: `Dialog`, `AlertDialog`, `Drawer`, `DropdownMenu`, `Popover`, `HoverCard`, `Tooltip`, `Toast`/`Toaster`, `Command`/`CommandDialog`. Feedback & data: `Alert`, `Badge`, `Avatar`/`AvatarGroup`, `Spinner`, `Progress`, `Skeleton`, `Stepper`, `Card`, `Table`, `Tabs`, `Accordion`, `Collapsible`, `Separator`, `EmptyState`, `JSONViewer`, `CodeBlock`, `CopyButton`, `Kbd`, `ScrollArea`. Navigation: `Breadcrumb`, `Pagination`, `FilterBar`, `Sidebar`/`AppShell`. Every component supports `dir="rtl"`.
 
-Overlay/select components are built on [Radix UI](https://www.radix-ui.com/) primitives for correct focus management and keyboard behavior; every component ships fully unstyled from Radix and is styled entirely through this repo's Tailwind token vocabulary. Open/close motion for every overlay comes from `tailwindcss-animate`, driven by Radix's own `data-state`/`data-side` attributes, and automatically collapses under `prefers-reduced-motion`.
+Overlay/select components sit on [Radix UI](https://www.radix-ui.com/) for focus and keyboard behavior, then this repo's token classes. Overlay motion is `tailwindcss-animate` on Radix `data-state`/`data-side`, and collapses under `prefers-reduced-motion`.
 
 ### Data visualization
 
-`LineChart` (lines or a single area) · `BarChart` (grouped or stacked, always from a zero baseline) · `Sparkline` (axis-less trend for a tile or table cell) · `BarList` (ranked top-N with inline bars) · `DonutChart` (part-to-whole with the total in the middle) · `Heatmap` (density matrix, one hue in five steps) · `Gauge` (bounded metric as an ARIA `meter`) · `ChartFrame` / `ChartLegend` / `ChartTooltip` (the shell and pieces, for a plot this package doesn't ship).
+`LineChart` · `BarChart` · `ComboChart` · `Sparkline` · `BarList` · `DonutChart` · `Funnel` · `Heatmap` · `CalendarHeatmap` · `Histogram` · `BoxPlot` · `Gauge` · `ChartFrame` / `ChartLegend` / `ChartTooltip`.
 
-Charts are drawn as SVG from this repo's own geometry helpers (`niceScale`, `linePath`, `areaPath`, `barPath`, `arcPath`, `formatCompact`, …, all exported) — there is no charting library in the dependency tree, and the marks wear the same token vocabulary as everything else.
+Charts are SVG from this repo's geometry helpers (`niceScale`, `linePath`, `areaPath`, `barPath`, `arcPath`, `formatCompact`, … — all exported). No charting library in the tree.
 
-Three rules the charts hold to, which is most of what makes them readable:
+Three rules:
 
-- **Series colors are eight fixed slots**, `--forsight-viz-1` … `--forsight-viz-8`, assigned in order and never cycled. The ordering is the colorblind-safety mechanism: adjacent slots are the pairs a stack or a legend puts side by side, and every adjacent pair clears the CVD and normal-vision separation floors in both themes. A ninth series is drawn neutral — the signal to fold the tail into "Other" or use small multiples.
-- **A chart is a picture and a table.** Every plot renders its data as a visually hidden `<table>` (or, for `Heatmap` and `TraceWaterfall`, _is_ a real table), so the numbers are never available only to sighted readers. `Sparkline` summarizes instead — count, low, high, latest — because forty cells at that size help nobody.
-- **The cursor is keyboard-reachable.** Hovering a plot reads a point out; so does focusing it and pressing Arrow/Home/End, with Escape to dismiss. Identity always has a text carrier (legend, direct label, printed value) beside the color.
+- **Series colors are eight fixed slots**, `--forsight-viz-1` … `--forsight-viz-8`, never cycled. Adjacent slots are the CVD-safe pairs a stack or legend puts side by side. A ninth series is drawn neutral — fold the tail into "Other" or use small multiples.
+- **A chart is a picture and a table.** Every plot also renders a visually hidden `<table>` (or, for `Heatmap` and `TraceWaterfall`, _is_ a real table). `Sparkline` summarizes instead — count, low, high, latest.
+- **The cursor is keyboard-reachable.** Hover and Arrow/Home/End read a point; Escape dismisses. Identity always has a text carrier beside the color.
 
 ### Observability
 
-`StatCard` (the metric tile: value, delta, trend, health) · `Delta` (period-over-period change, colored by whether the move is _good_, not by its sign) · `StatusDot` (service health, with the status word beside it) · `UptimeBar` (status-page strip, plus a summary and an incident list for non-visual readers) · `LogStream` (leveled, scrollable ARIA `log`) · `Timeline` (incident and deploy history) · `TraceWaterfall` (span waterfall as a table) · `TimeRange` (segmented window picker, a real ARIA radio group).
+`StatCard` · `Delta` · `StatusDot` · `UptimeBar` · `AlertList` · `ErrorBudget` · `LogStream` · `Timeline` · `TraceWaterfall` · `TimeRange` · `FilterBar`.
 
-Every component has a Storybook story (with autodocs generating a props-table page from its TypeScript types) and a co-located test covering behavior and accessibility (`vitest-axe`).
+### Forseer (AI / ML)
+
+Forseer does not add components. It scores the agent's stream and lands each finding on a component that already exists. The Storybook **Forseer** section is that mapping, including a full incident composition.
+
+| Kind                | Detector                                             | Component               |
+| ------------------- | ---------------------------------------------------- | ----------------------- |
+| `anomaly`           | Welford rolling z-score (3σ / 5σ)                    | `AlertList`             |
+| `changepoint`       | CUSUM on the same z-scores                           | `Timeline`              |
+| `log_burst`         | Drain-lite templates + short-window volume           | `BarList` + `LogStream` |
+| `slow_span`         | Per `(service, span name)` duration z-score          | `TraceWaterfall`        |
+| `culprit`           | Join a `host.cpu` anomaly with `process.cpu.percent` | `Table`                 |
+| Grok narrative      | SpaceXAI `grok-4.5` when `XAI_API_KEY` is set        | `Card` + `Text`         |
+| NL filter (next)    | Grok JSON → facets                                   | `FilterBar`             |
+| SLO forecast (next) | Projected error-log burn                             | `ErrorBudget`           |
+
+Statistical detectors need no API key. Details: [`forseer/README.md`](forseer/README.md).
+
+Every component has a Storybook story (autodocs from its TypeScript types) and a co-located test covering behavior and accessibility (`vitest-axe`).

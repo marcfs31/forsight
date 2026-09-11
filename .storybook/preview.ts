@@ -51,8 +51,8 @@ const preview: Preview = {
   parameters: {
     // Sidebar order: the Overview first, then the component categories in a
     // deliberate top-down reading order (type → inputs → overlays → feedback
-    // → data display → charts → observability → navigation); components
-    // alphabetical within a category.
+    // → data display → charts → observability → Forseer (AI/ML compositions)
+    // → navigation); components alphabetical within a category.
     // Story titles are "Forsight/<Category>/<Component>" — see src/**/*.stories.tsx.
     options: {
       storySort: {
@@ -67,6 +67,7 @@ const preview: Preview = {
             "Data Display",
             "Data Viz",
             "Observability",
+            "Forseer",
             "Navigation",
           ],
         ],
