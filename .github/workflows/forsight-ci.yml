@@ -55,7 +55,7 @@ jobs:
           printf 'base=%s\nchanged files:\n%s\n' "${base:-<none>}" "$changed"
           go=false; web=false
           # The Go module itself (the dashboard's sources are the web job's concern).
-          if grep -qE '^(forsight/(cmd|internal|deploy|main\.go|go\.(mod|sum)|Makefile|install\.sh)|\.github/workflows/forsight-ci\.yml)' <<<"$changed"; then go=true; fi
+          if grep -qE '^(forsight/(cmd|internal|deploy|main\.go|go\.(mod|sum)|Makefile|install\.sh)|forseer/|\.github/workflows/forsight-ci\.yml)' <<<"$changed"; then go=true; fi
           # What the embedded dashboard build is made of. Deliberately NOT the
           # design system's own sources: forsight/web depends on a pinned
           # published `@marcfs31/forsight` from GitHub Packages, so a root
@@ -97,6 +97,10 @@ jobs:
           working-directory: forsight
       - run: go test ./...
         working-directory: forsight
+      - run: go vet ./...
+        working-directory: forseer
+      - run: go test ./...
+        working-directory: forseer
       # Uses whatever is currently checked into internal/api/webdist/ (the
       # fallback page unless a prior "web" job step refreshed it) — this
       # step's whole point is proving `go build` never needs Node, so it

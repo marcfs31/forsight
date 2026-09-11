@@ -3,6 +3,7 @@ module github.com/marcfs31/forsight/forsight
 go 1.27.1
 
 require (
+	github.com/marcfs31/forsight/forseer v0.0.0
 	github.com/moby/moby/api v1.56.0
 	github.com/moby/moby/client v0.6.0
 	github.com/prometheus/client_model v0.6.3
@@ -50,3 +51,5 @@ require (
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20260720211330-0afa2a65878a // indirect
 	google.golang.org/grpc v1.83.2 // indirect
 )
+
+replace github.com/marcfs31/forsight/forseer => ../forseer

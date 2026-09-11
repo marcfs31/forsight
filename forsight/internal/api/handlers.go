@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/marcfs31/forsight/forseer"
 	"github.com/marcfs31/forsight/forsight/internal/model"
 	"github.com/marcfs31/forsight/forsight/internal/store"
 )
@@ -111,6 +112,42 @@ func labelsFromQuery(q url.Values) map[string]string {
 		labels[name] = values[0]
 	}
 	return labels
+}
+
+func (s *Server) handleForseerInsights(w http.ResponseWriter, _ *http.Request) {
+	if s.forseer == nil {
+		writeJSON(w, http.StatusOK, []forseer.Insight{})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.forseer.Insights())
+}
+
+func (s *Server) handleForseerClusters(w http.ResponseWriter, _ *http.Request) {
+	if s.forseer == nil {
+		writeJSON(w, http.StatusOK, []forseer.Cluster{})
+		return
+	}
+	writeJSON(w, http.StatusOK, s.forseer.Clusters())
+}
+
+func (s *Server) handleForseerSummary(w http.ResponseWriter, r *http.Request) {
+	key := forseer.APIKeyFromEnv()
+	if key == "" {
+		writeJSON(w, http.StatusOK, map[string]any{"enabled": false, "summary": ""})
+		return
+	}
+	var insights []forseer.Insight
+	var clusters []forseer.Cluster
+	if s.forseer != nil {
+		insights = s.forseer.Insights()
+		clusters = s.forseer.Clusters()
+	}
+	summary, err := forseer.Summarize(r.Context(), insights, clusters, key)
+	if err != nil {
+		http.Error(w, "forseer summary failed: "+err.Error(), http.StatusBadGateway)
+		return
+	}
+	writeJSON(w, http.StatusOK, map[string]any{"enabled": true, "summary": summary})
 }
 
 func writeJSON(w http.ResponseWriter, status int, v any) {

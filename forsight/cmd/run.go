@@ -15,25 +15,31 @@ import (
 
 	"github.com/spf13/cobra"
 
+	"github.com/marcfs31/forsight/forseer"
 	"github.com/marcfs31/forsight/forsight/internal/api"
 	"github.com/marcfs31/forsight/forsight/internal/collector"
 	dockercollector "github.com/marcfs31/forsight/forsight/internal/collector/docker"
 	hostcollector "github.com/marcfs31/forsight/forsight/internal/collector/host"
 	"github.com/marcfs31/forsight/forsight/internal/collector/otlp"
+	proccollector "github.com/marcfs31/forsight/forsight/internal/collector/proc"
 	"github.com/marcfs31/forsight/forsight/internal/collector/promscrape"
 	"github.com/marcfs31/forsight/forsight/internal/collector/statsd"
+	"github.com/marcfs31/forsight/forsight/internal/model"
 	"github.com/marcfs31/forsight/forsight/internal/store"
 )
 
 type runOptions struct {
-	addr            string
-	authToken       string
-	retention       time.Duration
-	collectInterval time.Duration
-	disableDocker   bool
-	disableOTLP     bool
-	scrapeTargets   []string
-	statsdAddr      string
+	addr              string
+	authToken         string
+	retention         time.Duration
+	collectInterval   time.Duration
+	disableDocker     bool
+	disableOTLP       bool
+	disableProc       bool
+	disableStatsd     bool
+	disableAutoscrape bool
+	scrapeTargets     []string
+	statsdAddr        string
 }
 
 func newRunCmd() *cobra.Command {
@@ -54,11 +60,14 @@ func newRunCmd() *cobra.Command {
 	cmd.Flags().DurationVar(&opts.collectInterval, "collect-interval", 10*time.Second, "how often the host/Docker collectors poll")
 	cmd.Flags().BoolVar(&opts.disableDocker, "disable-docker", false, "skip the Docker collector even if a daemon is reachable")
 	cmd.Flags().BoolVar(&opts.disableOTLP, "disable-otlp", false, "don't mount the OTLP ingest endpoints")
+	cmd.Flags().BoolVar(&opts.disableProc, "disable-proc", false, "skip per-process CPU/memory collection")
+	cmd.Flags().BoolVar(&opts.disableStatsd, "disable-statsd", false, "don't listen for StatsD/DogStatsD")
+	cmd.Flags().BoolVar(&opts.disableAutoscrape, "disable-autoscrape", false, "don't probe well-known local Prometheus exporters (node_exporter :9100, …)")
 	cmd.Flags().StringArrayVar(&opts.scrapeTargets, "scrape", nil,
 		"Prometheus exposition endpoint to scrape on --collect-interval; repeatable. "+
 			"Optionally prefix a job name: --scrape node=http://localhost:9100/metrics")
-	cmd.Flags().StringVar(&opts.statsdAddr, "statsd-addr", "",
-		"listen for StatsD/DogStatsD metrics over UDP on this address (e.g. :8125); empty disables it")
+	cmd.Flags().StringVar(&opts.statsdAddr, "statsd-addr", ":8125",
+		"listen for StatsD/DogStatsD metrics over UDP (default :8125 so a bare install receives them; --disable-statsd turns it off)")
 
 	return cmd
 }
@@ -67,9 +76,13 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 	ctx, stop := signal.NotifyContext(ctx, os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
-	st := store.NewMemoryStore(opts.retention)
+	eng := forseer.NewEngine()
+	st := observingStore{Store: store.NewMemoryStore(opts.retention), eng: eng}
 
 	collectors := []collector.Collector{hostcollector.New()}
+	if !opts.disableProc {
+		collectors = append(collectors, proccollector.New())
+	}
 	if !opts.disableDocker {
 		if dockerCollector, err := dockercollector.New(ctx); err != nil {
 			logger.Info("Docker collector disabled: no daemon reachable", "detail", err)
@@ -84,6 +97,13 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 	if err != nil {
 		return err
 	}
+	if !opts.disableAutoscrape {
+		found := promscrape.DiscoverLocal(ctx, targets)
+		for _, t := range found {
+			logger.Info("auto-discovered Prometheus exporter", "url", t.URL, "job", t.Labels["job"])
+		}
+		targets = append(targets, found...)
+	}
 	if len(targets) > 0 {
 		collectors = append(collectors, promscrape.New(targets))
 		for _, t := range targets {
@@ -94,22 +114,22 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 	// StatsD is push-based: Listen accumulates packets continuously in its own
 	// goroutine while Collect drains and resets that accumulator on the
 	// registry's tick. That is why it is started separately from being
-	// registered — see the package doc.
-	if opts.statsdAddr != "" {
+	// registered — see the package doc. Default listen is :8125 so a
+	// curl|sh install receives StatsD with no flags; a bind failure is
+	// non-fatal (the port may already be taken).
+	if !opts.disableStatsd && opts.statsdAddr != "" {
 		statsdCollector := statsd.New(opts.statsdAddr)
-		// Bind synchronously so an unusable address (already in use, no
-		// permission) fails startup here, instead of being logged from a
-		// goroutine after we have already claimed to be listening.
 		if err := statsdCollector.Bind(); err != nil {
-			return fmt.Errorf("--statsd-addr %s: %w", opts.statsdAddr, err)
+			logger.Warn("StatsD receiver not started", "addr", opts.statsdAddr, "error", err)
+		} else {
+			collectors = append(collectors, statsdCollector)
+			go func() {
+				if err := statsdCollector.Serve(ctx); err != nil && ctx.Err() == nil {
+					logger.Error("StatsD receiver stopped", "addr", opts.statsdAddr, "error", err)
+				}
+			}()
+			logger.Info("StatsD receiver listening", "addr", statsdCollector.LocalAddr())
 		}
-		collectors = append(collectors, statsdCollector)
-		go func() {
-			if err := statsdCollector.Serve(ctx); err != nil && ctx.Err() == nil {
-				logger.Error("StatsD receiver stopped", "addr", opts.statsdAddr, "error", err)
-			}
-		}()
-		logger.Info("StatsD receiver listening", "addr", statsdCollector.LocalAddr())
 	}
 
 	registry := collector.NewRegistry(st, opts.collectInterval, logger, collectors...)
@@ -120,7 +140,7 @@ func run(ctx context.Context, opts *runOptions, logger *slog.Logger) error {
 		otlpHandler = otlp.NewHandler(st, st, st)
 	}
 
-	server := api.NewServer(st, otlpHandler, api.DashboardHandler(), logger)
+	server := api.NewServer(st, otlpHandler, api.DashboardHandler(), logger).WithForseer(eng)
 	authToken := resolveAuthToken(opts.authToken)
 	if authToken == "" && !isLoopbackListenAddr(opts.addr) {
 		logger.Warn("listening on a non-loopback address with no authentication configured; set --auth-token or FORSIGHT_AUTH_TOKEN")
@@ -187,4 +207,56 @@ func parseScrapeTargets(values []string) ([]promscrape.Target, error) {
 		targets = append(targets, promscrape.Target{URL: raw, Labels: map[string]string{"job": job}})
 	}
 	return targets, nil
+}
+
+// observingStore writes through to MemoryStore and feeds Forseer on every
+// ingest path (host collectors and OTLP), so insights see the same stream
+// the dashboard queries.
+type observingStore struct {
+	store.Store
+	eng *forseer.Engine
+}
+
+func (s observingStore) WriteMetrics(ctx context.Context, metrics []model.Metric) error {
+	if s.eng != nil && len(metrics) > 0 {
+		pts := make([]forseer.Point, len(metrics))
+		for i, m := range metrics {
+			pts[i] = forseer.Point{Name: m.Name, Value: m.Value, Labels: m.Labels}
+		}
+		s.eng.ObserveMetrics(pts)
+	}
+	return s.Store.WriteMetrics(ctx, metrics)
+}
+
+func (s observingStore) WriteLogs(ctx context.Context, logs []model.LogEntry) error {
+	if s.eng != nil && len(logs) > 0 {
+		lines := make([]forseer.LogLine, len(logs))
+		for i, l := range logs {
+			lines[i] = forseer.LogLine{
+				Timestamp: l.Timestamp,
+				Severity:  string(l.Severity),
+				Source:    l.Source,
+				Message:   l.Message,
+			}
+		}
+		s.eng.ObserveLogs(lines)
+	}
+	return s.Store.WriteLogs(ctx, logs)
+}
+
+func (s observingStore) WriteSpans(ctx context.Context, spans []model.Span) error {
+	if s.eng != nil && len(spans) > 0 {
+		samples := make([]forseer.SpanSample, len(spans))
+		for i, sp := range spans {
+			samples[i] = forseer.SpanSample{
+				Name:       sp.Name,
+				Service:    sp.Service,
+				DurationMs: float64(sp.Duration) / float64(time.Millisecond),
+				Status:     string(sp.Status),
+				TraceID:    sp.TraceID,
+			}
+		}
+		s.eng.ObserveSpans(samples)
+	}
+	return s.Store.WriteSpans(ctx, spans)
 }

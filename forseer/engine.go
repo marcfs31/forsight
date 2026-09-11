@@ -1,0 +1,161 @@
+package forseer
+
+import (
+	"fmt"
+	"sort"
+	"sync"
+	"time"
+)
+
+// Engine is the Forseer surface the agent talks to. It composes the
+// statistical detectors (metrics, logs, traces) so a single `forsight run`
+// produces insights without a sidecar process.
+type Engine struct {
+	det   *Detector
+	logs  *logMiner
+	spans *spanWatch
+
+	mu        sync.Mutex
+	processes map[string]procSnap
+	culprits  map[string]Insight
+	now       func() time.Time
+}
+
+type procSnap struct {
+	name string
+	cpu  float64
+	rss  float64
+}
+
+// NewEngine builds a live engine. Statistical detection is always on;
+// Grok summary is a separate call that needs XAI_API_KEY.
+func NewEngine() *Engine {
+	now := time.Now
+	e := &Engine{
+		det:       NewDetector(),
+		logs:      newLogMiner(),
+		spans:     newSpanWatch(),
+		processes: make(map[string]procSnap),
+		culprits:  make(map[string]Insight),
+		now:       now,
+	}
+	e.det.now = func() time.Time { return e.now() }
+	e.logs.now = func() time.Time { return e.now() }
+	e.spans.now = func() time.Time { return e.now() }
+	return e
+}
+
+// ObserveMetrics feeds host/process/Docker/OTLP/scrape/StatsD points.
+func (e *Engine) ObserveMetrics(points []Point) {
+	e.det.Observe(points)
+	e.trackProcesses(points)
+}
+
+// ObserveLogs feeds OTLP (and later file-tail) log lines into the miner.
+func (e *Engine) ObserveLogs(lines []LogLine) {
+	e.logs.Observe(lines)
+}
+
+// ObserveSpans feeds OTLP spans into the slow-span watcher.
+func (e *Engine) ObserveSpans(spans []SpanSample) {
+	e.spans.Observe(spans)
+}
+
+func (e *Engine) trackProcesses(points []Point) {
+	now := e.now()
+	e.mu.Lock()
+	defer e.mu.Unlock()
+	for k, ins := range e.culprits {
+		if now.Sub(ins.Time) > insightTTL {
+			delete(e.culprits, k)
+		}
+	}
+	for _, p := range points {
+		pid := ""
+		if p.Labels != nil {
+			pid = p.Labels["pid"]
+		}
+		if pid == "" {
+			continue
+		}
+		snap := e.processes[pid]
+		if p.Labels["name"] != "" {
+			snap.name = p.Labels["name"]
+		}
+		switch p.Name {
+		case "process.cpu.percent":
+			snap.cpu = p.Value
+		case "process.memory.rss_bytes":
+			snap.rss = p.Value
+		}
+		e.processes[pid] = snap
+	}
+
+	hostHot := false
+	for _, ins := range e.det.Insights() {
+		if ins.Metric == "host.cpu.percent" && ins.Kind == KindAnomaly {
+			hostHot = true
+			break
+		}
+	}
+	if !hostHot {
+		return
+	}
+	type ranked struct {
+		pid  string
+		snap procSnap
+	}
+	top := make([]ranked, 0, len(e.processes))
+	for pid, snap := range e.processes {
+		if snap.cpu <= 0 {
+			continue
+		}
+		top = append(top, ranked{pid, snap})
+	}
+	sort.Slice(top, func(i, j int) bool { return top[i].snap.cpu > top[j].snap.cpu })
+	if len(top) > 3 {
+		top = top[:3]
+	}
+	for _, r := range top {
+		if r.snap.cpu < 20 {
+			continue
+		}
+		related := []string{r.snap.name, "pid=" + r.pid}
+		e.culprits[r.pid] = Insight{
+			ID:          "culprit:" + r.pid,
+			Kind:        KindCulprit,
+			Severity:    SeverityWarning,
+			Title:       fmt.Sprintf("%s is using %.0f%% CPU while the host is anomalous", r.snap.name, r.snap.cpu),
+			Description: "process ranked as a likely contributor to the host CPU spike",
+			Source:      r.snap.name,
+			Metric:      "process.cpu.percent",
+			Value:       r.snap.cpu,
+			Time:        now,
+			Related:     related,
+		}
+	}
+}
+
+// Insights merges every detector, critical first.
+func (e *Engine) Insights() []Insight {
+	out := e.det.Insights()
+	out = append(out, e.logs.Insights()...)
+	out = append(out, e.spans.Insights()...)
+	e.mu.Lock()
+	now := e.now()
+	for k, ins := range e.culprits {
+		if now.Sub(ins.Time) > insightTTL {
+			delete(e.culprits, k)
+			continue
+		}
+		out = append(out, ins)
+	}
+	e.mu.Unlock()
+	sortInsights(out)
+	return out
+}
+
+// Clusters returns Drain-style log templates, busiest first.
+func (e *Engine) Clusters() []Cluster {
+	return e.logs.Clusters()
+}

@@ -17,9 +17,29 @@ import {
   TableCell,
   EmptyState,
   LogStream,
+  AlertList,
+  Timeline,
+  BarList,
   type LogEntry as StreamLogEntry,
+  type AlertListItem,
+  type AlertSeverity,
+  type TimelineItem,
+  type TimelineTone,
+  type ServiceStatus,
 } from "@marcfs31/forsight";
-import { useMetrics, useLogs, historyFor, latestValue, containerRows, type LogEntry } from "./api";
+import {
+  useMetrics,
+  useLogs,
+  useInsights,
+  useClusters,
+  useSummary,
+  historyFor,
+  latestValue,
+  containerRows,
+  processRows,
+  type LogEntry,
+  type ForseerInsight,
+} from "./api";
 
 const timeLabelFormat = new Intl.DateTimeFormat(undefined, {
   hour: "2-digit",
@@ -29,6 +49,18 @@ const timeLabelFormat = new Intl.DateTimeFormat(undefined, {
 
 function formatPercent(v: number | undefined): string {
   return v === undefined ? "—" : `${v.toFixed(1)}`;
+}
+
+function formatRss(bytes: number | undefined): string {
+  if (bytes === undefined) return "—";
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(0)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function formatInsightTime(iso: string): string {
+  const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return iso;
+  return timeLabelFormat.format(d);
 }
 
 function toStreamEntries(logs: LogEntry[]): StreamLogEntry[] {
@@ -43,9 +75,51 @@ function toStreamEntries(logs: LogEntry[]): StreamLogEntry[] {
     }));
 }
 
+function asAlertSeverity(value: string): AlertSeverity {
+  if (value === "critical" || value === "warning" || value === "info") return value;
+  return "info";
+}
+
+function toAlertItems(insights: ForseerInsight[]): AlertListItem[] {
+  return insights.map((ins) => ({
+    id: ins.id,
+    severity: asAlertSeverity(ins.severity),
+    title: ins.title,
+    description: ins.description,
+    time: formatInsightTime(ins.time),
+    source: ins.kind ?? ins.source,
+  }));
+}
+
+function toneFor(severity: string): TimelineTone {
+  if (severity === "critical") return "danger";
+  if (severity === "warning") return "warning";
+  return "accent";
+}
+
+function toTimelineItems(insights: ForseerInsight[]): TimelineItem[] {
+  return insights.map((ins) => ({
+    id: `tl-${ins.id}`,
+    time: formatInsightTime(ins.time),
+    title: ins.title,
+    description: ins.kind,
+    tone: toneFor(ins.severity),
+  }));
+}
+
+function statusFromInsights(connected: boolean, insights: ForseerInsight[]): ServiceStatus {
+  if (!connected) return "unknown";
+  if (insights.some((ins) => ins.severity === "critical")) return "outage";
+  if (insights.some((ins) => ins.severity === "warning")) return "degraded";
+  return "operational";
+}
+
 export default function App() {
   const metrics = useMetrics(5000);
   const logs = useLogs(5000);
+  const insights = useInsights(5000);
+  const clusters = useClusters(5000);
+  const summary = useSummary(30000);
 
   const cpuHistory = historyFor(metrics, "host.cpu.percent");
   const cpuLabels = cpuHistory.map((m) => timeLabelFormat.format(new Date(m.timestamp)));
@@ -54,13 +128,25 @@ export default function App() {
   const memory = latestValue(metrics, "host.memory.percent");
   const disk = latestValue(metrics, "host.disk.percent");
   const containers = containerRows(metrics);
+  const processes = processRows(metrics).slice(0, 15);
   const streamEntries = useMemo(() => toStreamEntries(logs), [logs]);
   const errorCount = useMemo(
     () => logs.filter((entry) => entry.severity === "error").length,
     [logs]
   );
+  const alertItems = useMemo(() => toAlertItems(insights), [insights]);
+  const timelineItems = useMemo(() => toTimelineItems(insights), [insights]);
+  const clusterBars = useMemo(
+    () =>
+      clusters.slice(0, 8).map((c) => ({
+        label: c.template || c.id,
+        value: c.count,
+      })),
+    [clusters]
+  );
 
   const connected = metrics.length > 0 || logs.length > 0;
+  const status = statusFromInsights(connected, insights);
 
   return (
     <div className="mx-auto flex min-h-screen max-w-5xl flex-col gap-6 p-6">
@@ -69,11 +155,22 @@ export default function App() {
           <Heading as="h1" size="xl">
             forsight
           </Heading>
-          <Text tone="secondary">Self-contained observability agent</Text>
+          <Text tone="secondary">
+            Collects host, process, Docker, OTLP, StatsD, and local Prometheus — Forseer
+            watches the stream
+          </Text>
         </div>
         <StatusDot
-          status={connected ? "operational" : "unknown"}
-          label={connected ? "Receiving data" : "Waiting for data…"}
+          status={status}
+          label={
+            !connected
+              ? "Waiting for data…"
+              : status === "outage"
+                ? "Forseer: critical"
+                : status === "degraded"
+                  ? "Forseer: warning"
+                  : "Receiving data"
+          }
         />
       </header>
 
@@ -100,6 +197,59 @@ export default function App() {
               title="Collecting data"
               description="The chart fills in once a few collection ticks have landed."
             />
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Forseer</CardTitle>
+        </CardHeader>
+        <CardContent className="flex flex-col gap-4">
+          {summary.enabled && summary.summary ? <Text>{summary.summary}</Text> : null}
+          <AlertList
+            label="Forseer insights"
+            items={alertItems}
+            emptyMessage="Forseer watches every metric, log template, and span against its own baseline. Spikes, regime shifts, log bursts, and slow traces show up here."
+          />
+          {timelineItems.length > 0 ? <Timeline items={timelineItems} /> : null}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Processes</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {processes.length === 0 ? (
+            <EmptyState
+              title="Collecting processes"
+              description="Per-process CPU and RSS show up after the first couple of ticks."
+            />
+          ) : (
+            <div className="w-full overflow-x-auto">
+              <Table>
+                <caption className="sr-only">Busiest processes by CPU, with RSS</caption>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>PID</TableHead>
+                    <TableHead>Name</TableHead>
+                    <TableHead>CPU %</TableHead>
+                    <TableHead>RSS</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {processes.map((p) => (
+                    <TableRow key={p.pid}>
+                      <TableCell>{p.pid}</TableCell>
+                      <TableCell>{p.name}</TableCell>
+                      <TableCell>{formatPercent(p.cpuPercent)}</TableCell>
+                      <TableCell>{formatRss(p.rssBytes)}</TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
         </CardContent>
       </Card>
@@ -136,6 +286,22 @@ export default function App() {
                 ))}
               </TableBody>
             </Table>
+          )}
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Log templates</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {clusterBars.length === 0 ? (
+            <EmptyState
+              title="No log templates yet"
+              description="OTLP logs are clustered into Drain-style templates. Bursts become Forseer insights."
+            />
+          ) : (
+            <BarList items={clusterBars} />
           )}
         </CardContent>
       </Card>

@@ -116,3 +116,133 @@ export function containerRows(metrics: Metric[]): ContainerRow[] {
   }
   return [...byId.values()].sort((a, b) => a.name.localeCompare(b.name));
 }
+
+export interface ProcessRow {
+  pid: string;
+  name: string;
+  cpuPercent?: number;
+  rssBytes?: number;
+}
+
+/** Groups process.* metrics by pid into one row per process. */
+export function processRows(metrics: Metric[]): ProcessRow[] {
+  const byPid = new Map<string, ProcessRow>();
+  for (const m of metrics) {
+    if (!m.labels?.pid) continue;
+    const pid = m.labels.pid;
+    const row = byPid.get(pid) ?? { pid, name: m.labels.name ?? pid };
+    if (m.name === "process.cpu.percent") row.cpuPercent = m.value;
+    if (m.name === "process.memory.rss_bytes") row.rssBytes = m.value;
+    byPid.set(pid, row);
+  }
+  return [...byPid.values()].sort((a, b) => (b.cpuPercent ?? 0) - (a.cpuPercent ?? 0));
+}
+
+export interface ForseerInsight {
+  id: string;
+  kind?: string;
+  severity: string;
+  title: string;
+  description?: string;
+  source?: string;
+  metric?: string;
+  value?: number;
+  time: string;
+  related?: string[];
+}
+
+export interface ForseerCluster {
+  id: string;
+  template: string;
+  source: string;
+  count: number;
+  errorCount: number;
+  lastSeen: string;
+  sample: string;
+}
+
+export function useInsights(intervalMs: number): ForseerInsight[] {
+  const [items, setItems] = useState<ForseerInsight[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const res = await fetch("/api/v1/forseer/insights");
+        if (!res.ok) return;
+        const data: ForseerInsight[] = await res.json();
+        if (!cancelled) setItems(Array.isArray(data) ? data : []);
+      } catch {
+        // keep last snapshot
+      }
+    }
+
+    poll();
+    const id = setInterval(poll, intervalMs);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [intervalMs]);
+
+  return items;
+}
+
+export function useClusters(intervalMs: number): ForseerCluster[] {
+  const [items, setItems] = useState<ForseerCluster[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const res = await fetch("/api/v1/forseer/clusters");
+        if (!res.ok) return;
+        const data: ForseerCluster[] = await res.json();
+        if (!cancelled) setItems(Array.isArray(data) ? data : []);
+      } catch {
+        // keep last snapshot
+      }
+    }
+
+    poll();
+    const id = setInterval(poll, intervalMs);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [intervalMs]);
+
+  return items;
+}
+
+export function useSummary(intervalMs: number): { enabled: boolean; summary: string } {
+  const [state, setState] = useState({ enabled: false, summary: "" });
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function poll() {
+      try {
+        const res = await fetch("/api/v1/forseer/summary");
+        if (!res.ok) return;
+        const data = (await res.json()) as { enabled?: boolean; summary?: string };
+        if (!cancelled) {
+          setState({ enabled: Boolean(data.enabled), summary: data.summary ?? "" });
+        }
+      } catch {
+        // keep last snapshot
+      }
+    }
+
+    poll();
+    const id = setInterval(poll, intervalMs);
+    return () => {
+      cancelled = true;
+      clearInterval(id);
+    };
+  }, [intervalMs]);
+
+  return state;
+}

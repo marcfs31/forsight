@@ -154,6 +154,55 @@ func TestHandler_MountsOTLPAndDashboard(t *testing.T) {
 	}
 }
 
+func TestHandleForseerInsights_EmptyWithoutDetector(t *testing.T) {
+	s := NewServer(store.NewMemoryStore(time.Hour), nil, nil, nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/forseer/insights", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+	var got []any
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decoding: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("got %+v, want []", got)
+	}
+}
+
+func TestHandleForseerSummary_DisabledWithoutKey(t *testing.T) {
+	t.Setenv("XAI_API_KEY", "")
+	s := NewServer(store.NewMemoryStore(time.Hour), nil, nil, nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/forseer/summary", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200", rec.Code)
+	}
+	var body map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
+		t.Fatal(err)
+	}
+	if body["enabled"] != false {
+		t.Errorf("enabled = %v, want false", body["enabled"])
+	}
+}
+
+func TestHandleForseerClusters_EmptyWithoutEngine(t *testing.T) {
+	s := NewServer(store.NewMemoryStore(time.Hour), nil, nil, nil)
+	rec := httptest.NewRecorder()
+	s.Handler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/api/v1/forseer/clusters", nil))
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status = %d, want 200 (body %s)", rec.Code, rec.Body.String())
+	}
+	var got []any
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+		t.Fatalf("decoding: %v", err)
+	}
+	if len(got) != 0 {
+		t.Fatalf("got %+v, want []", got)
+	}
+}
+
 type otlpRegisterFunc func(mux *http.ServeMux)
 
 func (f otlpRegisterFunc) Register(mux *http.ServeMux) { f(mux) }
