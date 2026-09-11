@@ -1,15 +1,16 @@
 /**
- * Storybook-only entry: full Tailwind (including Preflight/`@tailwind base`).
- * The shipped package stylesheet is src/styles/package.css instead — a
- * component library shouldn't inject a second global reset into every
- * consumer app that already runs its own Tailwind base.
+ * Storybook-only entry: full Tailwind (including Preflight). The shipped
+ * package stylesheet is src/styles/package.css instead — a component library
+ * shouldn't inject a second global reset into every consumer app that
+ * already runs its own Tailwind base.
  */
 @import "./tokens.css";
 @import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap");
 
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss" source(none);
+@config "../../tailwind.config.ts";
+@source "../**/*.{ts,tsx}";
+@source "../../.storybook/**/*.{ts,tsx}";
 
 @layer base {
   body {

@@ -75,4 +75,55 @@
   --shadow-md: var(--forsight-shadow-md);
   --shadow-lg: var(--forsight-shadow-lg);
   --shadow-focus-ring: 0 0 0 3px var(--forsight-focus-ring);
+
+  --animate-accordion-down: accordion-down var(--forsight-duration-base) ease-out;
+  --animate-accordion-up: accordion-up var(--forsight-duration-base) ease-out;
+  --animate-collapsible-down: collapsible-down var(--forsight-duration-base) ease-out;
+  --animate-collapsible-up: collapsible-up var(--forsight-duration-base) ease-out;
+
+  @keyframes accordion-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-accordion-content-height);
+    }
+  }
+  @keyframes accordion-up {
+    from {
+      height: var(--radix-accordion-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+  @keyframes collapsible-down {
+    from {
+      height: 0;
+    }
+    to {
+      height: var(--radix-collapsible-content-height);
+    }
+  }
+  @keyframes collapsible-up {
+    from {
+      height: var(--radix-collapsible-content-height);
+    }
+    to {
+      height: 0;
+    }
+  }
+}
+
+/* v4 has no --duration-* theme namespace (verified against tailwindcss@4.3.3
+   theme.css). These @utility rules are the v4 equivalent of the preset's
+   theme.extend.transitionDuration, so v4 consumers get `duration-fast` /
+   `duration-base` as real classes rather than arbitrary values. */
+@utility duration-fast {
+  --tw-duration: var(--forsight-duration-fast);
+  transition-duration: var(--forsight-duration-fast);
+}
+@utility duration-base {
+  --tw-duration: var(--forsight-duration-base);
+  transition-duration: var(--forsight-duration-base);
 }
