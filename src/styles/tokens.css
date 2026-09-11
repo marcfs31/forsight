@@ -7,7 +7,8 @@
  * counterpoint (Spark Amber) for secondary emphasis.
  *
  * This is the single source of truth for color/type/shape values — the
- * Tailwind config only maps these into utility classes, never hardcodes hex.
+ * Tailwind preset / `@theme` mapping only turns these into utility classes,
+ * never hardcodes hex.
  *
  * Theming: dark is the bare `:root` default (zero-config). `[data-theme="light"]`
  * overrides the color/shadow tokens only — shape and motion tokens are

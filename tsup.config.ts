@@ -4,7 +4,9 @@ export default defineConfig({
   // `index` is the client component bundle (its source starts with
   // "use client", which tsup preserves per-entry); `theme` is the
   // server-safe utilities entry with no directive; `tailwind-preset` is the
-  // Tailwind v3 preset (build-time only, never imported by app code).
+  // Tailwind v3 JS preset (build-time only, never imported by app code).
+  // The library's own v4 build loads it via `@config` rather than as a
+  // runtime import.
   entry: {
     index: "src/index.ts",
     theme: "src/theme-entry.ts",
