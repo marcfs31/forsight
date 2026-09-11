@@ -1,6 +1,6 @@
 import * as React from "react";
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, screen, userEvent, waitFor, within } from "@storybook/test";
+import { expect, screen, userEvent, waitFor, within } from "storybook/test";
 import { Calendar, DatePicker, DateRangePicker, type DateRangePickerProps } from "./Calendar";
 
 const meta: Meta = {

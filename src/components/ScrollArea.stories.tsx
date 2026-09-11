@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, fireEvent, within } from "@storybook/test";
+import { expect, fireEvent, within } from "storybook/test";
 import { ScrollArea } from "./ScrollArea";
 
 const meta: Meta<typeof ScrollArea> = {

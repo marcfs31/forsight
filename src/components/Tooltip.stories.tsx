@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, screen } from "@storybook/test";
+import { expect, screen } from "storybook/test";
 import { TooltipProvider, Tooltip, TooltipTrigger, TooltipContent } from "./Tooltip";
 import { Button } from "./Button";
 

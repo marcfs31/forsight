@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react";
-import { expect, userEvent, within } from "@storybook/test";
+import { expect, userEvent, within } from "storybook/test";
 import { Collapsible, CollapsibleTrigger, CollapsibleContent } from "./Collapsible";
 import { Button } from "./Button";
 import { Text } from "./Text";

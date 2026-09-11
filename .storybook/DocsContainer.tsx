@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { DocsContainer, type DocsContainerProps } from "@storybook/blocks";
+import { DocsContainer, type DocsContainerProps } from "@storybook/addon-docs/blocks";
 import { addons } from "storybook/internal/preview-api";
 import { GLOBALS_UPDATED } from "storybook/internal/core-events";
 import { forsightDark, forsightLight } from "./theme";
